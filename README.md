@@ -19,6 +19,14 @@ Run the demo mock client:
 ```bash
 PYTHONPATH=. python -m client_cli.main
 ```
+Use the strict DOIP client in Python:
+```python
+from doip_client import StrictDOIPClient
+
+client = StrictDOIPClient(host="127.0.0.1", port=3567, use_tls=False)
+hello = client.hello()
+metadata = client.retrieve("Q123").metadata_blocks
+```
 TLS (optional):
 - Place `certs/server.crt` and `certs/server.key` (PEM) to enable TLS automatically; otherwise the server speaks plaintext DOIP.
 - A compatibility listener runs on port 3568 (same TLS setting) accepting doipy JSON-segmented requests and bridging to the DOIP handlers.
@@ -29,9 +37,10 @@ TLS (optional):
 
 ## Project layout
 - `doip_server/`: server package and TCP handlers
-- `doip_client/`: client package with a mock implementation
+- `doip_client/`: client package with strict DOIP client and mock implementation
 - `client_cli/`: CLI entry point wrapping the client
 - `scripts/`: helper scripts for running server/client locally
 - `config/`: sample configuration files
 - `docs/`: project documentation
 - `tests/server/`: server-focused test suite (PYTHONPATH=. pytest tests/server)
+- `tests/client/`: (placeholder) client-focused test suite

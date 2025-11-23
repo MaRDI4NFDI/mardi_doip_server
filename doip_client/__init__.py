@@ -1,3 +1,5 @@
 """Client-side utilities for interacting with the Mardi DOIP server."""
 
-__all__ = ["mock"]
+from .client import StrictDOIPClient
+
+__all__ = ["StrictDOIPClient"]
