@@ -19,9 +19,15 @@ PYTHONPATH=. python -m doip_server.main --port 3567
 ```
 
 ## Handlers
-- `handle_hello`: returns server status and capabilities.
-- `handle_retrieve`: streams components based on object and component IDs.
-- `handle_invoke`: runs workflows (currently equation extraction).
+- `handle_hello`
+  - **Motivation**: Allow clients to verify connectivity and discover supported operations without performing data transfers.
+  - **Use case**: A monitoring probe or client bootstrap issues `hello` to confirm the endpoint is alive and reads the `availableOperations` map.
+- `handle_retrieve`
+  - **Motivation**: Deliver FAIR Digital Object bitstreams/components via strict DOIP framing.
+  - **Use case**: A client requests `doip:bitstream/Q123/main-pdf` to download the canonical PDF for object `Q123`; the handler fetches the bytes from storage and streams component blocks back.
+- `handle_invoke`
+  - **Motivation**: Trigger server-side workflows that derive new components or metadata from an object.
+  - **Use case**: A client invokes the `equation_extraction` workflow on `Q123` to produce a JSON of extracted equations and receive the derived component and workflow result metadata.
 
 ## Protocol
 - Header: `>BBBBHI`

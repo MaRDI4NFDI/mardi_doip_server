@@ -2,6 +2,8 @@ site_name: Mardi DOIP Server Docs
 site_description: Strict DOIP server and client documentation
 docs_dir: content
 site_dir: site
+theme:
+  name: shadcn
 nav:
   - Home: index.md
   - Server: server.md
