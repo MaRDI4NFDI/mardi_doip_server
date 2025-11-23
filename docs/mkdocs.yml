@@ -1,0 +1,10 @@
+site_name: Mardi DOIP Server Docs
+site_description: Strict DOIP server and client documentation
+docs_dir: content
+site_dir: site
+nav:
+  - Home: index.md
+  - Server: server.md
+  - Client: client.md
+  - Client CLI: client_cli.md
+  - Docker: docker.md

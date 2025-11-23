@@ -15,7 +15,7 @@ Run the server:
 ```bash
 python -m doip_server.main           # binds 0.0.0.0:3567
 ```
-Run the demo mock client:
+Run the client CLI:
 ```bash
 PYTHONPATH=. python -m client_cli.main
 ```
@@ -37,10 +37,13 @@ TLS (optional):
 
 ## Project layout
 - `doip_server/`: server package and TCP handlers
-- `doip_client/`: client package with strict DOIP client and mock implementation
+- `doip_client/`: client package with strict DOIP client
 - `client_cli/`: CLI entry point wrapping the client
 - `scripts/`: helper scripts for running server/client locally
 - `config/`: sample configuration files
 - `docs/`: project documentation
 - `tests/server/`: server-focused test suite (PYTHONPATH=. pytest tests/server)
 - `tests/client/`: (placeholder) client-focused test suite
+
+Docs:
+- Built with MkDocs; see `docs/build_docs.sh` or browse source in `docs/content/`.
