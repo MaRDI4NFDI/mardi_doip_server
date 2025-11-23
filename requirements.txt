@@ -1,0 +1,7 @@
+boto3
+httpx
+requests
+pytest
+pytest-asyncio
+doipy==1.0.0
+pytest-mock
