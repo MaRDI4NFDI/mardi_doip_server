@@ -19,7 +19,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--object-id", default="Q123", help="Object identifier to use for demo calls")
     parser.add_argument(
         "--action",
-        choices=["demo", "hello", "retrieve", "invoke"],
+        choices=["demo", "hello", "list_ops", "retrieve", "invoke"],
         default="demo",
         help="Action to execute",
     )
@@ -39,6 +39,11 @@ def main(argv: list[str] | None = None) -> int:
         if args.action == "hello":
             hello = client.hello()
             print("Hello:", json.dumps(hello, indent=2))
+            return 0
+
+        if args.action == "list_ops":
+            available_ops = client.list_ops()
+            print("Available operations:", json.dumps(available_ops, indent=2))
             return 0
 
         if args.action == "retrieve":
@@ -65,7 +70,7 @@ def main(argv: list[str] | None = None) -> int:
         print("Retrieve metadata:", json.dumps(retrieve.metadata_blocks, indent=2))
         print(f"Retrieve components: {len(retrieve.component_blocks)} block(s)")
         return 0
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         sys.stderr.write(
             f"Error contacting DOIP server {args.host}:{args.port} "
             f"(tls={'off' if args.no_tls else 'on'}, verify={'off' if args.insecure else 'on'}): {exc}\n"

@@ -104,8 +104,12 @@ class ObjectRegistry:
         Returns:
             List[Dict]: Component descriptors with IDs and S3 keys.
         """
+        if not isinstance(manifest, dict):
+            return self._fallback_components(qid)
         components: List[Dict] = []
         access_records = manifest.get("access", []) or manifest.get("accessRecords", [])
+        if not isinstance(access_records, list):
+            return self._fallback_components(qid)
         for record in access_records:
             if not isinstance(record, dict):
                 continue
@@ -126,13 +130,16 @@ class ObjectRegistry:
                 }
             )
         if not components:
-            # Fallback to a single canonical PDF by convention.
-            default_id = f"doip:bitstream/{qid}/main-pdf"
-            components.append(
-                {
-                    "componentId": default_id,
-                    "s3Key": storage_s3.s3_key_from_component(qid, default_id),
-                    "mediaType": "application/pdf",
-                }
-            )
+            return self._fallback_components(qid)
         return components
+
+    def _fallback_components(self, qid: str) -> List[Dict]:
+        """Provide a default component list when parsing fails."""
+        default_id = f"doip:bitstream/{qid}/main-pdf"
+        return [
+            {
+                "componentId": default_id,
+                "s3Key": storage_s3.s3_key_from_component(qid, default_id),
+                "mediaType": "application/pdf",
+            }
+        ]

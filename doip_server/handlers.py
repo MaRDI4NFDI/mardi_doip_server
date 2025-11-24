@@ -143,6 +143,27 @@ async def handle_invoke(msg: DOIPMessage, registry: object_registry.ObjectRegist
     )
 
 
+async def handle_list_ops(msg: DOIPMessage, registry: object_registry.ObjectRegistry) -> DOIPMessage:
+    """Return the list of supported operations."""
+    log.info("Handling list_ops request for object_id=%s", msg.object_id)
+    metadata_block = {
+        "operation": "list_operations",
+        "availableOperations": {
+            "hello": protocol.OP_HELLO,
+            "retrieve": protocol.OP_RETRIEVE,
+            "invoke": protocol.OP_INVOKE,
+        },
+    }
+    return DOIPMessage(
+        version=protocol.DOIP_VERSION,
+        msg_type=protocol.MSG_TYPE_RESPONSE,
+        operation=protocol.OP_LIST_OPS,
+        flags=0,
+        object_id=msg.object_id,
+        metadata_blocks=[metadata_block],
+    )
+
+
 def _requested_components(msg: DOIPMessage):
     """Extract requested component IDs from metadata blocks.
 

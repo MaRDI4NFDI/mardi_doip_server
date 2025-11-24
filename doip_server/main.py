@@ -79,6 +79,8 @@ async def dispatch(msg: protocol.DOIPMessage, registry: object_registry.ObjectRe
         return await handlers.handle_retrieve(msg, registry)
     if msg.operation == protocol.OP_INVOKE or op_name == "invoke":
         return await handlers.handle_invoke(msg, registry)
+    if msg.operation == protocol.OP_LIST_OPS or op_name in ("list_ops", "list_operations"):
+        return await handlers.handle_list_ops(msg, registry)
     raise protocol.ProtocolError(f"Unsupported operation code {msg.operation}")
 
 
