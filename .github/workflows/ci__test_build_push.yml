@@ -44,7 +44,7 @@ jobs:
 
       - run: |
           python -m pip install --upgrade pip
-          pip install mkdocs mkdocs-material mkdocstrings mkdocstrings-python pymdown-extensions mkdocs-bootstrap4
+          pip install mkdocs mkdocs-shadcn mkdocs-material mkdocstrings mkdocstrings-python pymdown-extensions mkdocs-bootstrap4
 
       - name: Build MkDocs site into public/
         run: |
