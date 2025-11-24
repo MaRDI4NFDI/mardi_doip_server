@@ -107,6 +107,8 @@ class ObjectRegistry:
         components: List[Dict] = []
         access_records = manifest.get("access", []) or manifest.get("accessRecords", [])
         for record in access_records:
+            if not isinstance(record, dict):
+                continue
             component_id = record.get("componentId") or record.get("id")
             if not component_id:
                 continue

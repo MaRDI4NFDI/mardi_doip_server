@@ -13,5 +13,15 @@ Options:
 - `--no-tls`: Disable TLS wrapping (useful for local plaintext servers)
 - `--insecure`: Disable TLS certificate/hostname verification
 - `--object-id`: Object identifier to retrieve (default `Q123`)
+- `--action`: One of `demo`, `hello`, `retrieve`, `invoke` (default `demo`)
+- `--component`: Component ID to retrieve (retrieve/demo actions)
+- `--workflow`: Workflow name (invoke action, default `equation_extraction`)
+- `--params`: Workflow parameters as JSON string (invoke action)
 
-The CLI issues `hello` and `retrieve` requests and prints the resulting metadata and component count.
+### Actions
+- `demo`: Runs `hello` then `retrieve`.
+- `hello`: Runs only the hello operation.
+- `retrieve`: Runs retrieve for the given object (and optional component).
+- `invoke`: Runs a workflow for the given object with optional params.
+
+The CLI prints the resulting metadata and component counts for each action.

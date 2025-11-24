@@ -24,6 +24,7 @@ from .protocol import (
 OP_HELLO = 0x01
 OP_RETRIEVE = 0x02
 OP_LIST_OPS = 0x04
+OP_INVOKE = 0x05
 
 
 class StrictDOIPClient:
@@ -88,6 +89,25 @@ class StrictDOIPClient:
             metadata["components"] = [component]
         request = DoipRequest(
             header=Header(DOIP_VERSION, MSG_TYPE_REQUEST, OP_RETRIEVE, 0, 0, 0),
+            object_id=object_id,
+            metadata_blocks=[metadata],
+        )
+        return self.send_message(request)
+
+    def invoke(self, object_id: str, workflow: str, params: Optional[dict] = None) -> DoipResponse:
+        """Invoke a workflow on the server for a given object ID.
+
+        Args:
+            object_id: Target object identifier.
+            workflow: Workflow name to run.
+            params: Optional workflow parameters.
+
+        Returns:
+            Parsed DOIP response envelope.
+        """
+        metadata = {"operation": "invoke", "workflow": workflow, "params": params or {}}
+        request = DoipRequest(
+            header=Header(DOIP_VERSION, MSG_TYPE_REQUEST, OP_INVOKE, 0, 0, 0),
             object_id=object_id,
             metadata_blocks=[metadata],
         )

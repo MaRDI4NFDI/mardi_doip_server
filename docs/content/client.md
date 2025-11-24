@@ -7,6 +7,7 @@
 - `hello()`: Perform hello/health check.
 - `list_ops()`: Fetch available operations.
 - `retrieve(object_id, component=None)`: Retrieve metadata and components.
+- `invoke(object_id, workflow, params=None)`: Trigger a workflow on the server.
 
 ## Usage
 ```python
@@ -15,6 +16,7 @@ from doip_client import StrictDOIPClient
 client = StrictDOIPClient(host="127.0.0.1", port=3567, use_tls=False)
 hello = client.hello()
 retrieve = client.retrieve("Q123")
+invoke = client.invoke("Q123", workflow="equation_extraction", params={})
 ```
 
 Command-line example:
