@@ -10,3 +10,5 @@ nav:
   - Client: client.md
   - Client CLI: client_cli.md
   - Docker: docker.md
+extra:
+  disable_next_prev: true
