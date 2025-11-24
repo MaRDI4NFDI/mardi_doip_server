@@ -1,3 +1,5 @@
 .idea/
 docs/site/
 certs/
+certs/server.crt
+certs/server.key
