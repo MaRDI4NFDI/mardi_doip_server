@@ -2,9 +2,12 @@
 
 Asyncio-based DOIP 2.0 TCP server that fronts the MARDI FDO infrastructure. The server listens on port 3567, uses strict DOIP binary envelopes, streams components from lakeFS (S3-compatible), and integrates with the FDO FastAPI façade and a MediaWiki/Wikibase backend for derived items.
 
-## Docs
-Docs:
+## Documentation
+[![Documentation](https://img.shields.io/badge/docs-gh--pages-blue)](https://mardi4nfdi.github.io/mardi_doip_server/)
+
 - Built with MkDocs; see `docs/build_docs.sh` or browse source in `docs/content/`.
+
+
 
 ## Getting Started
 - Requirements: Python 3.10+, `pip install -r requirements.txt`.
