@@ -23,6 +23,10 @@ RUN if [ "$GENERATE_SELF_SIGNED" = "true" ]; then \
         -subj "/CN=localhost"; \
     fi
 
-EXPOSE 3567 3568
+COPY docker/landing ./landing
+COPY docker/entrypoint.sh ./entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
-CMD ["python", "-m", "doip_server.main"]
+EXPOSE 80 3567 3568
+
+CMD ["/app/entrypoint.sh"]
