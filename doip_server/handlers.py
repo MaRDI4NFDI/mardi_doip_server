@@ -53,6 +53,9 @@ async def handle_retrieve(msg: DOIPMessage, registry: object_registry.ObjectRegi
     """
     qid = msg.object_id
     log.info("Handling retrieve request for object_id=%s", qid)
+    if not await storage_s3.ensure_lakefs_available():
+        log.error("LakeFS/S3 endpoint not configured or unreachable")
+        raise protocol.ProtocolError("Storage backend unavailable")
     requested_components = _requested_components(msg)
     manifest_components = await registry.get_components(qid)
     components = [

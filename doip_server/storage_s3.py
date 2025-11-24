@@ -4,6 +4,7 @@ from functools import lru_cache
 from typing import Dict, List, Optional
 
 import boto3
+import httpx
 from botocore.client import Config
 
 
@@ -23,6 +24,24 @@ def _endpoint_url() -> Optional[str]:
         Optional[str]: Endpoint URL or None for default boto behavior.
     """
     return os.getenv("LAKEFS_ENDPOINT") or os.getenv("S3_ENDPOINT")
+
+
+async def ensure_lakefs_available() -> None:
+    """Verify lakeFS/S3 endpoint is configured and reachable.
+
+    Returns:
+        bool: True if available, False otherwise.
+    """
+    endpoint = _endpoint_url()
+    if not endpoint:
+        return False
+    try:
+        async with httpx.AsyncClient(timeout=3.0, verify=False) as client:
+            resp = await client.get(endpoint)
+            resp.raise_for_status()
+        return True
+    except Exception:
+        return False
 
 
 @lru_cache(maxsize=1)
