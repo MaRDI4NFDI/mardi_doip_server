@@ -2,6 +2,10 @@
 
 Asyncio-based DOIP 2.0 TCP server that fronts the MARDI FDO infrastructure. The server listens on port 3567, uses strict DOIP binary envelopes, streams components from lakeFS (S3-compatible), and integrates with the FDO FastAPI façade and a MediaWiki/Wikibase backend for derived items.
 
+## Docs
+Docs:
+- Built with MkDocs; see `docs/build_docs.sh` or browse source in `docs/content/`.
+
 ## Getting Started
 - Requirements: Python 3.10+, `pip install -r requirements.txt`.
 - Environment (example for lakeFS/MinIO):
@@ -35,6 +39,3 @@ TLS (optional):
 - Invoke (op 0x05): client includes `workflow` and params; the sample workflow generates derived components and MediaWiki items.
 - Component IDs map to S3 keys by convention: `doip:bitstream/Q123/main-pdf` → `mardi-fdo/Q123/main-pdf.pdf` (suffix inferred when missing).
 
-## Docs
-Docs:
-- Built with MkDocs; see `docs/build_docs.sh` or browse source in `docs/content/`.
