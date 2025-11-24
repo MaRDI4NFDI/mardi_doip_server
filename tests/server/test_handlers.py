@@ -50,6 +50,10 @@ async def test_handle_retrieve_streams_requested_components(monkeypatch):
     async def fake_get_component_bytes(object_id, component_id):
         return b"hello"
 
+    async def fake_ensure():
+        return True
+
+    monkeypatch.setattr(handlers.storage_s3, "ensure_lakefs_available", fake_ensure)
     monkeypatch.setattr(handlers.storage_s3, "get_component_bytes", fake_get_component_bytes)
 
     request = protocol.DOIPMessage(

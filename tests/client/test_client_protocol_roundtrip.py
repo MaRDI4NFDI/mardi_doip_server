@@ -20,7 +20,7 @@ def test_decode_header_and_blocks_roundtrip():
     comp_body = (
         struct.pack(">H", 3)
         + b"foo"
-        + struct.pack(">H", 9)
+        + struct.pack(">H", len(b"text/plain"))
         + b"text/plain"
         + struct.pack(">I", 5)
         + b"hello"

@@ -1,7 +1,11 @@
-"""Test configuration that ensures project modules are importable."""
+"""Test configuration that ensures project modules are importable and async tests run."""
 
 import sys
 from pathlib import Path
+
+import pytest
+
+pytest_plugins = ("pytest_asyncio",)
 
 # Add project root to sys.path so `doip_server` and `doip_client` can be imported in tests.
 ROOT = Path(__file__).resolve().parent.parent
