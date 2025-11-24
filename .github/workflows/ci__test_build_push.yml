@@ -48,7 +48,8 @@ jobs:
 
       - name: Build MkDocs site into public/
         run: |
-          mkdocs build --config-file docs/mkdocs.yml --site-dir public
+          cd docs
+          mkdocs build --site-dir ../public
 
       - name: Upload public/ as artifact
         uses: actions/upload-artifact@v4
@@ -56,6 +57,7 @@ jobs:
           name: public
           path: public/
           if-no-files-found: error
+
 
 
   # -------------------------------------------------------
