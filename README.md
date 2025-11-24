@@ -35,15 +35,6 @@ TLS (optional):
 - Invoke (op 0x05): client includes `workflow` and params; the sample workflow generates derived components and MediaWiki items.
 - Component IDs map to S3 keys by convention: `doip:bitstream/Q123/main-pdf` → `mardi-fdo/Q123/main-pdf.pdf` (suffix inferred when missing).
 
-## Project layout
-- `doip_server/`: server package and TCP handlers
-- `doip_client/`: client package with strict DOIP client
-- `client_cli/`: CLI entry point wrapping the client
-- `scripts/`: helper scripts for running server/client locally
-- `config/`: sample configuration files
-- `docs/`: project documentation
-- `tests/server/`: server-focused test suite (PYTHONPATH=. pytest tests/server)
-- `tests/client/`: (placeholder) client-focused test suite
-
+## Docs
 Docs:
 - Built with MkDocs; see `docs/build_docs.sh` or browse source in `docs/content/`.
