@@ -6,6 +6,8 @@ import socket
 import struct
 from typing import Optional
 
+from doip_shared.constants import OP_HELLO, OP_INVOKE, OP_LIST_OPS, OP_RETRIEVE
+
 from . import protocol, tls, utils
 from .messages import ComponentBlock, DoipRequest, DoipResponse
 from .protocol import (
@@ -20,11 +22,6 @@ from .protocol import (
     decode_header,
     Header,
 )
-
-OP_HELLO = 0x01
-OP_RETRIEVE = 0x02
-OP_LIST_OPS = 0x04
-OP_INVOKE = 0x05
 
 
 class StrictDOIPClient:

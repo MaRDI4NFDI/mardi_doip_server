@@ -73,7 +73,7 @@ def main(argv: list[str] | None = None) -> int:
     except Exception as exc:
         sys.stderr.write(
             f"Error contacting DOIP server {args.host}:{args.port} "
-            f"(tls={'off' if args.no_tls else 'on'}, verify={'off' if args.insecure else 'on'}): {exc}\n"
+            f"(tls={'off' if args.no_tls else 'on'}, verify_tls={'on' if args.secure else 'off'}): {exc}\n"
         )
         return 1
 

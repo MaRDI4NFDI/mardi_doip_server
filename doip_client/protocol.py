@@ -6,18 +6,15 @@ import struct
 from dataclasses import dataclass
 from typing import List, Tuple
 
+from doip_shared.constants import (
+    BLOCK_COMPONENT,
+    BLOCK_METADATA,
+    BLOCK_WORKFLOW,
+    DOIP_VERSION,
+    MSG_TYPE_REQUEST,
+)
+
 from . import utils
-
-# Constants shared with the server protocol
-DOIP_VERSION = 0x02
-
-# Message types
-MSG_TYPE_REQUEST = 0x01
-
-# Block types
-BLOCK_METADATA = 0x01
-BLOCK_COMPONENT = 0x02
-BLOCK_WORKFLOW = 0x03
 
 HEADER_STRUCT = struct.Struct(">BBBBHI")
 HEADER_LENGTH = HEADER_STRUCT.size
