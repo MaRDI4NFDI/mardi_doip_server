@@ -7,6 +7,10 @@ From the project root:
 ```bash
 docker build -f docker/Dockerfile -t mardi-doip-server .
 ```
+By default the image generates a self-signed cert (CN=localhost) during build. To skip generation, set:
+```bash
+docker build -f docker/Dockerfile --build-arg GENERATE_SELF_SIGNED=false -t mardi-doip-server .
+```
 
 ## Run
 Expose the default DOIP port (plaintext) and the compatibility listener:
