@@ -1,5 +1,7 @@
 site_name: Mardi DOIP Server Docs
 site_description: Strict DOIP server and client documentation
+site_url: https://mardi4nfdi.github.io/mardi_doip_server/
+use_directory_urls: true
 docs_dir: content
 site_dir: site
 theme:
@@ -10,5 +12,3 @@ nav:
   - Client: client.md
   - Client CLI: client_cli.md
   - Docker: docker.md
-extra:
-  disable_next_prev: true
