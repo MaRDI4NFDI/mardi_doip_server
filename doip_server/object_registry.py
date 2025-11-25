@@ -121,12 +121,14 @@ class ObjectRegistry:
             )
             media_type = record.get("mediaType") or "application/octet-stream"
             size = record.get("size")
+            original_filename = record.get("originalFilename")
             components.append(
                 {
                     "componentId": component_id,
                     "s3Key": s3_key,
                     "mediaType": media_type,
                     "size": size,
+                    "originalFilename": original_filename,
                 }
             )
         if not components:

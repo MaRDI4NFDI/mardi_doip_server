@@ -31,6 +31,7 @@ def main(argv: list[str] | None = None) -> int:
         help="Action to execute",
     )
     parser.add_argument("--component", default=None, help="Component ID (for retrieve)")
+    parser.add_argument("--output", default=None, help="Path to save first component (retrieve only). If not specified, component is not saved.")
     parser.add_argument("--workflow", default="equation_extraction", help="Workflow name (for invoke)")
     parser.add_argument("--params", default="{}", help="Workflow params as JSON string (for invoke)")
     args = parser.parse_args(argv)
@@ -57,6 +58,9 @@ def main(argv: list[str] | None = None) -> int:
             retrieve = client.retrieve(args.object_id, component=args.component)
             print("Retrieve metadata:", json.dumps(retrieve.metadata_blocks, indent=2))
             print(f"Retrieve components: {len(retrieve.component_blocks)} block(s)")
+            if args.output:
+                saved = StrictDOIPClient.save_first_component(retrieve, output_path=args.output)
+                print(f"Saved first component to: {saved}")
             return 0
 
         if args.action == "invoke":

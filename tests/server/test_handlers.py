@@ -245,7 +245,8 @@ def _load_config_or_skip() -> dict:
 async def test_handle_retrieve_downloads_real_component(monkeypatch):
     """Integration-style retrieve that downloads a real component if available."""
     cfg = _load_config_or_skip()
-    if not cfg:
+    lakefs_cfg = cfg.get("lakefs") or {}
+    if not isinstance(lakefs_cfg, dict):
         pytest.skip("lakeFS url/repo not configured in config.yaml")
 
     storage_lakefs.configure(cfg)
@@ -253,7 +254,7 @@ async def test_handle_retrieve_downloads_real_component(monkeypatch):
     if not await storage_lakefs.ensure_lakefs_available():
         pytest.skip("lakeFS endpoint unavailable; skipping integration retrieve test")
 
-    object_id = "main"
+    object_id = lakefs_cfg.get("test_object_id") or "main"
     components = await storage_lakefs.list_components(object_id)
     if not components:
         pytest.skip("No components available to download for test object")

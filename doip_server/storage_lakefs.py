@@ -35,6 +35,12 @@ def _repo() -> str:
     return lakefs_cfg.get("repo")
 
 
+def _branch() -> str:
+    """Return branch name for lakeFS-backed storage."""
+    lakefs_cfg = _CFG.get("lakefs", {}) if isinstance(_CFG, dict) else {}
+    return lakefs_cfg.get("branch") or "main"
+
+
 def _endpoint_url() -> Optional[str]:
     """Resolve the lakeFS/S3-compatible endpoint URL.
 
@@ -96,7 +102,7 @@ def s3_key_from_component(object_id: str, component_id: str) -> str:
     suffix = component_id.split("/")[-1]
     if "." not in suffix:
         suffix = f"{suffix}.pdf"
-    return f"{object_id}/{suffix}"
+    return f"{_branch()}/{object_id}/{suffix}"
 
 
 async def get_component_bytes(object_id: str, component_id: str) -> bytes:
@@ -154,19 +160,21 @@ async def list_components(object_id: str) -> List[str]:
     prefix = f"{object_id}/"
 
     logging.getLogger(__name__).info(
-        "Using lakeFS \n repo: %s \n prefix: %s \n object_id %s",
+        "Using lakeFS \n repo: %s \n branch: %s \n prefix: %s \n object_id %s",
         _repo(),
+        _branch(),
         prefix,
         object_id,
     )
 
     paginator = _client().get_paginator("list_objects_v2")
     result: List[str] = []
-    async for page in _async_paginate(paginator, Bucket=_repo(), Prefix=prefix):
+    async for page in _async_paginate(paginator, Bucket=_repo(), Prefix=f"{_branch()}/{prefix}"):
         for obj in page.get("Contents", []):
             key = obj["Key"]
-            if key.startswith(prefix):
-                result.append(key[len(prefix) :])
+            expected_prefix = f"{_branch()}/{prefix}"
+            if key.startswith(expected_prefix):
+                result.append(key[len(expected_prefix) :])
     return result
 
 

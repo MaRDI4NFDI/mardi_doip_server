@@ -36,10 +36,11 @@ async def test_storage_lakefs_lists_components_from_config():
     storage_lakefs.configure(cfg)
 
     logging.getLogger(__name__).debug(
-        "test_storage_lakefs_lists_components_from_config() \n " +
-        "Using lakeFS configured with \n url: %s and repo: %s",
+        "test_storage_lakefs_lists_components_from_config() \n "
+        "Using lakeFS configured with \n url: %s repo: %s branch: %s",
         lakefs_cfg.get("url"),
         lakefs_cfg.get("repo"),
+        lakefs_cfg.get("branch"),
     )
 
     available = await storage_lakefs.ensure_lakefs_available()
@@ -64,7 +65,7 @@ async def test_storage_lakefs_downloads_component_to_tempfile():
     if not await storage_lakefs.ensure_lakefs_available():
         pytest.skip("lakeFS url unavailable; skipping download test")
 
-    object_id = "main"
+    object_id = lakefs_cfg.get("test_object_id") or "main"
     components = await storage_lakefs.list_components(object_id)
     if not components:
         pytest.skip("No components available to download for test object")

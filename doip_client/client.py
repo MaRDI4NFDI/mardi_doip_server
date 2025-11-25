@@ -222,3 +222,46 @@ class StrictDOIPClient:
             chunks.append(chunk)
             remaining -= len(chunk)
         return b"".join(chunks)
+
+    @staticmethod
+    def save_first_component(response: DoipResponse, output_path: str | None = None) -> str:
+        """Save the first component block to disk and return the path.
+
+        If the server supplies an originalFilename in metadata, that name is used;
+        otherwise falls back to output_path or component_id basename.
+
+        Args:
+            response: DOIP response containing component blocks.
+            output_path: Optional target path; if a directory, the file is placed there.
+
+        Returns:
+            str: Path to the saved file.
+
+        Raises:
+            ValueError: If no component blocks are present.
+            OSError: If writing the file fails.
+        """
+        import os
+        from pathlib import Path
+
+        if not response.component_blocks:
+            raise ValueError("No component blocks to save")
+        comp = response.component_blocks[0]
+        original = ""
+        if response.metadata_blocks:
+            components_meta = response.metadata_blocks[0].get("components") or []
+            if components_meta:
+                original = components_meta[0].get("originalFilename") or ""
+        target_name = original or Path(comp.component_id).name
+
+        if output_path:
+            output_path = str(output_path)
+            if os.path.isdir(output_path):
+                dest = Path(output_path) / target_name
+            else:
+                dest = Path(output_path)
+        else:
+            dest = Path(target_name)
+
+        dest.write_bytes(comp.content)
+        return str(dest)
