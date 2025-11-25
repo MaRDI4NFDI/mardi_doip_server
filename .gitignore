@@ -3,3 +3,4 @@ docs/site/
 certs/
 certs/server.crt
 certs/server.key
+/config.yaml
