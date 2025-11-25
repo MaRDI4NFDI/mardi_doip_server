@@ -457,9 +457,9 @@
 PYTHONPATH=. python -m doip_server.main --port 3567
 
 # Terminal 2
-PYTHONPATH=. python -m client_cli.main --host 127.0.0.1 --port 3567 --no-tls
+PYTHONPATH=. python -m client_cli.main --host 127.0.0.1 --port 3567 --no-tls --action retrieve --object-id Q6190920 --output .
 </code></pre>
-<p>The client will issue <code>hello</code> and <code>retrieve</code> requests using strict DOIP framing and print the returned metadata and component counts.</p>
+<p>The client will issue <code>hello</code> and <code>retrieve</code> requests using strict DOIP framing, print the returned metadata and component counts, and save the first component (using the server-provided filename when available).</p>
   </div>
 </article>
                                 <div class="mx-auto flex flex-wrap h-16 w-full max-w-2xl items-center gap-2 px-4 md:px-0">

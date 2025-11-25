@@ -17,6 +17,7 @@ Options:
 - `--component`: Component ID to retrieve (retrieve/demo actions)
 - `--workflow`: Workflow name (invoke action, default `equation_extraction`)
 - `--params`: Workflow parameters as JSON string (invoke action)
+- `--output`: Path or directory to save the first retrieved component (retrieve action)
 
 ### Actions
 - `demo`: Runs `hello` then `retrieve`.
@@ -25,3 +26,9 @@ Options:
 - `invoke`: Runs a workflow for the given object with optional params.
 
 The CLI prints the resulting metadata and component counts for each action.
+
+### Example: download a PDF
+```bash
+PYTHONPATH=. python -m client_cli.main --action retrieve --object-id Q6190920 --output .
+```
+This saves the first returned component to the current directory, honoring the server-provided original filename when available.

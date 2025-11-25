@@ -476,7 +476,8 @@
 - <code>--action</code>: One of <code>demo</code>, <code>hello</code>, <code>retrieve</code>, <code>invoke</code> (default <code>demo</code>)
 - <code>--component</code>: Component ID to retrieve (retrieve/demo actions)
 - <code>--workflow</code>: Workflow name (invoke action, default <code>equation_extraction</code>)
-- <code>--params</code>: Workflow parameters as JSON string (invoke action)</p>
+- <code>--params</code>: Workflow parameters as JSON string (invoke action)
+- <code>--output</code>: Path or directory to save the first retrieved component (retrieve action)</p>
 <h3 id="actions">Actions</h3>
 <ul>
 <li><code>demo</code>: Runs <code>hello</code> then <code>retrieve</code>.</li>
@@ -485,6 +486,10 @@
 <li><code>invoke</code>: Runs a workflow for the given object with optional params.</li>
 </ul>
 <p>The CLI prints the resulting metadata and component counts for each action.</p>
+<h3 id="example-download-a-pdf">Example: download a PDF</h3>
+<pre><code class="language-bash">PYTHONPATH=. python -m client_cli.main --action retrieve --object-id Q6190920 --output .
+</code></pre>
+<p>This saves the first returned component to the current directory, honoring the server-provided original filename when available.</p>
   </div>
 </article>
                                 <div class="mx-auto flex flex-wrap h-16 w-full max-w-2xl items-center gap-2 px-4 md:px-0">
@@ -588,6 +593,14 @@
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
             data-active="false" data-depth="2">
             Actions
+        </a>
+        
+
+        
+        <a href="#example-download-a-pdf"
+            class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
+            data-active="false" data-depth="2">
+            Example: download a PDF
         </a>
         
 
