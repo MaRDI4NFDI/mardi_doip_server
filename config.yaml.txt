@@ -13,5 +13,6 @@ ollama:
 lakefs:
   url: 'localhost'
   repo: 'sandbox'
+  signature_version: 's3v4'
   user: ''
   password: ''

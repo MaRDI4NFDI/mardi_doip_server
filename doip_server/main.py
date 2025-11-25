@@ -48,6 +48,15 @@ def set_config() -> dict:
     if lakefs_password:
         cfg.setdefault("lakefs", {})["password"] = lakefs_password
 
+    lakefs_password = os.getenv("LAKEFS_URL")
+    if lakefs_password:
+        cfg.setdefault("lakefs", {})["url"] = lakefs_password
+
+    lakefs_password = os.getenv("LAKEFS_REPO")
+    if lakefs_password:
+        cfg.setdefault("lakefs", {})["repo"] = lakefs_password
+
+
     masked_cfg = _mask_sensitive(cfg)
     log.info("Configuration loaded: %s", masked_cfg)
     return cfg
