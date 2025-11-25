@@ -11,12 +11,9 @@ Asyncio-based DOIP 2.0 TCP server that fronts the MARDI FDO infrastructure. The 
 
 ## Getting Started
 - Requirements: Python 3.10+, `pip install -r requirements.txt`.
-- Environment (example for lakeFS/MinIO):
-  - `LAKEFS_ENDPOINT=http://localhost:8000`
-  - `S3_BUCKET=mardi-fdo`
-  - `AWS_ACCESS_KEY_ID=...`
-  - `AWS_SECRET_ACCESS_KEY=...`
-  - Optional: `FDO_API=https://fdo.portal.mardi4nfdi.de/fdo/`, `MEDIAWIKI_API=https://www.wikidata.org/w/api.php`
+- Configuration:
+  - `config.yaml` with lakeFS/FDO settings.
+  - Env vars still override file values where applicable (e.g., `LAKEFS_USER`, `LAKEFS_PASSWORD`, `OLLAMA_API_KEY`).
 
 Run the server:
 ```bash
@@ -40,5 +37,4 @@ TLS (optional):
 ## Usage Notes
 - Retrieve (op 0x02): client sends DOIP request with object ID and optional component list; server returns metadata + binary component blocks.
 - Invoke (op 0x05): client includes `workflow` and params; the sample workflow generates derived components and MediaWiki items.
-- Component IDs map to S3 keys by convention: `doip:bitstream/Q123/main-pdf` → `mardi-fdo/Q123/main-pdf.pdf` (suffix inferred when missing).
-
+- Component IDs map to lakeFS keys with repo/branch/object_id: e.g., `doip:bitstream/Q123/Q123_fulltext.pdf` → `repo/branch/Q123/Q123_fulltext.pdf`. Manifests can override with `s3Key` and provide `originalFilename` for client-friendly downloads.

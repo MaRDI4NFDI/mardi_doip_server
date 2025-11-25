@@ -20,6 +20,6 @@ Run the server (plaintext for local testing) and call it with the client:
 PYTHONPATH=. python -m doip_server.main --port 3567
 
 # Terminal 2
-PYTHONPATH=. python -m client_cli.main --host 127.0.0.1 --port 3567 --no-tls
+PYTHONPATH=. python -m client_cli.main --host 127.0.0.1 --port 3567 --no-tls --action retrieve --object-id Q6190920 --output .
 ```
-The client will issue `hello` and `retrieve` requests using strict DOIP framing and print the returned metadata and component counts.
+The client will issue `hello` and `retrieve` requests using strict DOIP framing, print the returned metadata and component counts, and save the first component (using the server-provided filename when available).
