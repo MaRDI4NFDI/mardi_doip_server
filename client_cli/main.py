@@ -1,4 +1,5 @@
 """Lightweight CLI for exercising the strict DOIP client."""
+# Example call: python -m client_cli.main --action retrieve --object-id Q6190920 --output .
 
 from __future__ import annotations
 
