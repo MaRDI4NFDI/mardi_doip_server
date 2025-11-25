@@ -13,6 +13,24 @@ log = logging.getLogger("doip_server")
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s %(message)s")
 
 
+def set_config_from_env() -> dict:
+    """Build configuration from environment variables."""
+    cfg = {}
+
+    ollama_api_key = os.getenv('OLLAMA_API_KEY')
+    if ollama_api_key:
+        cfg.setdefault('ollama', {})['api_key'] = ollama_api_key
+
+    lakefs_user = os.getenv('LAKEFS_USER')
+    if lakefs_user:
+        cfg.setdefault('lakefs', {})['user'] = lakefs_user
+
+    lakefs_password = os.getenv('LAKEFS_PASSWORD')
+    if lakefs_password:
+        cfg.setdefault('lakefs', {})['password'] = lakefs_password
+
+    return cfg
+
 async def handle_connection(registry: object_registry.ObjectRegistry, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
     """Process DOIP messages on a single TCP connection.
 
@@ -130,6 +148,8 @@ async def main(port: int = 3567):
     Args:
         port: TCP port for the server.
     """
+    cfg = set_config_from_env()
+
     registry = object_registry.ObjectRegistry()
     ssl_ctx = _maybe_create_ssl_context()
     server = await asyncio.start_server(
