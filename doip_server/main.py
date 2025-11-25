@@ -6,6 +6,7 @@ import ssl
 import struct
 from pathlib import Path
 from functools import partial
+import yaml
 
 from . import handlers, object_registry, protocol
 
@@ -13,28 +14,39 @@ log = logging.getLogger("doip_server")
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s %(message)s")
 
 
-def set_config_from_env() -> dict:
-    """Build configuration from environment variables.
+def set_config() -> dict:
+    """Build configuration from local config.yaml overlaid with environment variables.
 
     Returns:
-        dict: Configuration map derived from environment variables.
+        dict: Configuration map derived from local file and environment variables.
     """
+    path = Path("config.yaml")
     cfg = {}
 
-    ollama_api_key = os.getenv('OLLAMA_API_KEY')
+    # First, load config from local config.yaml if it exists
+    try:
+        if path.exists():
+            with path.open("r", encoding="utf-8") as fh:
+                data = yaml.safe_load(fh) or {}
+            if not isinstance(data, dict):
+                log.warning("Config file %s does not contain a mapping", path)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("Failed to load config from %s: %s", path, exc)
+
+    # If environment variables are set, they override config.yaml values
+    ollama_api_key = os.getenv("OLLAMA_API_KEY")
     if ollama_api_key:
-        cfg.setdefault('ollama', {})['api_key'] = ollama_api_key
+        cfg.setdefault("ollama", {})["api_key"] = ollama_api_key
 
-    lakefs_user = os.getenv('LAKEFS_USER')
+    lakefs_user = os.getenv("LAKEFS_USER")
     if lakefs_user:
-        cfg.setdefault('lakefs', {})['user'] = lakefs_user
+        cfg.setdefault("lakefs", {})["user"] = lakefs_user
 
-    lakefs_password = os.getenv('LAKEFS_PASSWORD')
+    lakefs_password = os.getenv("LAKEFS_PASSWORD")
     if lakefs_password:
-        cfg.setdefault('lakefs', {})['password'] = lakefs_password
+        cfg.setdefault("lakefs", {})["password"] = lakefs_password
 
     return cfg
-
 
 async def handle_connection(registry: object_registry.ObjectRegistry, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
     """Process DOIP messages on a single TCP connection.
@@ -158,37 +170,6 @@ async def _send_error(writer: asyncio.StreamWriter, object_id: str, exc: Excepti
     )
     writer.write(msg.to_bytes())
     await writer.drain()
-
-
-async def main(port: int = 3567):
-    """Entrypoint: start the asyncio DOIP TCP server.
-
-    Args:
-        port: TCP port for the server.
-
-    Returns:
-        None
-    """
-    cfg = set_config_from_env()
-
-    registry = object_registry.ObjectRegistry()
-    ssl_ctx = _maybe_create_ssl_context()
-    server = await asyncio.start_server(
-        partial(handle_connection, registry), host="0.0.0.0", port=port, ssl=ssl_ctx
-    )
-    compat_server = await asyncio.start_server(
-        partial(handle_compat_connection, registry), host="0.0.0.0", port=port + 1, ssl=ssl_ctx
-    )
-    sockets = ", ".join(str(sock.getsockname()) for sock in server.sockets or [])
-    compat_sockets = ", ".join(str(sock.getsockname()) for sock in compat_server.sockets or [])
-    if ssl_ctx:
-        log.info("DOIP server listening with TLS on %s", sockets)
-        log.info("Compat JSON-segment listener with TLS on %s", compat_sockets)
-    else:
-        log.info("DOIP server listening (plaintext) on %s", sockets)
-        log.info("Compat JSON-segment listener (plaintext) on %s", compat_sockets)
-    async with server, compat_server:
-        await asyncio.gather(server.serve_forever(), compat_server.serve_forever())
 
 
 def _maybe_create_ssl_context() -> ssl.SSLContext | None:
@@ -375,6 +356,37 @@ def _json_segment(data: dict) -> bytes:
         bytes: UTF-8 encoded JSON payload.
     """
     return json.dumps(data).encode("utf-8")
+
+
+async def main(port: int = 3567):
+    """Entrypoint: start the asyncio DOIP TCP server.
+
+    Args:
+        port: TCP port for the server.
+
+    Returns:
+        None
+    """
+    cfg = set_config()
+
+    registry = object_registry.ObjectRegistry()
+    ssl_ctx = _maybe_create_ssl_context()
+    server = await asyncio.start_server(
+        partial(handle_connection, registry), host="0.0.0.0", port=port, ssl=ssl_ctx
+    )
+    compat_server = await asyncio.start_server(
+        partial(handle_compat_connection, registry), host="0.0.0.0", port=port + 1, ssl=ssl_ctx
+    )
+    sockets = ", ".join(str(sock.getsockname()) for sock in server.sockets or [])
+    compat_sockets = ", ".join(str(sock.getsockname()) for sock in compat_server.sockets or [])
+    if ssl_ctx:
+        log.info("DOIP server listening with TLS on %s", sockets)
+        log.info("Compat JSON-segment listener with TLS on %s", compat_sockets)
+    else:
+        log.info("DOIP server listening (plaintext) on %s", sockets)
+        log.info("Compat JSON-segment listener (plaintext) on %s", compat_sockets)
+    async with server, compat_server:
+        await asyncio.gather(server.serve_forever(), compat_server.serve_forever())
 
 
 if __name__ == "__main__":
