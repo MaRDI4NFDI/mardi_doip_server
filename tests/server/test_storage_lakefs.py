@@ -16,7 +16,7 @@ async def test_storage_lakefs_lists_components_from_config():
     Returns:
         None
     """
-    cfg_path = Path("config.yaml")
+    cfg_path = Path("../config.yaml")
     if not cfg_path.exists():
         pytest.skip("config.yaml not present; skipping lakeFS integration test")
 
@@ -31,8 +31,9 @@ async def test_storage_lakefs_lists_components_from_config():
 
     storage_lakefs.configure(cfg)
 
-    logging.getLogger(__name__).info(
-        "Using lakeFS endpoint %s and bucket %s for integration test",
+    logging.getLogger(__name__).debug(
+        "test_storage_lakefs_lists_components_from_config() \n " +
+        "Using lakeFS configured with \n url: %s and repo: %s",
         lakefs_cfg.get("url"),
         lakefs_cfg.get("repo"),
     )
@@ -41,6 +42,9 @@ async def test_storage_lakefs_lists_components_from_config():
     if not available:
         pytest.skip("lakeFS endpoint url unavailable; skipping integration test")
 
-    object_id = lakefs_cfg.get("test_object_id") or "test"
+    object_id = "main"
     components = await storage_lakefs.list_components(object_id)
+
+    logging.getLogger(__name__).info( components )
+
     assert isinstance(components, list)

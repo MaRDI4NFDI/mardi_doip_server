@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from functools import lru_cache
 from typing import Dict, List, Optional
 
@@ -151,6 +152,14 @@ async def list_components(object_id: str) -> List[str]:
         List[str]: Component suffixes stored for the object.
     """
     prefix = f"{object_id}/"
+
+    logging.getLogger(__name__).info(
+        "Using lakeFS \n repo: %s \n prefix: %s \n object_id %s",
+        _repo(),
+        prefix,
+        object_id,
+    )
+
     paginator = _client().get_paginator("list_objects_v2")
     result: List[str] = []
     async for page in _async_paginate(paginator, Bucket=_repo(), Prefix=prefix):
