@@ -4,7 +4,7 @@ __all__ = [
     "main",
     "protocol",
     "handlers",
-    "storage_s3",
+    "storage_lakefs.py",
     "workflows",
     "mediawiki_client",
     "object_registry",

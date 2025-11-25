@@ -1,11 +1,27 @@
 import asyncio
-import os
 from functools import lru_cache
 from typing import Dict, List, Optional
 
 import boto3
 import httpx
 from botocore.client import Config
+
+_CFG: Dict = {}
+
+
+def configure(cfg: Dict) -> None:
+    """Configure lakeFS storage module with application settings.
+
+    Args:
+        cfg: Configuration dictionary produced by doip_server.main.set_config().
+    """
+    global _CFG
+    _CFG = cfg or {}
+    try:
+        _client.cache_clear()
+    except Exception:
+        # If the client is not yet defined or cacheable, ignore.
+        pass
 
 
 def _bucket() -> str:
@@ -14,7 +30,8 @@ def _bucket() -> str:
     Returns:
         str: Bucket name.
     """
-    return os.getenv("S3_BUCKET", "mardi-fdo")
+    lakefs_cfg = _CFG.get("lakefs", {}) if isinstance(_CFG, dict) else {}
+    return lakefs_cfg.get("bucket")
 
 
 def _endpoint_url() -> Optional[str]:
@@ -23,7 +40,8 @@ def _endpoint_url() -> Optional[str]:
     Returns:
         Optional[str]: Endpoint URL or None for default boto behavior.
     """
-    return os.getenv("LAKEFS_ENDPOINT") or os.getenv("S3_ENDPOINT")
+    lakefs_cfg = _CFG.get("lakefs", {}) if isinstance(_CFG, dict) else {}
+    return lakefs_cfg.get("endpoint")
 
 
 async def ensure_lakefs_available() -> bool:
@@ -51,13 +69,14 @@ def _client():
     Returns:
         botocore.client.S3: Configured client instance.
     """
+    lakefs_cfg = _CFG.get("lakefs", {}) if isinstance(_CFG, dict) else {}
     return boto3.client(
         "s3",
         endpoint_url=_endpoint_url(),
-        aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
-        aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+        aws_access_key_id=lakefs_cfg.get("user"),
+        aws_secret_access_key=lakefs_cfg.get("password"),
         config=Config(
-            signature_version=os.getenv("S3_SIGNATURE_VERSION", "s3v4"),
+            signature_version=lakefs_cfg.get("signature_version") or "s3v4",
             s3={"addressing_style": "path"},
         ),
     )

@@ -93,8 +93,8 @@ async def test_handle_retrieve_streams_requested_components(monkeypatch):
         """
         return True
 
-    monkeypatch.setattr(handlers.storage_s3, "ensure_lakefs_available", fake_ensure)
-    monkeypatch.setattr(handlers.storage_s3, "get_component_bytes", fake_get_component_bytes)
+    monkeypatch.setattr(handlers.storage_lakefs, "ensure_lakefs_available", fake_ensure)
+    monkeypatch.setattr(handlers.storage_lakefs, "get_component_bytes", fake_get_component_bytes)
 
     request = protocol.DOIPMessage(
         version=protocol.DOIP_VERSION,
@@ -165,7 +165,7 @@ async def test_handle_invoke_returns_workflow_results(monkeypatch):
         """
         return b"{}"
 
-    monkeypatch.setattr(handlers.storage_s3, "get_component_bytes", fake_get_component_bytes)
+    monkeypatch.setattr(handlers.storage_lakefs, "get_component_bytes", fake_get_component_bytes)
 
     request = protocol.DOIPMessage(
         version=protocol.DOIP_VERSION,

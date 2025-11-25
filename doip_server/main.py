@@ -8,7 +8,7 @@ from pathlib import Path
 from functools import partial
 import yaml
 
-from . import handlers, object_registry, protocol
+from . import handlers, object_registry, protocol, storage_lakefs
 
 log = logging.getLogger("doip_server")
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s %(message)s")
@@ -21,7 +21,7 @@ def set_config() -> dict:
         dict: Configuration map derived from local file and environment variables.
     """
     path = Path("config.yaml")
-    cfg = {}
+    cfg: dict = {}
 
     # First, load config from local config.yaml if it exists
     try:
@@ -30,6 +30,8 @@ def set_config() -> dict:
                 data = yaml.safe_load(fh) or {}
             if not isinstance(data, dict):
                 log.warning("Config file %s does not contain a mapping", path)
+            else:
+                cfg.update(data)
     except Exception as exc:  # noqa: BLE001
         log.warning("Failed to load config from %s: %s", path, exc)
 
@@ -46,7 +48,37 @@ def set_config() -> dict:
     if lakefs_password:
         cfg.setdefault("lakefs", {})["password"] = lakefs_password
 
+    masked_cfg = _mask_sensitive(cfg)
+    log.info("Configuration loaded: %s", masked_cfg)
     return cfg
+
+
+def _mask_sensitive(data):
+    """Return a copy of config data with sensitive values masked."""
+    if isinstance(data, dict):
+        return {k: _mask_sensitive_value(k, v) for k, v in data.items()}
+    if isinstance(data, list):
+        return [_mask_sensitive(item) for item in data]
+    return data
+
+
+def _mask_sensitive_value(key: str, value):
+    """Mask password values; leave others unchanged."""
+    if isinstance(value, dict):
+        return _mask_sensitive(value)
+    if isinstance(value, list):
+        return [_mask_sensitive_value(key, item) for item in value]
+    if isinstance(value, str) and _is_sensitive_key(key):
+        if len(value) <= 6:
+            return f"{value[:1]}***{value[-1:]}"
+        return f"{value[:3]}***{value[-3:]}"
+    return value
+
+
+def _is_sensitive_key(key: str) -> bool:
+    """Return True if the key name indicates sensitive content."""
+    key_lower = key.lower()
+    return any(token in key_lower for token in ("password", "secret", "token", "key"))
 
 async def handle_connection(registry: object_registry.ObjectRegistry, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
     """Process DOIP messages on a single TCP connection.
@@ -368,6 +400,7 @@ async def main(port: int = 3567):
         None
     """
     cfg = set_config()
+    storage_lakefs.configure(cfg)
 
     registry = object_registry.ObjectRegistry()
     ssl_ctx = _maybe_create_ssl_context()

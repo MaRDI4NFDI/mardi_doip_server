@@ -2,7 +2,7 @@ import asyncio
 import logging
 from typing import List
 
-from . import object_registry, protocol, storage_s3, workflows
+from . import object_registry, protocol, storage_lakefs, workflows
 from .protocol import ComponentBlock, DOIPMessage
 
 log = logging.getLogger(__name__)
@@ -53,7 +53,7 @@ async def handle_retrieve(msg: DOIPMessage, registry: object_registry.ObjectRegi
     """
     qid = msg.object_id
     log.info("Handling retrieve request for object_id=%s", qid)
-    if not await storage_s3.ensure_lakefs_available():
+    if not await storage_lakefs.ensure_lakefs_available():
         log.error("LakeFS/S3 endpoint not configured or unreachable")
         raise protocol.ProtocolError("Storage backend unavailable")
     requested_components = _requested_components(msg)
@@ -70,7 +70,7 @@ async def handle_retrieve(msg: DOIPMessage, registry: object_registry.ObjectRegi
 
     component_blocks: List[ComponentBlock] = []
     for comp in components:
-        content = await storage_s3.get_component_bytes(qid, comp["componentId"])
+        content = await storage_lakefs.get_component_bytes(qid, comp["componentId"])
         component_blocks.append(
             ComponentBlock(
                 component_id=comp["componentId"],
@@ -118,7 +118,7 @@ async def handle_invoke(msg: DOIPMessage, registry: object_registry.ObjectRegist
     derived_blocks: List[ComponentBlock] = []
     for comp in result.get("derivedComponents", []):
         comp_id = comp["componentId"]
-        content = await storage_s3.get_component_bytes(qid, comp_id)
+        content = await storage_lakefs.get_component_bytes(qid, comp_id)
         derived_blocks.append(
             ComponentBlock(
                 component_id=comp_id,

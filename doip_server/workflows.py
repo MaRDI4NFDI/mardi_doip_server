@@ -2,7 +2,7 @@ import asyncio
 import json
 from typing import Dict, List
 
-from . import mediawiki_client, storage_s3
+from . import mediawiki_client, storage_lakefs
 
 
 async def run_equation_extraction_workflow(qid: str, params: Dict) -> Dict:

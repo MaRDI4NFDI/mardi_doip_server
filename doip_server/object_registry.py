@@ -4,7 +4,7 @@ from typing import Dict, List, Optional
 
 import httpx
 
-from . import storage_s3
+from . import storage_lakefs
 
 
 FDO_API = os.getenv("FDO_API", "https://fdo.portal.mardi4nfdi.de/fdo/")

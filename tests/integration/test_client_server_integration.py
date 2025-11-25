@@ -6,7 +6,7 @@ import logging
 import pytest
 
 from doip_client import StrictDOIPClient
-from doip_server import handlers, main, object_registry, protocol, storage_s3
+from doip_server import handlers, main, object_registry, protocol, storage_lakefs
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +62,7 @@ async def test_client_server_integration_hello_and_retrieve(monkeypatch):
         """
         return True
 
-    monkeypatch.setattr(storage_s3, "ensure_lakefs_available", fake_ensure)
+    monkeypatch.setattr(storage_lakefs, "ensure_lakefs_available", fake_ensure)
 
     async def fake_get_component_bytes(object_id, component_id):
         """Return stubbed component bytes for retrieval tests.
@@ -76,7 +76,7 @@ async def test_client_server_integration_hello_and_retrieve(monkeypatch):
         """
         return b"hello-bytes"
 
-    monkeypatch.setattr(storage_s3, "get_component_bytes", fake_get_component_bytes)
+    monkeypatch.setattr(storage_lakefs, "get_component_bytes", fake_get_component_bytes)
 
     logger.debug("Starting server...")
     server = await asyncio.start_server(
