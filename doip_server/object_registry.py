@@ -69,7 +69,7 @@ class ObjectRegistry:
             if comp["componentId"] == component_id:
                 return comp
         # Fallback: build from convention.
-        key = storage_s3.s3_key_from_component(qid, component_id)
+        key = storage_lakefs.s3_key_from_component(qid, component_id)
         meta = {
             "componentId": component_id,
             "s3Key": key,
@@ -116,7 +116,7 @@ class ObjectRegistry:
             component_id = record.get("componentId") or record.get("id")
             if not component_id:
                 continue
-            s3_key = record.get("s3Key") or storage_s3.s3_key_from_component(
+            s3_key = record.get("s3Key") or storage_lakefs.s3_key_from_component(
                 qid, component_id
             )
             media_type = record.get("mediaType") or "application/octet-stream"
@@ -139,7 +139,7 @@ class ObjectRegistry:
         return [
             {
                 "componentId": default_id,
-                "s3Key": storage_s3.s3_key_from_component(qid, default_id),
+                "s3Key": storage_lakefs.s3_key_from_component(qid, default_id),
                 "mediaType": "application/pdf",
             }
         ]

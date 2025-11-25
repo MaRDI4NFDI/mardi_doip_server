@@ -58,7 +58,7 @@ async def test_storage_lakefs_downloads_component_to_tempfile():
     cfg = _load_config_or_skip()
     lakefs_cfg = cfg.get("lakefs") or {}
     if not isinstance(lakefs_cfg, dict) or not lakefs_cfg.get("url"):
-        pytest.skip("lakeFS endpoint not configured in config.yaml")
+        pytest.skip("lakeFS endpoint url not configured in config.yaml")
 
     storage_lakefs.configure(cfg)
     if not await storage_lakefs.ensure_lakefs_available():

@@ -1,8 +1,10 @@
 import asyncio
+from pathlib import Path
 
 import pytest
+import yaml
 
-from doip_server import handlers, object_registry, protocol
+from doip_server import handlers, object_registry, protocol, storage_lakefs
 
 
 class StubRegistry(object_registry.ObjectRegistry):
@@ -185,3 +187,101 @@ async def test_handle_invoke_returns_workflow_results(monkeypatch):
     assert comp.component_id == "doip:bitstream/Q123/equations-json"
     assert comp.media_type == "application/json"
     assert comp.content == b"{}"
+
+
+@pytest.mark.asyncio
+async def test_handle_retrieve_uses_registry_and_storage(monkeypatch):
+    """Ensure handle_retrieve pulls metadata and bytes from registry/storage."""
+    components = [
+        {
+            "componentId": "doip:bitstream/Q123/main-pdf",
+            "mediaType": "application/pdf",
+            "size": 5,
+        }
+    ]
+    registry = StubRegistry(components)
+
+    async def fake_get_component_bytes(object_id, component_id):
+        return b"hello"
+
+    async def fake_ensure():
+        return True
+
+    monkeypatch.setattr(handlers.storage_lakefs, "ensure_lakefs_available", fake_ensure)
+    monkeypatch.setattr(handlers.storage_lakefs, "get_component_bytes", fake_get_component_bytes)
+
+    request = protocol.DOIPMessage(
+        version=protocol.DOIP_VERSION,
+        msg_type=protocol.MSG_TYPE_REQUEST,
+        operation=protocol.OP_RETRIEVE,
+        flags=0,
+        object_id="Q123",
+        metadata_blocks=[{"components": ["doip:bitstream/Q123/main-pdf"]}],
+    )
+
+    response = await handlers.handle_retrieve(request, registry)
+
+    assert response.msg_type == protocol.MSG_TYPE_RESPONSE
+    assert response.operation == protocol.OP_RETRIEVE
+    assert len(response.component_blocks) == 1
+    comp = response.component_blocks[0]
+    assert comp.component_id == "doip:bitstream/Q123/main-pdf"
+    assert comp.content == b"hello"
+
+
+def _load_config_or_skip() -> dict:
+    """Load config.yaml from repo root or skip if unavailable/invalid."""
+    cfg_path = Path(__file__).resolve().parents[2] / "config.yaml"
+    if not cfg_path.exists():
+        pytest.skip("config.yaml not present; skipping lakeFS integration test")
+    with cfg_path.open("r", encoding="utf-8") as fh:
+        cfg = yaml.safe_load(fh) or {}
+    if not isinstance(cfg, dict):
+        pytest.skip("config.yaml does not contain a mapping")
+    return cfg
+
+
+@pytest.mark.asyncio
+async def test_handle_retrieve_downloads_real_component(monkeypatch):
+    """Integration-style retrieve that downloads a real component if available."""
+    cfg = _load_config_or_skip()
+    if not cfg:
+        pytest.skip("lakeFS url/repo not configured in config.yaml")
+
+    storage_lakefs.configure(cfg)
+
+    if not await storage_lakefs.ensure_lakefs_available():
+        pytest.skip("lakeFS endpoint unavailable; skipping integration retrieve test")
+
+    object_id = "main"
+    components = await storage_lakefs.list_components(object_id)
+    if not components:
+        pytest.skip("No components available to download for test object")
+
+    target = components[0]
+    registry = StubRegistry(
+        [
+            {
+                "componentId": target,
+                "mediaType": "application/octet-stream",
+                "size": None,
+            }
+        ]
+    )
+
+    request = protocol.DOIPMessage(
+        version=protocol.DOIP_VERSION,
+        msg_type=protocol.MSG_TYPE_REQUEST,
+        operation=protocol.OP_RETRIEVE,
+        flags=0,
+        object_id=object_id,
+        metadata_blocks=[{"components": [target]}],
+    )
+
+    response = await handlers.handle_retrieve(request, registry)
+    assert response.msg_type == protocol.MSG_TYPE_RESPONSE
+    assert response.operation == protocol.OP_RETRIEVE
+    assert len(response.component_blocks) == 1
+    comp = response.component_blocks[0]
+    assert comp.component_id == target
+    assert comp.content
