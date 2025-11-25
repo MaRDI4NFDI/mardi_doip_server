@@ -10,7 +10,14 @@ from doip_client import StrictDOIPClient
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Run a small demo CLI that exercises the strict client."""
+    """Run a small demo CLI that exercises the strict client.
+
+    Args:
+        argv: Optional list of CLI arguments for testing.
+
+    Returns:
+        int: Exit status code where 0 indicates success.
+    """
     parser = ArgumentParser(description="MaRDI DOIP client CLI")
     parser.add_argument("--host", default="127.0.0.1", help="Server host")
     parser.add_argument("--port", type=int, default=3567, help="Server port")

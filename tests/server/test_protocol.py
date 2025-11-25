@@ -7,6 +7,11 @@ from doip_server import protocol
 
 @pytest.mark.asyncio
 async def test_doip_roundtrip_with_metadata_components_and_workflow():
+    """Verify DOIP message roundtrip retains metadata, workflow, and components.
+
+    Returns:
+        None
+    """
     message = protocol.DOIPMessage(
         version=protocol.DOIP_VERSION,
         msg_type=protocol.MSG_TYPE_REQUEST,

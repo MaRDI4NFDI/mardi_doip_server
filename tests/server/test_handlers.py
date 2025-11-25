@@ -7,15 +7,33 @@ from doip_server import handlers, object_registry, protocol
 
 class StubRegistry(object_registry.ObjectRegistry):
     def __init__(self, components):
+        """Initialize stub registry with predefined components.
+
+        Args:
+            components: Component entries to return for any request.
+        """
         super().__init__()
         self._components = components
 
     async def get_components(self, qid):
+        """Return stubbed components for any QID.
+
+        Args:
+            qid: Ignored object identifier.
+
+        Returns:
+            list[dict]: Predefined component metadata.
+        """
         return self._components
 
 
 @pytest.mark.asyncio
 async def test_handle_hello_returns_capabilities():
+    """Ensure hello handler returns basic status and operations metadata.
+
+    Returns:
+        None
+    """
     registry = StubRegistry([])
     request = protocol.DOIPMessage(
         version=protocol.DOIP_VERSION,
@@ -38,6 +56,14 @@ async def test_handle_hello_returns_capabilities():
 
 @pytest.mark.asyncio
 async def test_handle_retrieve_streams_requested_components(monkeypatch):
+    """Ensure retrieve handler streams requested components.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+
+    Returns:
+        None
+    """
     components = [
         {
             "componentId": "doip:bitstream/Q123/main-pdf",
@@ -48,9 +74,23 @@ async def test_handle_retrieve_streams_requested_components(monkeypatch):
     registry = StubRegistry(components)
 
     async def fake_get_component_bytes(object_id, component_id):
+        """Return stubbed component bytes for retrieve handler tests.
+
+        Args:
+            object_id: Requested object identifier.
+            component_id: Requested component identifier.
+
+        Returns:
+            bytes: Dummy content payload.
+        """
         return b"hello"
 
     async def fake_ensure():
+        """Pretend the storage backend is available.
+
+        Returns:
+            bool: Always True for tests.
+        """
         return True
 
     monkeypatch.setattr(handlers.storage_s3, "ensure_lakefs_available", fake_ensure)
@@ -78,6 +118,14 @@ async def test_handle_retrieve_streams_requested_components(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_handle_invoke_returns_workflow_results(monkeypatch):
+    """Ensure invoke handler returns workflow metadata and derived components.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+
+    Returns:
+        None
+    """
     registry = StubRegistry([])
     workflow_result = {
         "workflow": "equation_extraction",
@@ -93,10 +141,28 @@ async def test_handle_invoke_returns_workflow_results(monkeypatch):
     }
 
     async def fake_workflow(qid, params):
+        """Return canned workflow results for invoke handler tests.
+
+        Args:
+            qid: Requested object identifier.
+            params: Workflow parameters.
+
+        Returns:
+            dict: Stubbed workflow result.
+        """
         return workflow_result
 
     monkeypatch.setattr(handlers.workflows, "run_equation_extraction_workflow", fake_workflow)
     async def fake_get_component_bytes(object_id, component_id):
+        """Return stubbed workflow-derived component bytes.
+
+        Args:
+            object_id: Requested object identifier.
+            component_id: Requested component identifier.
+
+        Returns:
+            bytes: Dummy workflow content.
+        """
         return b"{}"
 
     monkeypatch.setattr(handlers.storage_s3, "get_component_bytes", fake_get_component_bytes)

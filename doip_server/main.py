@@ -14,7 +14,11 @@ logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s %(mes
 
 
 def set_config_from_env() -> dict:
-    """Build configuration from environment variables."""
+    """Build configuration from environment variables.
+
+    Returns:
+        dict: Configuration map derived from environment variables.
+    """
     cfg = {}
 
     ollama_api_key = os.getenv('OLLAMA_API_KEY')
@@ -31,6 +35,7 @@ def set_config_from_env() -> dict:
 
     return cfg
 
+
 async def handle_connection(registry: object_registry.ObjectRegistry, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
     """Process DOIP messages on a single TCP connection.
 
@@ -38,6 +43,9 @@ async def handle_connection(registry: object_registry.ObjectRegistry, reader: as
         registry: Object registry instance.
         reader: StreamReader for the client.
         writer: StreamWriter for the client.
+
+    Returns:
+        None
     """
     peer = writer.get_extra_info("peername")
     log.info("Connection from %s", peer)
@@ -70,7 +78,14 @@ async def handle_connection(registry: object_registry.ObjectRegistry, reader: as
 
 
 def _metadata_operation_name(msg: protocol.DOIPMessage) -> str | None:
-    """Return the requested operation name from metadata if present."""
+    """Return the requested operation name from metadata if present.
+
+    Args:
+        msg: Incoming DOIP message.
+
+    Returns:
+        str | None: Operation name or None if missing.
+    """
     for meta in msg.metadata_blocks:
         op_name = meta.get("operation")
         if isinstance(op_name, str):
@@ -129,6 +144,9 @@ async def _send_error(writer: asyncio.StreamWriter, object_id: str, exc: Excepti
         writer: Destination writer.
         object_id: Object identifier context.
         exc: Exception to serialize.
+
+    Returns:
+        None
     """
     msg = protocol.DOIPMessage(
         version=protocol.DOIP_VERSION,
@@ -147,6 +165,9 @@ async def main(port: int = 3567):
 
     Args:
         port: TCP port for the server.
+
+    Returns:
+        None
     """
     cfg = set_config_from_env()
 
@@ -171,7 +192,11 @@ async def main(port: int = 3567):
 
 
 def _maybe_create_ssl_context() -> ssl.SSLContext | None:
-    """Create an SSL context using local certificate/key files if present."""
+    """Create an SSL context using local certificate/key files if present.
+
+    Returns:
+        ssl.SSLContext | None: Configured context or None if certificates are missing.
+    """
     cert_path = Path("certs/server.crt")
     key_path = Path("certs/server.key")
     if not cert_path.exists() or not key_path.exists():
@@ -184,7 +209,16 @@ def _maybe_create_ssl_context() -> ssl.SSLContext | None:
 async def handle_compat_connection(
     registry: object_registry.ObjectRegistry, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
 ):
-    """Handle doipy JSON-segmented requests and bridge to DOIP handlers."""
+    """Handle doipy JSON-segmented requests and bridge to DOIP handlers.
+
+    Args:
+        registry: Object registry instance.
+        reader: Compat StreamReader.
+        writer: Compat StreamWriter.
+
+    Returns:
+        None
+    """
     peer = writer.get_extra_info("peername")
     log.info("Compat connection from %s", peer)
     try:
@@ -215,7 +249,15 @@ async def handle_compat_connection(
 
 
 async def _process_compat_request(body: dict, registry: object_registry.ObjectRegistry) -> list[bytes]:
-    """Translate a doipy JSON request into a DOIP handler response."""
+    """Translate a doipy JSON request into a DOIP handler response.
+
+    Args:
+        body: Parsed JSON body with compat fields.
+        registry: Object registry instance.
+
+    Returns:
+        list[bytes]: Segmented response payloads.
+    """
     target = body.get("targetId") or body.get("target_id")
     operation = body.get("operationId") or body.get("operation_id")
     attributes = body.get("attributes") or {}
@@ -264,7 +306,14 @@ async def _process_compat_request(body: dict, registry: object_registry.ObjectRe
 
 
 def _compat_response_from_doip(msg: protocol.DOIPMessage) -> list[bytes]:
-    """Convert a DOIPMessage response into doipy-style segments."""
+    """Convert a DOIPMessage response into doipy-style segments.
+
+    Args:
+        msg: DOIPMessage response to convert.
+
+    Returns:
+        list[bytes]: Serialized segments including status and components.
+    """
     segments: list[bytes] = []
     status = {
         "status": "success",
@@ -280,7 +329,14 @@ def _compat_response_from_doip(msg: protocol.DOIPMessage) -> list[bytes]:
 
 
 async def _read_segments(reader: asyncio.StreamReader) -> list[bytes]:
-    """Read length-prefixed segments terminated by a zero-length segment."""
+    """Read length-prefixed segments terminated by a zero-length segment.
+
+    Args:
+        reader: StreamReader providing compat segments.
+
+    Returns:
+        list[bytes]: Ordered segments from the stream.
+    """
     segments: list[bytes] = []
     while True:
         length_bytes = await reader.readexactly(4)
@@ -293,7 +349,15 @@ async def _read_segments(reader: asyncio.StreamReader) -> list[bytes]:
 
 
 async def _write_segments(writer: asyncio.StreamWriter, segments: list[bytes]) -> None:
-    """Write length-prefixed segments ending with an empty terminator."""
+    """Write length-prefixed segments ending with an empty terminator.
+
+    Args:
+        writer: Destination StreamWriter.
+        segments: Data segments to send.
+
+    Returns:
+        None
+    """
     for seg in segments:
         writer.write(struct.pack(">I", len(seg)))
         writer.write(seg)
@@ -302,7 +366,14 @@ async def _write_segments(writer: asyncio.StreamWriter, segments: list[bytes]) -
 
 
 def _json_segment(data: dict) -> bytes:
-    """Serialize a JSON dict to bytes for compat responses."""
+    """Serialize a JSON dict to bytes for compat responses.
+
+    Args:
+        data: JSON-serializable dictionary.
+
+    Returns:
+        bytes: UTF-8 encoded JSON payload.
+    """
     return json.dumps(data).encode("utf-8")
 
 

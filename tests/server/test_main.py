@@ -9,9 +9,26 @@ class DummyRegistry:
 
 @pytest.mark.asyncio
 async def test_dispatch_routes_hello(monkeypatch):
+    """Ensure dispatch routes hello operations to the hello handler.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+
+    Returns:
+        None
+    """
     called = {}
 
     async def fake_handle_hello(msg, registry):
+        """Record hello calls for assertion and return canned response.
+
+        Args:
+            msg: Incoming DOIP message.
+            registry: Dummy registry instance.
+
+        Returns:
+            doip_server.protocol.DOIPMessage: Stub response.
+        """
         called["op"] = msg.operation
         return protocol.DOIPMessage(
             version=protocol.DOIP_VERSION,
@@ -41,7 +58,24 @@ async def test_dispatch_routes_hello(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_dispatch_uses_metadata_operation(monkeypatch):
+    """Ensure metadata-specified operation overrides opcode.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+
+    Returns:
+        None
+    """
     async def fake_handle_hello(msg, registry):
+        """Return canned hello response for metadata routing tests.
+
+        Args:
+            msg: Incoming DOIP message.
+            registry: Dummy registry instance.
+
+        Returns:
+            doip_server.protocol.DOIPMessage: Stub response.
+        """
         return protocol.DOIPMessage(
             version=protocol.DOIP_VERSION,
             msg_type=protocol.MSG_TYPE_RESPONSE,
@@ -68,9 +102,26 @@ async def test_dispatch_uses_metadata_operation(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_dispatch_routes_retrieve(monkeypatch):
+    """Ensure dispatch routes retrieve operations to the retrieve handler.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+
+    Returns:
+        None
+    """
     called = {}
 
     async def fake_handle_retrieve(msg, registry):
+        """Record retrieve calls for assertion and return canned response.
+
+        Args:
+            msg: Incoming DOIP message.
+            registry: Dummy registry instance.
+
+        Returns:
+            doip_server.protocol.DOIPMessage: Stub response.
+        """
         called["op"] = msg.operation
         return protocol.DOIPMessage(
             version=protocol.DOIP_VERSION,
@@ -99,6 +150,11 @@ async def test_dispatch_routes_retrieve(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_dispatch_rejects_unknown_operation():
+    """Ensure dispatch rejects unsupported operation codes.
+
+    Returns:
+        None
+    """
     msg = protocol.DOIPMessage(
         version=protocol.DOIP_VERSION,
         msg_type=protocol.MSG_TYPE_REQUEST,

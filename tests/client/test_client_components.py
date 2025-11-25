@@ -5,6 +5,11 @@ from doip_client.messages import ComponentBlock
 
 
 def test_encode_component_body():
+    """Ensure component body encoding preserves lengths and content.
+
+    Returns:
+        None
+    """
     comp = ComponentBlock(component_id="cid", content=b"data", media_type="text/plain")
     body = StrictDOIPClient._encode_component_body(comp)
 

@@ -26,7 +26,7 @@ def _endpoint_url() -> Optional[str]:
     return os.getenv("LAKEFS_ENDPOINT") or os.getenv("S3_ENDPOINT")
 
 
-async def ensure_lakefs_available() -> None:
+async def ensure_lakefs_available() -> bool:
     """Verify lakeFS/S3 endpoint is configured and reachable.
 
     Returns:

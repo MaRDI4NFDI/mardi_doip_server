@@ -147,7 +147,15 @@ async def handle_invoke(msg: DOIPMessage, registry: object_registry.ObjectRegist
 
 
 async def handle_list_ops(msg: DOIPMessage, registry: object_registry.ObjectRegistry) -> DOIPMessage:
-    """Return the list of supported operations."""
+    """Return the list of supported operations.
+
+    Args:
+        msg: Incoming DOIP list-ops request.
+        registry: Object registry resolver (unused, included for symmetry).
+
+    Returns:
+        DOIPMessage: Response describing available operations.
+    """
     log.info("Handling list_ops request for object_id=%s", msg.object_id)
     metadata_block = {
         "operation": "list_operations",

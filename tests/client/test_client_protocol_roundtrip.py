@@ -12,7 +12,11 @@ from doip_shared.constants import DOIP_VERSION, MSG_TYPE_RESPONSE, OP_RETRIEVE
 
 
 def test_decode_header_and_blocks_roundtrip():
-    """Verify client can decode headers and payload blocks."""
+    """Verify client can decode headers and payload blocks.
+
+    Returns:
+        None
+    """
     # Build a fake DOIP message (response) with one metadata and one component block.
     object_id = "QX"
     object_id_bytes = object_id.encode("utf-8")

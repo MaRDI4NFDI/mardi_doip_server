@@ -11,6 +11,14 @@ class StubDOIPMessage(protocol.DOIPMessage):
 
 @pytest.mark.asyncio
 async def test_compat_process_hello(monkeypatch):
+    """Ensure compat processing handles hello responses correctly.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+
+    Returns:
+        None
+    """
     fake_msg = protocol.DOIPMessage(
         version=protocol.DOIP_VERSION,
         msg_type=protocol.MSG_TYPE_RESPONSE,
@@ -22,6 +30,15 @@ async def test_compat_process_hello(monkeypatch):
     )
 
     async def fake_handle_hello(msg, registry):
+        """Return canned hello response for compat processing tests.
+
+        Args:
+            msg: Incoming DOIP message.
+            registry: Dummy registry instance.
+
+        Returns:
+            doip_server.protocol.DOIPMessage: Stub hello response.
+        """
         return fake_msg
 
     monkeypatch.setattr(handlers, "handle_hello", fake_handle_hello)
@@ -37,6 +54,14 @@ async def test_compat_process_hello(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_compat_process_retrieve(monkeypatch):
+    """Ensure compat processing handles retrieve responses and components.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+
+    Returns:
+        None
+    """
     fake_msg = protocol.DOIPMessage(
         version=protocol.DOIP_VERSION,
         msg_type=protocol.MSG_TYPE_RESPONSE,
@@ -54,6 +79,15 @@ async def test_compat_process_retrieve(monkeypatch):
     )
 
     async def fake_handle_retrieve(msg, registry):
+        """Return canned retrieve response for compat processing tests.
+
+        Args:
+            msg: Incoming DOIP message.
+            registry: Dummy registry instance.
+
+        Returns:
+            doip_server.protocol.DOIPMessage: Stub retrieve response.
+        """
         return fake_msg
 
     monkeypatch.setattr(handlers, "handle_retrieve", fake_handle_retrieve)
@@ -70,6 +104,14 @@ async def test_compat_process_retrieve(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_compat_process_invoke(monkeypatch):
+    """Ensure compat processing handles invoke workflow responses.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+
+    Returns:
+        None
+    """
     fake_msg = protocol.DOIPMessage(
         version=protocol.DOIP_VERSION,
         msg_type=protocol.MSG_TYPE_RESPONSE,
@@ -81,6 +123,15 @@ async def test_compat_process_invoke(monkeypatch):
     )
 
     async def fake_handle_invoke(msg, registry):
+        """Return canned invoke response for compat processing tests.
+
+        Args:
+            msg: Incoming DOIP message.
+            registry: Dummy registry instance.
+
+        Returns:
+            doip_server.protocol.DOIPMessage: Stub invoke response.
+        """
         return fake_msg
 
     monkeypatch.setattr(handlers, "handle_invoke", fake_handle_invoke)
