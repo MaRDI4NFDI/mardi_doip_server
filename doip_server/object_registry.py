@@ -16,68 +16,46 @@ class ObjectRegistry:
     def __init__(self):
         """Initialize registry caches."""
         self._manifest_cache: Dict[str, Dict] = {}
-        self._component_cache: Dict[str, Dict[str, Dict]] = {}
         self._lock = asyncio.Lock()
 
+    async def fetch_fdo_object(self, pid: str) -> Dict:
+        """Fetch and cache the FDO JSON-LD for a given PID (Q... or Q..._FULLTEXT)."""
+        pid = pid.upper()
+        async with self._lock:
+            if pid in self._manifest_cache:
+                return self._manifest_cache[pid]
+
+        data = await self._fetch_manifest(pid)
+
+        async with self._lock:
+            self._manifest_cache[pid] = data
+
+        return data
+
+    async def fetch_bitstream_bytes(self, pid: str) -> bytes:
+        """
+        Resolve the primary bitstream bytes for a bitstream PID.
+
+        Convention:
+        - PID ends with '_FULLTEXT'
+        - Base QID is PID without suffix
+        - LakeFS component id is fixed as 'primary'
+        """
+        pid_u = pid.upper()
+        if not pid_u.startswith("Q") or not pid_u.endswith("_FULLTEXT"):
+            raise ValueError(f"Not a bitstream PID: {pid}")
+
+        qid = pid_u[:-9]  # strip '_FULLTEXT'
+
+        if not await storage_lakefs.ensure_lakefs_available():
+            raise RuntimeError("Storage backend unavailable")
+
+        # internal convention: (qid, 'primary') → PDF
+        return await storage_lakefs.get_component_bytes(qid, "primary")
+
     async def get_manifest(self, qid: str) -> Dict:
-        """Fetch and cache the manifest for a QID.
-
-        Args:
-            qid: Object identifier.
-
-        Returns:
-            Dict: Manifest JSON-LD document.
-        """
-        async with self._lock:
-            if qid in self._manifest_cache:
-                return self._manifest_cache[qid]
-        manifest = await self._fetch_manifest(qid)
-        async with self._lock:
-            self._manifest_cache[qid] = manifest
-        return manifest
-
-    async def get_components(self, qid: str) -> List[Dict]:
-        """Return component metadata for a QID, caching results.
-
-        Args:
-            qid: Object identifier.
-
-        Returns:
-            List[Dict]: Component descriptors.
-        """
-        async with self._lock:
-            if qid in self._component_cache:
-                return list(self._component_cache[qid].values())
-        manifest = await self.get_manifest(qid)
-        components = self._parse_manifest_components(qid, manifest)
-        async with self._lock:
-            self._component_cache[qid] = {c["componentId"]: c for c in components}
-        return components
-
-    async def resolve_component(self, qid: str, component_id: str) -> Dict:
-        """Resolve a specific component metadata record by ID.
-
-        Args:
-            qid: Object identifier.
-            component_id: DOIP component identifier.
-
-        Returns:
-            Dict: Component metadata.
-        """
-        components = await self.get_components(qid)
-        for comp in components:
-            if comp["componentId"] == component_id:
-                return comp
-        # Fallback: build from convention.
-        key = storage_lakefs.s3_key_from_component(qid, component_id)
-        meta = {
-            "componentId": component_id,
-            "s3Key": key,
-            "mediaType": "application/octet-stream",
-        }
-        async with self._lock:
-            self._component_cache.setdefault(qid, {})[component_id] = meta
-        return meta
+        """treat manifest == FDO JSON for base QID."""
+        return await self.fetch_fdo_object(qid)
 
     async def _fetch_manifest(self, qid: str) -> Dict:
         """Retrieve manifest JSON-LD from the FDO façade.
@@ -93,55 +71,3 @@ class ObjectRegistry:
             resp = await client.get(url)
             resp.raise_for_status()
             return resp.json()
-
-    def _parse_manifest_components(self, qid: str, manifest: Dict) -> List[Dict]:
-        """Parse component descriptors from a manifest response.
-
-        Args:
-            qid: Object identifier.
-            manifest: Manifest payload.
-
-        Returns:
-            List[Dict]: Component descriptors with IDs and S3 keys.
-        """
-        if not isinstance(manifest, dict):
-            return self._fallback_components(qid)
-        components: List[Dict] = []
-        access_records = manifest.get("access", []) or manifest.get("accessRecords", [])
-        if not isinstance(access_records, list):
-            return self._fallback_components(qid)
-        for record in access_records:
-            if not isinstance(record, dict):
-                continue
-            component_id = record.get("componentId") or record.get("id")
-            if not component_id:
-                continue
-            s3_key = record.get("s3Key") or storage_lakefs.s3_key_from_component(
-                qid, component_id
-            )
-            media_type = record.get("mediaType") or "application/octet-stream"
-            size = record.get("size")
-            original_filename = record.get("originalFilename")
-            components.append(
-                {
-                    "componentId": component_id,
-                    "s3Key": s3_key,
-                    "mediaType": media_type,
-                    "size": size,
-                    "originalFilename": original_filename,
-                }
-            )
-        if not components:
-            return self._fallback_components(qid)
-        return components
-
-    def _fallback_components(self, qid: str) -> List[Dict]:
-        """Provide a default component list when parsing fails."""
-        default_id = f"doip:bitstream/{qid}/main-pdf"
-        return [
-            {
-                "componentId": default_id,
-                "s3Key": storage_lakefs.s3_key_from_component(qid, default_id),
-                "mediaType": "application/pdf",
-            }
-        ]

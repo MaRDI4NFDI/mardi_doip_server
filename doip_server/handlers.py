@@ -26,6 +26,7 @@ async def handle_hello(msg: DOIPMessage, registry: object_registry.ObjectRegistr
         "version": protocol.DOIP_VERSION,
         "availableOperations": {
             "hello": protocol.OP_HELLO,
+            "describe": protocol.OP_DESCRIBE,
             "retrieve": protocol.OP_RETRIEVE,
             "invoke": protocol.OP_INVOKE,
         },
@@ -40,61 +41,56 @@ async def handle_hello(msg: DOIPMessage, registry: object_registry.ObjectRegistr
         metadata_blocks=[metadata_block],
     )
 
-
-async def handle_retrieve(msg: DOIPMessage, registry: object_registry.ObjectRegistry) -> DOIPMessage:
-    """Handle DOIP retrieve requests by streaming components and metadata.
-
-    Args:
-        msg: Incoming DOIP retrieve request.
-        registry: Object registry resolver.
-
-    Returns:
-        DOIPMessage: Response containing metadata and component blocks.
-    """
-    qid = msg.object_id
-    log.info("Handling retrieve request for object_id=%s", qid)
-    if not await storage_lakefs.ensure_lakefs_available():
-        log.error("LakeFS/S3 endpoint not configured or unreachable")
-        raise protocol.ProtocolError("Storage backend unavailable")
-    requested_components = _requested_components(msg)
-    manifest_components = await registry.get_components(qid)
-    components = [
-        comp
-        for comp in manifest_components
-        if not requested_components or comp["componentId"] in requested_components
-    ]
-    if requested_components:
-        missing = set(requested_components) - {c["componentId"] for c in components}
-        if missing:
-            raise protocol.ProtocolError(f"Missing components: {sorted(missing)}")
-
-    component_blocks: List[ComponentBlock] = []
-    for comp in components:
-        content = await storage_lakefs.get_component_bytes(qid, comp["componentId"])
-        component_blocks.append(
-            ComponentBlock(
-                component_id=comp["componentId"],
-                content=content,
-                media_type=comp.get("mediaType", "application/octet-stream"),
-                declared_size=comp.get("size"),
-            )
-        )
-
-    metadata_block = {
-        "operation": "retrieve",
-        "objectId": qid,
-        "components": components,
-    }
-
+async def handle_describe(msg: DOIPMessage, registry: object_registry.ObjectRegistry) -> DOIPMessage:
+    pid = msg.object_id
+    fdo_json = await registry.fetch_fdo_object(pid)
     return DOIPMessage(
         version=protocol.DOIP_VERSION,
         msg_type=protocol.MSG_TYPE_RESPONSE,
-        operation=protocol.OP_RETRIEVE,
+        operation=protocol.OP_DESCRIBE,
         flags=0,
-        object_id=qid,
-        metadata_blocks=[metadata_block],
-        component_blocks=component_blocks,
+        object_id=pid,
+        metadata_blocks=[fdo_json],
     )
+
+
+async def handle_retrieve(msg: DOIPMessage, registry: object_registry.ObjectRegistry) -> DOIPMessage:
+    pid = msg.object_id.upper()
+
+    log.info("Handling retrieve request for object_id=%s", pid)
+
+    # Bitstream PID → return primary binary payload (PDF)
+    if pid.startswith("Q") and pid.endswith("_FULLTEXT"):
+        content = await registry.fetch_bitstream_bytes(pid)
+        primary_block = ComponentBlock(
+            component_id="primary",
+            content=content,
+            media_type="application/pdf",
+            declared_size=len(content),
+        )
+        return DOIPMessage(
+            version=protocol.DOIP_VERSION,
+            msg_type=protocol.MSG_TYPE_RESPONSE,
+            operation=protocol.OP_RETRIEVE,
+            flags=0,
+            object_id=pid,
+            metadata_blocks=[],
+            component_blocks=[primary_block],
+        )
+
+    # Metadata PID → return FDO JSON-LD as payload
+    if pid.startswith("Q"):
+        fdo_json = await registry.fetch_fdo_object(pid)
+        return DOIPMessage(
+            version=protocol.DOIP_VERSION,
+            msg_type=protocol.MSG_TYPE_RESPONSE,
+            operation=protocol.OP_RETRIEVE,
+            flags=0,
+            object_id=pid,
+            metadata_blocks=[fdo_json],
+        )
+
+    raise ValueError("invalid FDO identifier")
 
 
 async def handle_invoke(msg: DOIPMessage, registry: object_registry.ObjectRegistry) -> DOIPMessage:
@@ -173,22 +169,6 @@ async def handle_list_ops(msg: DOIPMessage, registry: object_registry.ObjectRegi
         object_id=msg.object_id,
         metadata_blocks=[metadata_block],
     )
-
-
-def _requested_components(msg: DOIPMessage):
-    """Extract requested component IDs from metadata blocks.
-
-    Args:
-        msg: DOIP request message.
-
-    Returns:
-        list[str] | None: Requested component IDs or None for all.
-    """
-    for meta in msg.metadata_blocks:
-        comps = meta.get("components")
-        if comps:
-            return comps
-    return None
 
 
 def _requested_workflow(msg: DOIPMessage):
