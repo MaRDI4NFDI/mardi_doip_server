@@ -71,25 +71,22 @@ class StrictDOIPClient:
         response = self.send_message(request)
         return response.metadata_blocks[0] if response.metadata_blocks else {}
 
-    def retrieve(self, object_id: str, component: Optional[str] = None) -> DoipResponse:
-        """Retrieve components for a given object ID.
+    def retrieve(self, object_id: str) -> DoipResponse:
+        """Retrieve the primary payload for a given object ID.
 
         Args:
             object_id: Target object identifier.
-            component: Optional component ID to filter the response.
 
         Returns:
             Parsed DOIP response envelope.
         """
-        metadata = {"operation": "retrieve", "objectId": object_id}
-        if component:
-            metadata["components"] = [component]
         request = DoipRequest(
             header=Header(DOIP_VERSION, MSG_TYPE_REQUEST, OP_RETRIEVE, 0, 0, 0),
             object_id=object_id,
-            metadata_blocks=[metadata],
+            metadata_blocks=[],
         )
         return self.send_message(request)
+
 
     def invoke(self, object_id: str, workflow: str, params: Optional[dict] = None) -> DoipResponse:
         """Invoke a workflow on the server for a given object ID.
@@ -247,12 +244,7 @@ class StrictDOIPClient:
         if not response.component_blocks:
             raise ValueError("No component blocks to save")
         comp = response.component_blocks[0]
-        original = ""
-        if response.metadata_blocks:
-            components_meta = response.metadata_blocks[0].get("components") or []
-            if components_meta:
-                original = components_meta[0].get("originalFilename") or ""
-        target_name = original or Path(comp.component_id).name
+        target_name = Path(comp.component_id).name
 
         if output_path:
             output_path = str(output_path)
