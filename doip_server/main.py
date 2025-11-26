@@ -56,6 +56,15 @@ def set_config() -> dict:
     if lakefs_password:
         cfg.setdefault("lakefs", {})["repo"] = lakefs_password
 
+    # Check whether lakeFS url has the http/s protocol prefix
+    lakefs_cfg = cfg.get("lakefs")
+    if isinstance(lakefs_cfg, dict):
+        url = lakefs_cfg.get("url")
+        if isinstance(url, str):
+            trimmed_url = url.strip()
+            if trimmed_url and not trimmed_url.startswith(("http://", "https://")):
+                lakefs_cfg["url"] = f"https://{trimmed_url}"
+                log.info("Normalized lakefs.url to %s", lakefs_cfg["url"])
 
     masked_cfg = _mask_sensitive(cfg)
     log.info("Configuration loaded: %s", masked_cfg)
