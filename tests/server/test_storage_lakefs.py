@@ -65,16 +65,11 @@ async def test_storage_lakefs_downloads_component_to_tempfile():
     if not await storage_lakefs.ensure_lakefs_available():
         pytest.skip("lakeFS url unavailable; skipping download test")
 
-    object_id = lakefs_cfg.get("test_object_id") or "main"
-    components = await storage_lakefs.list_components(object_id)
-    if not components:
-        pytest.skip("No components available to download for test object")
-    target = components[0]
+    object_id = "Q6190920_FULLTEXT"
 
     logging.getLogger(__name__).info(
         "test_storage_lakefs_downloads_component_to_tempfile() \n " +
-        "Downloading: %s",
-        target,
+        "Downloading: %s"
     )
 
     content = await storage_lakefs.get_component_bytes(object_id)
