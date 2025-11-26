@@ -57,63 +57,51 @@ async def test_handle_hello_returns_capabilities():
 
 
 @pytest.mark.asyncio
-async def test_handle_retrieve_streams_requested_components(monkeypatch):
-    """Ensure retrieve handler streams requested components.
-
-    Args:
-        monkeypatch: Pytest monkeypatch fixture.
-
-    Returns:
-        None
-    """
-    components = [
-        {
-            "componentId": "doip:bitstream/Q123/main-pdf",
-            "mediaType": "application/pdf",
-            "size": 5,
-        }
-    ]
-    registry = StubRegistry(components)
-
-    async def fake_get_component_bytes(object_id, component_id):
-        """Return stubbed component bytes for retrieve handler tests.
-
-        Args:
-            object_id: Requested object identifier.
-            component_id: Requested component identifier.
-
-        Returns:
-            bytes: Dummy content payload.
-        """
-        return b"hello"
-
-    async def fake_ensure():
-        """Pretend the storage backend is available.
-
-        Returns:
-            bool: Always True for tests.
-        """
-        return True
-
-    monkeypatch.setattr(handlers.storage_lakefs, "ensure_lakefs_available", fake_ensure)
-    monkeypatch.setattr(handlers.storage_lakefs, "get_component_bytes", fake_get_component_bytes)
-
+async def test_retrieve_metadata_for_qid(monkeypatch):
+    registry = StubRegistry({})
     request = protocol.DOIPMessage(
         version=protocol.DOIP_VERSION,
         msg_type=protocol.MSG_TYPE_REQUEST,
         operation=protocol.OP_RETRIEVE,
         flags=0,
         object_id="Q123",
-        metadata_blocks=[{"components": ["doip:bitstream/Q123/main-pdf"]}],
+        metadata_blocks=[]
     )
 
     response = await handlers.handle_retrieve(request, registry)
+
     assert response.msg_type == protocol.MSG_TYPE_RESPONSE
     assert response.operation == protocol.OP_RETRIEVE
-    assert response.metadata_blocks[0]["components"][0]["componentId"] == "doip:bitstream/Q123/main-pdf"
+    assert len(response.metadata_blocks) == 1
+    assert response.component_blocks == []
+
+
+async def test_retrieve_primary_pdf(monkeypatch):
+    async def fake_ensure(): return True
+    async def fake_get_bytes(qid, comp): return b"hello"
+
+    monkeypatch.setattr(handlers.storage_lakefs, "ensure_lakefs_available", fake_ensure)
+    monkeypatch.setattr(handlers.storage_lakefs, "get_component_bytes", fake_get_bytes)
+
+    registry = StubRegistry({})
+
+    request = protocol.DOIPMessage(
+        version=protocol.DOIP_VERSION,
+        msg_type=protocol.MSG_TYPE_REQUEST,
+        operation=protocol.OP_RETRIEVE,
+        flags=0,
+        object_id="Q123_FULLTEXT",
+        metadata_blocks=[]
+    )
+
+    response = await handlers.handle_retrieve(request, registry)
+
+    assert response.msg_type == protocol.MSG_TYPE_RESPONSE
+    assert response.operation == protocol.OP_RETRIEVE
+    assert response.metadata_blocks == []
     assert len(response.component_blocks) == 1
     comp = response.component_blocks[0]
-    assert comp.component_id == "doip:bitstream/Q123/main-pdf"
+    assert comp.component_id == "primary"
     assert comp.content == b"hello"
     assert comp.media_type == "application/pdf"
 
@@ -191,24 +179,27 @@ async def test_handle_invoke_returns_workflow_results(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_handle_retrieve_uses_registry_and_storage(monkeypatch):
-    """Ensure handle_retrieve pulls metadata and bytes from registry/storage."""
-    components = [
-        {
-            "componentId": "doip:bitstream/Q123/main-pdf",
-            "mediaType": "application/pdf",
-            "size": 5,
-        }
-    ]
-    registry = StubRegistry(components)
+    """Retrieve on base PID returns metadata only; no storage access."""
 
-    async def fake_get_component_bytes(object_id, component_id):
-        return b"hello"
+    class StubRegistry:
+        def __init__(self):
+            self.fdo_call_count = 0
+
+        async def fetch_fdo_object(self, pid):
+            self.fdo_call_count += 1
+            return {"@id": f"https://fdo.portal/fdo/{pid}"}
+
+    registry = StubRegistry()
+
+    # verify storage backend is NOT called for metadata PIDs
+    async def fake_get_bytes(qid, comp):
+        assert False, "Should not fetch bitstream bytes for non-bitstream PID"
 
     async def fake_ensure():
         return True
 
     monkeypatch.setattr(handlers.storage_lakefs, "ensure_lakefs_available", fake_ensure)
-    monkeypatch.setattr(handlers.storage_lakefs, "get_component_bytes", fake_get_component_bytes)
+    monkeypatch.setattr(handlers.storage_lakefs, "get_component_bytes", fake_get_bytes)
 
     request = protocol.DOIPMessage(
         version=protocol.DOIP_VERSION,
@@ -216,17 +207,17 @@ async def test_handle_retrieve_uses_registry_and_storage(monkeypatch):
         operation=protocol.OP_RETRIEVE,
         flags=0,
         object_id="Q123",
-        metadata_blocks=[{"components": ["doip:bitstream/Q123/main-pdf"]}],
+        metadata_blocks=[],
     )
 
     response = await handlers.handle_retrieve(request, registry)
 
     assert response.msg_type == protocol.MSG_TYPE_RESPONSE
     assert response.operation == protocol.OP_RETRIEVE
-    assert len(response.component_blocks) == 1
-    comp = response.component_blocks[0]
-    assert comp.component_id == "doip:bitstream/Q123/main-pdf"
-    assert comp.content == b"hello"
+    assert len(response.metadata_blocks) == 1
+    assert response.component_blocks == []
+    assert registry.fdo_call_count == 1
+
 
 
 def _load_config_or_skip() -> dict:

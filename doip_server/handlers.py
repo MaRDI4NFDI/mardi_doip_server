@@ -26,9 +26,9 @@ async def handle_hello(msg: DOIPMessage, registry: object_registry.ObjectRegistr
         "version": protocol.DOIP_VERSION,
         "availableOperations": {
             "hello": protocol.OP_HELLO,
-            "describe": protocol.OP_DESCRIBE,
             "retrieve": protocol.OP_RETRIEVE,
-            "invoke": protocol.OP_INVOKE,
+            "describe": protocol.OP_DESCRIBE, # not standard
+            "invoke": protocol.OP_INVOKE, # not standard
         },
     }
 
