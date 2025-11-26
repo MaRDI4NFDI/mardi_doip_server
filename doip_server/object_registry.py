@@ -32,26 +32,21 @@ class ObjectRegistry:
 
         return data
 
-    async def fetch_bitstream_bytes(self, pid: str) -> bytes:
+    async def fetch_bitstream_bytes(self, object_id: str) -> bytes:
         """
         Resolve the primary bitstream bytes for a bitstream PID.
 
         Convention:
         - PID ends with '_FULLTEXT'
-        - Base QID is PID without suffix
-        - LakeFS component id is fixed as 'primary'
         """
-        pid_u = pid.upper()
-        if not pid_u.startswith("Q") or not pid_u.endswith("_FULLTEXT"):
-            raise ValueError(f"Not a bitstream PID: {pid}")
-
-        qid = pid_u[:-9]  # strip '_FULLTEXT'
+        if not object_id.upper().startswith("Q") or not object_id.upper().endswith("_FULLTEXT"):
+            raise ValueError(f"Not a bitstream PID: {object_id}")
 
         if not await storage_lakefs.ensure_lakefs_available():
             raise RuntimeError("Storage backend unavailable")
 
-        # internal convention: (qid, 'primary') → PDF
-        return await storage_lakefs.get_component_bytes(qid, "primary")
+        return await storage_lakefs.get_component_bytes(object_id)
+
 
     async def get_manifest(self, qid: str) -> Dict:
         """treat manifest == FDO JSON for base QID."""

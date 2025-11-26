@@ -64,12 +64,11 @@ async def test_client_server_integration_hello_and_retrieve(monkeypatch):
 
     monkeypatch.setattr(storage_lakefs, "ensure_lakefs_available", fake_ensure)
 
-    async def fake_get_component_bytes(object_id, component_id):
+    async def fake_get_component_bytes(object_id):
         """Return stubbed component bytes for retrieval tests.
 
         Args:
             object_id: Requested object identifier.
-            component_id: Requested component identifier.
 
         Returns:
             bytes: Dummy content payload.

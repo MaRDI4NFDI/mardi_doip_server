@@ -65,7 +65,7 @@ async def handle_retrieve(msg: DOIPMessage, registry: object_registry.ObjectRegi
         primary_block = ComponentBlock(
             component_id="primary",
             content=content,
-            media_type="application/pdf",
+            media_type="application/pdf", # TODO: determine from registry
             declared_size=len(content),
         )
         return DOIPMessage(
@@ -114,7 +114,7 @@ async def handle_invoke(msg: DOIPMessage, registry: object_registry.ObjectRegist
     derived_blocks: List[ComponentBlock] = []
     for comp in result.get("derivedComponents", []):
         comp_id = comp["componentId"]
-        content = await storage_lakefs.get_component_bytes(qid, comp_id)
+        content = await storage_lakefs.get_component_bytes(qid)
         derived_blocks.append(
             ComponentBlock(
                 component_id=comp_id,

@@ -77,7 +77,7 @@ async def test_storage_lakefs_downloads_component_to_tempfile():
         target,
     )
 
-    content = await storage_lakefs.get_component_bytes(object_id, target)
+    content = await storage_lakefs.get_component_bytes(object_id)
     with tempfile.NamedTemporaryFile(delete=False) as tmp:
         tmp.write(content)
         tmp_path = Path(tmp.name)

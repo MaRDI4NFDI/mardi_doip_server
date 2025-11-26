@@ -15,14 +15,13 @@ async def run_equation_extraction_workflow(qid: str, params: Dict) -> Dict:
     Returns:
         Dict: Metadata describing derived components and created items.
     """
-    component_id = params.get("componentId", f"doip:bitstream/{qid}/main-pdf")
-    pdf_bytes = await storage_s3.get_component_bytes(qid, component_id)
+    pdf_bytes = await storage_lakefs.get_component_bytes(qid)
 
     equations: List[Dict] = _mock_extract_equations(pdf_bytes)
     equations_json = json.dumps(equations).encode("utf-8")
 
     derived_component_id = f"doip:bitstream/{qid}/equations-json"
-    s3_key = await storage_s3.put_component_bytes(
+    s3_key = await storage_lakefs.put_component_bytes(
         qid, derived_component_id, equations_json, content_type="application/json"
     )
 

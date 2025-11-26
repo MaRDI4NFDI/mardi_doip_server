@@ -7,7 +7,17 @@ import boto3
 import httpx
 from botocore.client import Config
 
+log = logging.getLogger()
+logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s %(message)s")
+
 _CFG: Dict = {}
+
+_TYPE_SUFFIX_MAP = {
+    "application/pdf": ".pdf",
+    "image/png": ".png",
+    "image/jpeg": ".jpg",
+    "image/svg+xml": ".svg",
+}
 
 
 def configure(cfg: Dict) -> None:
@@ -48,6 +58,14 @@ def _endpoint_url() -> Optional[str]:
         Optional[str]: Endpoint URL or None for default boto behavior.
     """
     lakefs_cfg = _CFG.get("lakefs", {}) if isinstance(_CFG, dict) else {}
+
+    url = lakefs_cfg.get("url")
+    if isinstance(url, str):
+        trimmed_url = url.strip()
+        if trimmed_url and not trimmed_url.startswith(("http://", "https://")):
+            lakefs_cfg["url"] = f"https://{trimmed_url}"
+            log.info("Normalized lakefs.url to %s", lakefs_cfg["url"])
+
     return lakefs_cfg.get("url")
 
 
@@ -58,6 +76,9 @@ async def ensure_lakefs_available() -> bool:
         bool: True if available, False otherwise.
     """
     endpoint = _endpoint_url()
+
+    log.debug("Checking lakeFS server @: %s", endpoint)
+
     if not endpoint:
         return False
     try:
@@ -88,56 +109,50 @@ def _client():
         ),
     )
 
-
-def s3_key_from_component(object_id: str, component_id: str) -> str:
-    """Construct an S3 key from a DOIP component identifier.
-
-    Args:
-        object_id: Object identifier/QID.
-        component_id: DOIP component ID.
-
-    Returns:
-        str: S3 key path under the bucket.
-    """
-    suffix = component_id.split("/")[-1]
-    if "." not in suffix:
-        suffix = f"{suffix}.pdf"
-    return f"{_branch()}/{object_id}/{suffix}"
+def s3_key_from_component(object_id: str, ext: str) -> str:
+    """Construct an S3 key from a DOIP component identifier. """
+    qid = _extract_qid(object_id)
+    return f"{_branch()}/{qid}/{object_id}{ext}"
 
 
-async def get_component_bytes(object_id: str, component_id: str) -> bytes:
+async def get_component_bytes(object_id: str) -> bytes:
     """Fetch component content bytes from lakeFS/S3.
 
     Args:
         object_id: Object identifier/QID.
-        component_id: DOIP component ID.
 
     Returns:
         bytes: Component content.
     """
-    key = s3_key_from_component(object_id, component_id)
-    response = await asyncio.to_thread(
-        _client().get_object, Bucket=_repo(), Key=key
-    )
-    body = response["Body"]
-    return body.read()
 
+    log.debug( "Try to retrieve object with \n object_id: %s", object_id )
+
+    # TODO: resolve from registry instead of hardcoding
+    media_type = "application/pdf"
+
+    ext = _TYPE_SUFFIX_MAP.get(media_type, "")
+    key = s3_key_from_component(object_id, ext)
+
+    log.debug( "Try to retrieve object from lakeFS with key: %s", key )
+
+    response = await asyncio.to_thread(_client().get_object, Bucket=_repo(), Key=key)
+
+    return response["Body"].read()
 
 async def put_component_bytes(
-    object_id: str, component_id: str, data: bytes, content_type: str = "application/octet-stream"
+    object_id: str, data: bytes, content_type: str = "application/octet-stream"
 ) -> str:
     """Store component bytes to lakeFS/S3 and return the key.
 
     Args:
         object_id: Object identifier/QID.
-        component_id: DOIP component ID.
         data: Content bytes to upload.
         content_type: MIME type for the object.
 
     Returns:
         str: Stored S3 key.
     """
-    key = s3_key_from_component(object_id, component_id)
+    key = s3_key_from_component(object_id)
     await asyncio.to_thread(
         _client().put_object,
         Bucket=_repo(),
@@ -178,26 +193,6 @@ async def list_components(object_id: str) -> List[str]:
     return result
 
 
-async def component_metadata(object_id: str, component_id: str) -> Dict[str, str]:
-    """Return metadata for a stored component.
-
-    Args:
-        object_id: Object identifier/QID.
-        component_id: DOIP component ID.
-
-    Returns:
-        Dict[str, str]: Metadata including media type and size.
-    """
-    key = s3_key_from_component(object_id, component_id)
-    head = await asyncio.to_thread(_client().head_object, Bucket=_repo(), Key=key)
-    return {
-        "componentId": component_id,
-        "mediaType": head.get("ContentType", "application/octet-stream"),
-        "size": head.get("ContentLength"),
-        "s3Key": key,
-    }
-
-
 async def _async_paginate(paginator, **kwargs):
     """Iterate over paginator pages in a thread to avoid blocking the loop.
 
@@ -210,3 +205,19 @@ async def _async_paginate(paginator, **kwargs):
     """
     for page in await asyncio.to_thread(lambda: list(paginator.paginate(**kwargs))):
         yield page
+
+def _extract_qid(object_id: str) -> str:
+    obj = object_id.upper()
+    if not obj.startswith("Q"):
+        raise ValueError("invalid identifier: must start with Q")
+
+    i = 1
+    n = len(obj)
+    while i < n and obj[i].isdigit():
+        i += 1
+
+    qid = obj[:i]
+    if len(qid) == 1:
+        raise ValueError("invalid identifier: no digits after Q")
+
+    return qid

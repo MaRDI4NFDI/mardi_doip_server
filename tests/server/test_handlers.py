@@ -78,7 +78,7 @@ async def test_retrieve_metadata_for_qid(monkeypatch):
 
 async def test_retrieve_primary_pdf(monkeypatch):
     async def fake_ensure(): return True
-    async def fake_get_bytes(qid, comp): return b"hello"
+    async def fake_get_bytes(qid): return b"hello"
 
     monkeypatch.setattr(handlers.storage_lakefs, "ensure_lakefs_available", fake_ensure)
     monkeypatch.setattr(handlers.storage_lakefs, "get_component_bytes", fake_get_bytes)
@@ -143,12 +143,11 @@ async def test_handle_invoke_returns_workflow_results(monkeypatch):
         return workflow_result
 
     monkeypatch.setattr(handlers.workflows, "run_equation_extraction_workflow", fake_workflow)
-    async def fake_get_component_bytes(object_id, component_id):
+    async def fake_get_component_bytes(object_id):
         """Return stubbed workflow-derived component bytes.
 
         Args:
             object_id: Requested object identifier.
-            component_id: Requested component identifier.
 
         Returns:
             bytes: Dummy workflow content.
@@ -233,47 +232,48 @@ def _load_config_or_skip() -> dict:
 
 
 @pytest.mark.asyncio
-async def test_handle_retrieve_downloads_real_component(monkeypatch):
-    """Integration-style retrieve that downloads a real component if available."""
+async def test_handle_retrieve_downloads_real_fulltext():
     cfg = _load_config_or_skip()
     lakefs_cfg = cfg.get("lakefs") or {}
     if not isinstance(lakefs_cfg, dict):
-        pytest.skip("lakeFS url/repo not configured in config.yaml")
+        pytest.skip("lakeFS not configured")
 
     storage_lakefs.configure(cfg)
 
     if not await storage_lakefs.ensure_lakefs_available():
-        pytest.skip("lakeFS endpoint unavailable; skipping integration retrieve test")
+        pytest.skip("lakeFS unavailable")
 
-    object_id = lakefs_cfg.get("test_object_id") or "main"
-    components = await storage_lakefs.list_components(object_id)
-    if not components:
-        pytest.skip("No components available to download for test object")
+    # choose a test QID that actually has a stored PDF as “primary”
+    qid = "Q6190920"
 
-    target = components[0]
-    registry = StubRegistry(
-        [
-            {
-                "componentId": target,
-                "mediaType": "application/octet-stream",
-                "size": None,
-            }
-        ]
-    )
+    pid = f"{qid}_FULLTEXT"
+
+    class StubRegistry:
+        async def fetch_bitstream_bytes(self, p):
+            assert p == pid
+            return await storage_lakefs.get_component_bytes(pid)
+
+        async def fetch_fdo_object(self, p):
+            assert False, "metadata fetch must not occur for bitstream PID"
+
+    registry = StubRegistry()
 
     request = protocol.DOIPMessage(
         version=protocol.DOIP_VERSION,
         msg_type=protocol.MSG_TYPE_REQUEST,
         operation=protocol.OP_RETRIEVE,
         flags=0,
-        object_id=object_id,
-        metadata_blocks=[{"components": [target]}],
+        object_id=pid,
+        metadata_blocks=[]
     )
 
     response = await handlers.handle_retrieve(request, registry)
+
     assert response.msg_type == protocol.MSG_TYPE_RESPONSE
     assert response.operation == protocol.OP_RETRIEVE
+    assert response.metadata_blocks == []
     assert len(response.component_blocks) == 1
-    comp = response.component_blocks[0]
-    assert comp.component_id == target
-    assert comp.content
+    block = response.component_blocks[0]
+    assert block.component_id == "primary"
+    assert isinstance(block.content, (bytes, bytearray))
+    assert len(block.content) > 0
