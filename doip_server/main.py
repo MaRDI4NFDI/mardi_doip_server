@@ -74,7 +74,14 @@ def set_config() -> dict:
 
 
 def _mask_sensitive(data):
-    """Return a copy of config data with sensitive values masked."""
+    """Return a copy of config data with sensitive values masked.
+
+    Args:
+        data: Arbitrary config structure containing nested dicts/lists.
+
+    Returns:
+        Same structure with sensitive values partially obfuscated.
+    """
     if isinstance(data, dict):
         return {k: _mask_sensitive_value(k, v) for k, v in data.items()}
     if isinstance(data, list):
@@ -83,7 +90,15 @@ def _mask_sensitive(data):
 
 
 def _mask_sensitive_value(key: str, value):
-    """Mask password values; leave others unchanged."""
+    """Mask password values; leave others unchanged.
+
+    Args:
+        key: Config key name.
+        value: Config value (can be nested structures).
+
+    Returns:
+        Value with sensitive strings masked; non-sensitive values untouched.
+    """
     if isinstance(value, dict):
         return _mask_sensitive(value)
     if isinstance(value, list):
@@ -96,7 +111,14 @@ def _mask_sensitive_value(key: str, value):
 
 
 def _is_sensitive_key(key: str) -> bool:
-    """Return True if the key name indicates sensitive content."""
+    """Return True if the key name indicates sensitive content.
+
+    Args:
+        key: Config key name to inspect.
+
+    Returns:
+        bool: True if the key likely contains secrets.
+    """
     key_lower = key.lower()
     return any(token in key_lower for token in ("password", "secret", "token", "key"))
 
@@ -419,7 +441,7 @@ async def main(argv: list[str] | None = None):
     """Entrypoint: start the asyncio DOIP TCP server.
 
     Args:
-        port: TCP port for the server.
+        argv: Optional list of CLI arguments (defaults to sys.argv).
 
     Returns:
         None

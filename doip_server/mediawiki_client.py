@@ -68,6 +68,9 @@ async def _post_item(payload: Dict):
 
     Args:
         payload: Entity payload for Wikibase.
+
+    Returns:
+        None
     """
     await asyncio.to_thread(
         requests.post,

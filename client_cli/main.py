@@ -18,6 +18,14 @@ logging.basicConfig(
 )
 
 def main(argv: list[str] | None = None) -> int:
+    """CLI entrypoint for interacting with the strict DOIP client.
+
+    Args:
+        argv: Optional list of arguments (defaults to ``sys.argv``).
+
+    Returns:
+        int: Process exit code (0 on success, non-zero on error).
+    """
     parser = ArgumentParser(description="MaRDI DOIP client CLI")
     parser.add_argument("--host", default="127.0.0.1", help="Server host")
     parser.add_argument("--port", type=int, default=3567, help="Server port")

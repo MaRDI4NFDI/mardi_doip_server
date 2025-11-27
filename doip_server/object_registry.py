@@ -7,17 +7,25 @@ import httpx
 
 from . import storage_lakefs
 
+
 class ObjectRegistry:
     """Caches manifests and component metadata for DOIP objects."""
 
     def __init__(self):
-        """Initialize registry caches."""
+        """Initialize registry caches and shared state."""
         self._manifest_cache: Dict[str, Dict] = {}
         self._lock = asyncio.Lock()
         self.fdo_api = os.getenv("FDO_API", "https://fdo.portal.mardi4nfdi.de/fdo/")
 
     async def fetch_fdo_object(self, pid: str) -> Dict:
-        """Fetch and cache the FDO JSON-LD for a given PID (Q...)."""
+        """Fetch and cache the FDO JSON-LD for a given PID.
+
+        Args:
+            pid: PID/QID to retrieve.
+
+        Returns:
+            Dict: Manifest JSON-LD payload for the PID.
+        """
         pid = pid.upper()
         async with self._lock:
             if pid in self._manifest_cache:
@@ -30,14 +38,19 @@ class ObjectRegistry:
 
         return data
 
-    async def get_component(
-            self, object_id: str, component_id: str
-    ) -> bytes:
-        """
-        Load binary component content from storage backend.
+    async def get_component(self, object_id: str, component_id: str) -> bytes:
+        """Load binary component content from the storage backend.
+
+        Args:
+            object_id: PID/QID containing the component.
+            component_id: Identifier of the component to load.
 
         Returns:
-            (content_bytes, media_type, declared_size)
+            bytes: Raw component content.
+
+        Raises:
+            RuntimeError: When the storage backend is unavailable or errors.
+            KeyError: When the component is missing.
         """
         if not await storage_lakefs.ensure_lakefs_available():
             raise RuntimeError("storage unavailable")
@@ -55,7 +68,14 @@ class ObjectRegistry:
 
 
     async def get_manifest(self, qid: str) -> Dict:
-        """treat manifest == FDO JSON for base QID."""
+        """Return the manifest (FDO JSON) for a base QID.
+
+        Args:
+            qid: PID/QID to load.
+
+        Returns:
+            Dict: Manifest JSON-LD payload.
+        """
         return await self.fetch_fdo_object(qid)
 
     async def _fetch_manifest(self, qid: str) -> Dict:
@@ -66,6 +86,9 @@ class ObjectRegistry:
 
         Returns:
             Dict: Manifest payload.
+
+        Raises:
+            httpx.HTTPError: If the remote request fails.
         """
         url = f"{self.fdo_api}{qid}"
         logging.getLogger().info(f"##### \n\n {self.fdo_api} \n \n #####")

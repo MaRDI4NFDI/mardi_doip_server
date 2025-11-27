@@ -42,6 +42,15 @@ async def handle_hello(msg: DOIPMessage, registry: object_registry.ObjectRegistr
     )
 
 async def handle_describe(msg: DOIPMessage, registry: object_registry.ObjectRegistry) -> DOIPMessage:
+    """Return the registry description for a PID/QID.
+
+    Args:
+        msg: Incoming DOIP describe request.
+        registry: Object registry used to resolve manifests.
+
+    Returns:
+        DOIPMessage: Response containing the fetched manifest metadata.
+    """
     pid = msg.object_id
     fdo_json = await registry.fetch_fdo_object(pid)
     return DOIPMessage(
@@ -55,6 +64,18 @@ async def handle_describe(msg: DOIPMessage, registry: object_registry.ObjectRegi
 
 
 async def handle_retrieve(msg: DOIPMessage, registry: object_registry.ObjectRegistry) -> DOIPMessage:
+    """Retrieve metadata or a specific component for a DOIP object.
+
+    Args:
+        msg: Incoming DOIP retrieve request.
+        registry: Object registry used to fetch manifests/components.
+
+    Returns:
+        DOIPMessage: Response containing metadata and optional components.
+
+    Raises:
+        KeyError: If a requested component cannot be found.
+    """
     pid    = msg.object_id.upper()
     meta   = (msg.metadata_blocks[0] if msg.metadata_blocks else {})
     elem   = meta.get("element")  # componentId or None

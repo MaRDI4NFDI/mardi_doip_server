@@ -46,7 +46,11 @@ def _repo() -> str:
 
 
 def _branch() -> str:
-    """Return branch name for lakeFS-backed storage."""
+    """Return branch name for lakeFS-backed storage.
+
+    Returns:
+        str: Branch name configured for the lakeFS repository.
+    """
     lakefs_cfg = _CFG.get("lakefs", {}) if isinstance(_CFG, dict) else {}
     return lakefs_cfg.get("branch") or "main"
 
@@ -110,7 +114,16 @@ def _client():
     )
 
 def s3_key_from_component(object_id: str, component_id: str, media_type: str) -> str:
-    """Construct an S3 key from a DOIP component identifier. """
+    """Construct an S3 key from a DOIP component identifier.
+
+    Args:
+        object_id: Object identifier/QID.
+        component_id: Component identifier within the object.
+        media_type: MIME type used to infer the file extension.
+
+    Returns:
+        str: Fully qualified S3 key for the component.
+    """
 
     qid = _extract_qid(object_id)
     ext = _TYPE_SUFFIX_MAP.get(media_type, "")
@@ -127,6 +140,9 @@ async def get_component_bytes(object_id: str, component_id: str) -> bytes:
 
     Returns:
         bytes: Component content.
+
+    Raises:
+        KeyError: If the component is not found in storage.
     """
 
     log.debug( "Try to retrieve object with \n object_id: %s and \n component_id: %s", object_id, component_id )
@@ -213,6 +229,17 @@ async def _async_paginate(paginator, **kwargs):
         yield page
 
 def _extract_qid(object_id: str) -> str:
+    """Normalize and validate an object identifier, returning its QID prefix.
+
+    Args:
+        object_id: Object identifier that should start with a leading ``Q``.
+
+    Returns:
+        str: Uppercased QID prefix (e.g., ``Q123``).
+
+    Raises:
+        ValueError: If the identifier is malformed or missing digits.
+    """
     obj = object_id.upper()
     if not obj.startswith("Q"):
         raise ValueError("invalid identifier: must start with Q")
