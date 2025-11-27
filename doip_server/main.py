@@ -4,19 +4,22 @@ import logging
 import os
 import ssl
 import struct
+import sys
+from urllib.parse import urlparse, urlunparse
 from argparse import ArgumentParser
 from pathlib import Path
 from functools import partial
+
+import requests
 import yaml
 
+from doip_server.storage_lakefs import ensure_lakefs_available
 from . import handlers, object_registry, protocol, storage_lakefs
 
 log = logging.getLogger("doip_server")
-logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s %(message)s")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
-FDO_API = os.getenv("FDO_API", "https://fdo.portal.mardi4nfdi.de/fdo/")
-
-def set_config() -> dict:
+def set_config(args) -> dict:
     """Build configuration from local config.yaml overlaid with environment variables.
 
     Returns:
@@ -38,6 +41,10 @@ def set_config() -> dict:
         log.warning("Failed to load config from %s: %s", path, exc)
 
     # If environment variables are set, they override config.yaml values
+
+    fdo_api = os.getenv("FDO_API", "https://fdo.portal.mardi4nfdi.de/fdo/")
+    cfg.setdefault("fdo_api", {})["fdo_api"] = fdo_api
+
     ollama_api_key = os.getenv("OLLAMA_API_KEY")
     if ollama_api_key:
         cfg.setdefault("ollama", {})["api_key"] = ollama_api_key
@@ -50,13 +57,13 @@ def set_config() -> dict:
     if lakefs_password:
         cfg.setdefault("lakefs", {})["password"] = lakefs_password
 
-    lakefs_password = os.getenv("LAKEFS_URL")
-    if lakefs_password:
-        cfg.setdefault("lakefs", {})["url"] = lakefs_password
+    lakefs_url = os.getenv("LAKEFS_URL")
+    if lakefs_url:
+        cfg.setdefault("lakefs", {})["url"] = lakefs_url
 
-    lakefs_password = os.getenv("LAKEFS_REPO")
-    if lakefs_password:
-        cfg.setdefault("lakefs", {})["repo"] = lakefs_password
+    lakefs_repo = os.getenv("LAKEFS_REPO")
+    if lakefs_repo:
+        cfg.setdefault("lakefs", {})["repo"] = lakefs_repo
 
     # Check whether lakeFS url has the http/s protocol prefix
     lakefs_cfg = cfg.get("lakefs")
@@ -68,6 +75,11 @@ def set_config() -> dict:
                 lakefs_cfg["url"] = f"https://{trimmed_url}"
                 log.info("Normalized lakefs.url to %s", lakefs_cfg["url"])
 
+    # If command line args are set, they override everything
+    if args.fdo_api:
+        cfg.setdefault("fdo_api", {})["fdo_api"] = args.fdo_api
+
+    # Print config
     masked_cfg = _mask_sensitive(cfg)
     log.info("Configuration loaded: %s", masked_cfg)
     return cfg
@@ -436,6 +448,20 @@ def _json_segment(data: dict) -> bytes:
     """
     return json.dumps(data).encode("utf-8")
 
+def _check_fdo_server_avail(url: str) -> bool:
+    if not url:
+        return False
+
+    parsed = urlparse(url)
+    base = urlunparse((parsed.scheme, f"{parsed.hostname}:{parsed.port}" if parsed.port else parsed.hostname, "", "", "", ""))
+
+    try:
+        if not requests.get(base, timeout=2).ok:
+            return False
+        return True
+    except Exception:
+        return False
+
 
 async def main(argv: list[str] | None = None):
     """Entrypoint: start the asyncio DOIP TCP server.
@@ -450,26 +476,46 @@ async def main(argv: list[str] | None = None):
     # Setup command line parser
     parser = ArgumentParser(description="MaRDI DOIP server")
     parser.add_argument("--port", default="3567", help="Port of this server")
-    parser.add_argument("--fdo-api", default=FDO_API, help="FDO server url")
+    parser.add_argument("--fdo-api", help="FDO server url")
     args = parser.parse_args(argv)
+
+    # Set port
     port=int(args.port)
 
     # Set config params
-    cfg = set_config()
+    cfg = set_config(args)
     storage_lakefs.configure(cfg)
+
+    # Check for FDO server
+    fdo_api = cfg.get("fdo_api")["fdo_api"]
+    if not _check_fdo_server_avail( fdo_api ):
+        log.error("FDO server not available! (Tried: %s)", fdo_api)
+        sys.exit(1)
+    log.info("DOIP server uses FDO endpoint: %s", fdo_api)
 
     # Initialize registry
     registry = object_registry.ObjectRegistry()
-    if args.fdo_api:
-        registry.fdo_api = args.fdo_api
+    registry.fdo_api = fdo_api
 
+    # Check for lakeaFS availablity
+    if not await ensure_lakefs_available():
+        log.warning("lakeFS server not available!")
+    else:
+        log.info("DOIP server uses lakeFS server as storage-backend.")
+
+    # Check if SSL certificates are available
     ssl_ctx = _maybe_create_ssl_context()
+
+    # Start binary server
     server = await asyncio.start_server(
         partial(handle_connection, registry), host="0.0.0.0", port=port, ssl=ssl_ctx
     )
+
+    # Start plain server
     compat_server = await asyncio.start_server(
         partial(handle_compat_connection, registry), host="0.0.0.0", port=port + 1, ssl=ssl_ctx
     )
+
     sockets = ", ".join(str(sock.getsockname()) for sock in server.sockets or [])
     compat_sockets = ", ".join(str(sock.getsockname()) for sock in compat_server.sockets or [])
     if ssl_ctx:
@@ -478,8 +524,6 @@ async def main(argv: list[str] | None = None):
     else:
         log.info("DOIP server listening (plaintext) on %s", sockets)
         log.info("Compat JSON-segment listener (plaintext) on %s", compat_sockets)
-
-    log.info("DOIP server uses FDO endpoint: %s", registry.fdo_api)
 
     async with server, compat_server:
         await asyncio.gather(server.serve_forever(), compat_server.serve_forever())
