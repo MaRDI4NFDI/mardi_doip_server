@@ -1,14 +1,11 @@
 import asyncio
+import logging
 import os
 from typing import Dict, List, Optional
 
 import httpx
 
 from . import storage_lakefs
-
-
-FDO_API = os.getenv("FDO_API", "https://fdo.portal.mardi4nfdi.de/fdo/")
-
 
 class ObjectRegistry:
     """Caches manifests and component metadata for DOIP objects."""
@@ -17,9 +14,10 @@ class ObjectRegistry:
         """Initialize registry caches."""
         self._manifest_cache: Dict[str, Dict] = {}
         self._lock = asyncio.Lock()
+        self.fdo_api = os.getenv("FDO_API", "https://fdo.portal.mardi4nfdi.de/fdo/")
 
     async def fetch_fdo_object(self, pid: str) -> Dict:
-        """Fetch and cache the FDO JSON-LD for a given PID (Q... or Q..._FULLTEXT)."""
+        """Fetch and cache the FDO JSON-LD for a given PID (Q...)."""
         pid = pid.upper()
         async with self._lock:
             if pid in self._manifest_cache:
@@ -32,20 +30,27 @@ class ObjectRegistry:
 
         return data
 
-    async def fetch_bitstream_bytes(self, object_id: str) -> bytes:
+    async def get_component(
+            self, object_id: str, component_id: str
+    ) -> tuple[bytes, str, int]:
         """
-        Resolve the primary bitstream bytes for a bitstream PID.
+        Load binary component content from storage backend.
 
-        Convention:
-        - PID ends with '_FULLTEXT'
+        Returns:
+            (content_bytes, media_type, declared_size)
         """
-        if not object_id.upper().startswith("Q") or not object_id.upper().endswith("_FULLTEXT"):
-            raise ValueError(f"Not a bitstream PID: {object_id}")
-
         if not await storage_lakefs.ensure_lakefs_available():
-            raise RuntimeError("Storage backend unavailable")
+            raise RuntimeError("storage unavailable")
 
-        return await storage_lakefs.get_component_bytes(object_id)
+        content = await storage_lakefs.get_component_bytes(
+            object_id, component_id
+        )
+
+        # TODO: guess from extension
+        media_type = "application/pdf"
+
+        size = len(content)
+        return content, media_type, size
 
 
     async def get_manifest(self, qid: str) -> Dict:
@@ -61,7 +66,8 @@ class ObjectRegistry:
         Returns:
             Dict: Manifest payload.
         """
-        url = f"{FDO_API}{qid}"
+        url = f"{self.fdo_api}{qid}"
+        logging.getLogger().info(f"##### \n\n {self.fdo_api} \n \n #####")
         async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.get(url)
             resp.raise_for_status()

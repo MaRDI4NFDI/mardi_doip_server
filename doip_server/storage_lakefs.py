@@ -109,31 +109,32 @@ def _client():
         ),
     )
 
-def s3_key_from_component(object_id: str, media_type: str) -> str:
+def s3_key_from_component(object_id: str, component_id: str, media_type: str) -> str:
     """Construct an S3 key from a DOIP component identifier. """
 
     qid = _extract_qid(object_id)
     ext = _TYPE_SUFFIX_MAP.get(media_type, "")
 
-    return f"{_branch()}/{qid}/{object_id}{ext}"
+    return f"{_branch()}/{qid}/{component_id}{ext}"
 
 
-async def get_component_bytes(object_id: str) -> bytes:
+async def get_component_bytes(object_id: str, component_id: str) -> bytes:
     """Fetch component content bytes from lakeFS/S3.
 
     Args:
         object_id: Object identifier/QID.
+        component_id: Component identifier (e.g. "fulltext")
 
     Returns:
         bytes: Component content.
     """
 
-    log.debug( "Try to retrieve object with \n object_id: %s", object_id )
+    log.debug( "Try to retrieve object with \n object_id: %s and \n component_id: %s", object_id, component_id )
 
     # TODO: resolve from registry instead of hardcoding
     media_type = "application/pdf"
 
-    key = s3_key_from_component(object_id, media_type)
+    key = s3_key_from_component(object_id, component_id, media_type)
 
     log.debug( "Try to retrieve object from lakeFS with key: %s", key )
 

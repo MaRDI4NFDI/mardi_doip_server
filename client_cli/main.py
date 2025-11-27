@@ -5,27 +5,26 @@
 from __future__ import annotations
 
 import json
+import logging
 import sys
 from argparse import ArgumentParser
 
 from doip_client import StrictDOIPClient
 
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s %(levelname)s %(message)s",
+    force=True
+)
 
 def main(argv: list[str] | None = None) -> int:
     parser = ArgumentParser(description="MaRDI DOIP client CLI")
     parser.add_argument("--host", default="127.0.0.1", help="Server host")
     parser.add_argument("--port", type=int, default=3567, help="Server port")
     parser.add_argument("--no-tls", action="store_true", help="Disable TLS wrapping")
-    parser.add_argument(
-        "--secure",
-        action="store_true",
-        help="Enable TLS verification (if you do not use a self-certified cert)",
-    )
-    parser.add_argument(
-        "--object-id",
-        default="Q123",
-        help="Object identifier to use for demo calls",
-    )
+    parser.add_argument("--secure", action="store_true", help="Enable TLS verification (if you do not use a self-certified cert)")
+    parser.add_argument("--object-id", default="Q123", help="Object identifier")
+    parser.add_argument("--component", default=None, help="Component ID for selective retrieve; if absent, list components")
     parser.add_argument(
         "--action",
         choices=["demo", "hello", "list_ops", "retrieve", "invoke"],
@@ -58,49 +57,61 @@ def main(argv: list[str] | None = None) -> int:
         verify_tls=args.secure,
     )
 
+    logging.getLogger().debug("Handling action: %s", args.action)
+
     try:
         if args.action == "hello":
-            hello = client.hello()
-            print("Hello:", json.dumps(hello, indent=2))
+            r = client.hello()
+            print(json.dumps(r, indent=2))
             return 0
 
         if args.action == "list_ops":
-            ops = client.list_ops()
-            print("Available operations:", json.dumps(ops, indent=2))
+            r = client.list_ops()
+            print(json.dumps(r, indent=2))
             return 0
 
         if args.action == "retrieve":
-            resp = client.retrieve(args.object_id)
-            print("Retrieve metadata:", json.dumps(resp.metadata_blocks, indent=2))
-            print(f"Retrieve components: {len(resp.component_blocks)} block(s)")
-            if args.output:
-                path = StrictDOIPClient.save_first_component(resp, output_path=args.output)
-                print(f"Saved first component to: {path}")
+            if args.component:
+                r = client.retrieve(args.object_id, component_id=args.component)
+                blocks = r.component_blocks
+                if not blocks:
+                    logging.getLogger().error("No components found")
+                    return 1
+                content = blocks[0].content
+                if args.output:
+                    logging.getLogger().info(f"Writing to file %s ", args.output )
+                    with open(args.output, "wb") as f:
+                        f.write(content)
+                    return 0
+                # stdout binary
+                sys.stdout.buffer.write(content)
+                return 0
+
+            # Show only meta data - no binary data
+            r = client.retrieve(args.object_id)
+            print("Metadata:")
+            print(json.dumps(r.metadata_blocks, indent=2))
+
             return 0
 
         if args.action == "invoke":
             try:
-                params = json.loads(args.params)
+                p = json.loads(args.params)
             except Exception:
-                params = {}
-            resp = client.invoke(args.object_id, args.workflow, params=params)
-            print("Invoke metadata:", json.dumps(resp.metadata_blocks, indent=2))
-            print(f"Invoke components: {len(resp.component_blocks)} block(s)")
-            print("Workflow blocks:", json.dumps(resp.workflow_blocks, indent=2))
+                p = {}
+            r = client.invoke(args.object_id, args.workflow, params=p)
+            print(json.dumps(r.metadata_blocks, indent=2))
             return 0
 
-        # demo mode
-        hello = client.hello()
-        resp = client.retrieve(args.object_id)
-        print("Hello:", json.dumps(hello, indent=2))
-        print("Retrieve metadata:", json.dumps(resp.metadata_blocks, indent=2))
-        print(f"Retrieve components: {len(resp.component_blocks)} block(s)")
+        r = client.hello()
+        print(json.dumps(r, indent=2))
+        meta = client.retrieve(args.object_id)
+        print(json.dumps(meta.metadata_blocks, indent=2))
         return 0
 
     except Exception as exc:
         sys.stderr.write(
-            f"Error contacting DOIP server {args.host}:{args.port} "
-            f"(tls={'off' if args.no_tls else 'on'}, verify_tls={'on' if args.secure else 'off'}): {exc}\n"
+            f"Error contacting DOIP server {args.host}:{args.port}: {exc}\n"
         )
         return 1
 

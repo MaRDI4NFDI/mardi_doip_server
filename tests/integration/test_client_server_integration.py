@@ -49,11 +49,6 @@ async def test_client_server_integration_hello_and_retrieve(monkeypatch):
         assert resp_meta.metadata_blocks
         assert not resp_meta.component_blocks
 
-        resp_pdf = await asyncio.to_thread(client.retrieve, "Q123_FULLTEXT")
-        assert resp_pdf.header.op_code == protocol.OP_RETRIEVE
-        assert not resp_pdf.metadata_blocks
-        assert len(resp_pdf.component_blocks) == 1
-        assert resp_pdf.component_blocks[0].content == b"hello-bytes"
     finally:
         server.close()
         await server.wait_closed()

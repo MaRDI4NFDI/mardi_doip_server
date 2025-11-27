@@ -71,19 +71,24 @@ class StrictDOIPClient:
         response = self.send_message(request)
         return response.metadata_blocks[0] if response.metadata_blocks else {}
 
-    def retrieve(self, object_id: str) -> DoipResponse:
+    def retrieve(self, object_id: str, component_id: str = None) -> DoipResponse:
         """Retrieve the primary payload for a given object ID.
 
         Args:
             object_id: Target object identifier.
+            component_id: Component identifier or None
 
         Returns:
             Parsed DOIP response envelope.
         """
+        meta = {"operation": "retrieve"}
+        if component_id:
+            meta["element"] = component_id
+
         request = DoipRequest(
             header=Header(DOIP_VERSION, MSG_TYPE_REQUEST, OP_RETRIEVE, 0, 0, 0),
             object_id=object_id,
-            metadata_blocks=[],
+            metadata_blocks=[meta],
         )
         return self.send_message(request)
 

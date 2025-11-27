@@ -4,6 +4,7 @@ import logging
 import os
 import ssl
 import struct
+from argparse import ArgumentParser
 from pathlib import Path
 from functools import partial
 import yaml
@@ -13,6 +14,7 @@ from . import handlers, object_registry, protocol, storage_lakefs
 log = logging.getLogger("doip_server")
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s %(message)s")
 
+FDO_API = os.getenv("FDO_API", "https://fdo.portal.mardi4nfdi.de/fdo/")
 
 def set_config() -> dict:
     """Build configuration from local config.yaml overlaid with environment variables.
@@ -408,7 +410,7 @@ def _json_segment(data: dict) -> bytes:
     return json.dumps(data).encode("utf-8")
 
 
-async def main(port: int = 3567):
+async def main(argv: list[str] | None = None):
     """Entrypoint: start the asyncio DOIP TCP server.
 
     Args:
@@ -417,10 +419,23 @@ async def main(port: int = 3567):
     Returns:
         None
     """
+
+    # Setup command line parser
+    parser = ArgumentParser(description="MaRDI DOIP server")
+    parser.add_argument("--port", default="3567", help="Port of this server")
+    parser.add_argument("--fdo-api", default=FDO_API, help="FDO server url")
+    args = parser.parse_args(argv)
+    port=int(args.port)
+
+    # Set config params
     cfg = set_config()
     storage_lakefs.configure(cfg)
 
+    # Initialize registry
     registry = object_registry.ObjectRegistry()
+    if args.fdo_api:
+        registry.fdo_api = args.fdo_api
+
     ssl_ctx = _maybe_create_ssl_context()
     server = await asyncio.start_server(
         partial(handle_connection, registry), host="0.0.0.0", port=port, ssl=ssl_ctx
@@ -436,6 +451,9 @@ async def main(port: int = 3567):
     else:
         log.info("DOIP server listening (plaintext) on %s", sockets)
         log.info("Compat JSON-segment listener (plaintext) on %s", compat_sockets)
+
+    log.info("DOIP server uses FDO endpoint: %s", registry.fdo_api)
+
     async with server, compat_server:
         await asyncio.gather(server.serve_forever(), compat_server.serve_forever())
 

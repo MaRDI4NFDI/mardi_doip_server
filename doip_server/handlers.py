@@ -55,19 +55,12 @@ async def handle_describe(msg: DOIPMessage, registry: object_registry.ObjectRegi
 
 
 async def handle_retrieve(msg: DOIPMessage, registry: object_registry.ObjectRegistry) -> DOIPMessage:
-    pid = msg.object_id.upper()
+    pid    = msg.object_id.upper()
+    meta   = (msg.metadata_blocks[0] if msg.metadata_blocks else {})
+    elem   = meta.get("element")  # componentId or None
 
-    log.info("Handling retrieve request for object_id=%s", pid)
-
-    # Bitstream PID → return primary binary payload (PDF)
-    if pid.startswith("Q") and pid.endswith("_FULLTEXT"):
-        content = await registry.fetch_bitstream_bytes(pid)
-        primary_block = ComponentBlock(
-            component_id="primary",
-            content=content,
-            media_type="application/pdf", # TODO: determine from registry
-            declared_size=len(content),
-        )
+    if elem:
+        content, media, size = await registry.get_component(pid, elem)
         return DOIPMessage(
             version=protocol.DOIP_VERSION,
             msg_type=protocol.MSG_TYPE_RESPONSE,
@@ -75,22 +68,26 @@ async def handle_retrieve(msg: DOIPMessage, registry: object_registry.ObjectRegi
             flags=0,
             object_id=pid,
             metadata_blocks=[],
-            component_blocks=[primary_block],
+            component_blocks=[
+                ComponentBlock(
+                    component_id=elem,
+                    media_type=media,
+                    content=content,
+                    declared_size=size,
+                )
+            ],
         )
 
-    # Metadata PID → return FDO JSON-LD as payload
-    if pid.startswith("Q"):
-        fdo_json = await registry.fetch_fdo_object(pid)
-        return DOIPMessage(
-            version=protocol.DOIP_VERSION,
-            msg_type=protocol.MSG_TYPE_RESPONSE,
-            operation=protocol.OP_RETRIEVE,
-            flags=0,
-            object_id=pid,
-            metadata_blocks=[fdo_json],
-        )
-
-    raise ValueError("invalid FDO identifier")
+    fdo_json = await registry.fetch_fdo_object(pid)
+    return DOIPMessage(
+        version=protocol.DOIP_VERSION,
+        msg_type=protocol.MSG_TYPE_RESPONSE,
+        operation=protocol.OP_RETRIEVE,
+        flags=0,
+        object_id=pid,
+        metadata_blocks=[fdo_json],
+        component_blocks=[],
+    )
 
 
 async def handle_invoke(msg: DOIPMessage, registry: object_registry.ObjectRegistry) -> DOIPMessage:

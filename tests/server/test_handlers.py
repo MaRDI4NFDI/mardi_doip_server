@@ -76,21 +76,21 @@ async def test_retrieve_metadata_for_qid(monkeypatch):
     assert response.component_blocks == []
 
 
-async def test_retrieve_primary_pdf(monkeypatch):
-    async def fake_ensure(): return True
-    async def fake_get_bytes(qid): return b"hello"
+@pytest.mark.asyncio
+async def test_retrieve_fdo_metadata(monkeypatch):
+    async def fake_fetch_fdo(pid):
+        return {"foo": "bar"}
 
-    monkeypatch.setattr(handlers.storage_lakefs, "ensure_lakefs_available", fake_ensure)
-    monkeypatch.setattr(handlers.storage_lakefs, "get_component_bytes", fake_get_bytes)
-
-    registry = StubRegistry({})
+    # Registry returns JSON-LD FDO metadata
+    registry = StubRegistry()
+    registry.fetch_fdo_object = fake_fetch_fdo
 
     request = protocol.DOIPMessage(
         version=protocol.DOIP_VERSION,
         msg_type=protocol.MSG_TYPE_REQUEST,
         operation=protocol.OP_RETRIEVE,
         flags=0,
-        object_id="Q123_FULLTEXT",
+        object_id="Q123",
         metadata_blocks=[]
     )
 
@@ -98,7 +98,47 @@ async def test_retrieve_primary_pdf(monkeypatch):
 
     assert response.msg_type == protocol.MSG_TYPE_RESPONSE
     assert response.operation == protocol.OP_RETRIEVE
+
+    # Metadata present, no binary components
+    assert response.component_blocks == []
+    assert response.metadata_blocks == [{"foo": "bar"}]
+
+
+@pytest.mark.asyncio
+async def test_retrieve_specific_component(monkeypatch):
+    async def fake_ensure(): return True
+    async def fake_get_bytes(qid, comp): return b"hello"
+    async def fake_fetch_fdo(pid):
+        # include component in kernel so handler knows it exists
+        return {
+            "kernel": {
+                "fdo:hasComponent": [
+                    {"componentId": "primary", "mediaType": "application/pdf"}
+                ]
+            }
+        }
+
+    monkeypatch.setattr(handlers.storage_lakefs, "ensure_lakefs_available", fake_ensure)
+    monkeypatch.setattr(handlers.storage_lakefs, "get_component_bytes", fake_get_bytes)
+
+    registry = StubRegistry({})
+    registry.fetch_fdo_object = fake_fetch_fdo
+
+    request = protocol.DOIPMessage(
+        version=protocol.DOIP_VERSION,
+        msg_type=protocol.MSG_TYPE_REQUEST,
+        operation=protocol.OP_RETRIEVE,
+        flags=0,
+        object_id="Q123",
+        metadata_blocks=[{"element": "primary"}],
+    )
+
+    response = await handlers.handle_retrieve(request, registry)
+
+    assert response.msg_type == protocol.MSG_TYPE_RESPONSE
+    assert response.operation == protocol.OP_RETRIEVE
     assert response.metadata_blocks == []
+
     assert len(response.component_blocks) == 1
     comp = response.component_blocks[0]
     assert comp.component_id == "primary"
