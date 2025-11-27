@@ -12,3 +12,6 @@ nav:
   - Client: client.md
   - Client CLI: client_cli.md
   - Docker: docker.md
+  - Configuration: configuration.md
+  - Development: development.md
+  - Project Layout: project_structure.md

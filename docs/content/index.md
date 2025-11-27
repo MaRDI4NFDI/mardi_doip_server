@@ -1,25 +1,29 @@
 # Mardi DOIP Server & Client
 
-Welcome to the documentation for the strict DOIP v2.0 server and client.
+Strict DOIP v2.0 implementation for FAIR Digital Objects (FDOs), backed by lakeFS storage and an FDO façade. This site covers how to run the server, call it from Python or the CLI, configure TLS, and build the Docker image.
 
 ## Why DOIP and FDO?
-- **FAIR Digital Objects (FDOs)** provide a persistent, structured way to describe research outputs. They carry metadata, identifiers, and links to content, enabling interoperability and long-term access.
-- **Digital Object Interface Protocol (DOIP)** defines how to retrieve and operate on FDOs over the network using a consistent binary envelope. DOIP 2.0 specifies headers, block framing, and operation codes so clients and servers can exchange objects reliably.
-- This implementation offers a strict DOIP v2.0 server and client so MARDI services can publish and consume FDO content (bitstreams, derived components, workflows) in a predictable, standards-based way.
+- **FAIR Digital Objects (FDOs)** provide persistent identifiers plus structured metadata and component links, improving interoperability and long-term access.
+- **Digital Object Interface Protocol (DOIP)** standardizes how to fetch and operate on those objects over the network using binary envelopes and operation codes.
+- This project supplies both sides—server and client—so MaRDI services can publish and consume FDO content (bitstreams, derived components, workflow results) consistently.
 
-## What’s here
-- Server listens on TCP (default 3567) and uses strict DOIP framing.
-- Client implements strict DOIP v2.0 over TCP/TLS with hello, list_ops, and retrieve.
+## Capabilities at a glance
+- Binary DOIP listener on TCP (`3567` by default) with automatic TLS when `certs/server.crt` and `certs/server.key` exist.
+- Compatibility JSON-segment listener on `port + 1` (`3568` by default) for doipy-style clients.
+- Operations: `hello`, `retrieve`, `invoke`, plus a `list_ops` helper.
+- lakeFS-backed component retrieval and workflow-driven derived components.
 
-Use the navigation to learn more about server handlers and client usage.
-
-## Quick start example
-Run the server (plaintext for local testing) and call it with the client:
+## Quick start
+1) Start the server (plaintext example):
 ```bash
-# Terminal 1
 PYTHONPATH=. python -m doip_server.main --port 3567
-
-# Terminal 2
-PYTHONPATH=. python -m client_cli.main --host 127.0.0.1 --port 3567 --no-tls --action retrieve --object-id Q6190920 --output .
 ```
-The client will issue `hello` and `retrieve` requests using strict DOIP framing, print the returned metadata and component counts, and save the first component (using the server-provided filename when available).
+2) Retrieve an object with the CLI:
+```bash
+PYTHONPATH=. python -m client_cli.main \
+  --host 127.0.0.1 --port 3567 --no-tls \
+  --action retrieve --object-id Q6190920 --output .
+```
+The CLI issues `hello` then `retrieve`, prints returned metadata, and saves the first component using the server-provided filename when available.
+
+See **Configuration** to point the server at your lakeFS and FDO endpoints, and **Docker** for containerized runs.

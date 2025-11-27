@@ -18,6 +18,7 @@ Options:
 - `--workflow`: Workflow name (invoke action, default `equation_extraction`)
 - `--params`: Workflow parameters as JSON string (invoke action)
 - `--output`: Path or directory to save the first retrieved component (retrieve action)
+  - When saving to a directory, the original filename provided by the server is preserved when present.
 
 ### Actions
 - `demo`: Runs `hello` then `retrieve`.
@@ -25,7 +26,7 @@ Options:
 - `retrieve`: Runs retrieve for the given object (and optional component).
 - `invoke`: Runs a workflow for the given object with optional params.
 
-The CLI prints the resulting metadata and component counts for each action.
+The CLI prints returned metadata, counts components, and optionally writes the first component to disk for quick smoke testing.
 
 ### Example: download a PDF
 ```bash
