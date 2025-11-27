@@ -18,6 +18,18 @@ Expose the default DOIP port (plaintext) and the compatibility listener:
 docker run --rm -p 3567:3567 -p 3568:3568 mardi-doip-server
 ```
 
+Inject configuration by mounting `config.yaml` or providing environment variables. Example with env overrides and certificates:
+```bash
+docker run --rm \
+  -p 3567:3567 -p 3568:3568 \
+  -e FDO_API="https://fdo.example.org/fdo/" \
+  -e LAKEFS_URL="https://lakefs.internal" \
+  -e LAKEFS_USER=admin -e LAKEFS_PASSWORD=secret \
+  -v $(pwd)/certs:/app/certs \
+  -v $(pwd)/config.yaml:/app/config.yaml:ro \
+  mardi-doip-server
+```
+
 ### TLS
 The server auto-enables TLS when both `certs/server.crt` and `certs/server.key` are present.
 

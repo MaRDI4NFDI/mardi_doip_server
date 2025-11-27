@@ -366,11 +366,51 @@
 </li>
                 
                 
+                
+                <li data-slot="sidebar-menu-item" data-sidebar="menu-item" class="group/menu-item relative">
+    <a data-slot="sidebar-menu-button" data-active="false" data-sidebar="menu-button"
+        data-size="default" href="/mardi_doip_server/configuration/"
+        class="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground peer/menu-button flex items-center gap-2 rounded-md p-2 text-left outline-hidden ring-sidebar-ring transition-[width,height,padding] focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-data-[sidebar=menu-action]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 data-[active=true]:bg-accent data-[active=true]:border-accent 3xl:fixed:w-full 3xl:fixed:max-w-48 relative h-[30px] w-fit overflow-visible border border-transparent text-[0.8rem] font-medium after:absolute after:inset-x-0 after:-inset-y-1 after:z-0 after:rounded-md">
+
+        
+        Configuration
+        
+
+        
+
+        
+
+        
+    </a>
+</li>
+                
+                
+                
+                <li data-slot="sidebar-menu-item" data-sidebar="menu-item" class="group/menu-item relative">
+    <a data-slot="sidebar-menu-button" data-active="false" data-sidebar="menu-button"
+        data-size="default" href="/mardi_doip_server/development/"
+        class="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground peer/menu-button flex items-center gap-2 rounded-md p-2 text-left outline-hidden ring-sidebar-ring transition-[width,height,padding] focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-data-[sidebar=menu-action]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 data-[active=true]:bg-accent data-[active=true]:border-accent 3xl:fixed:w-full 3xl:fixed:max-w-48 relative h-[30px] w-fit overflow-visible border border-transparent text-[0.8rem] font-medium after:absolute after:inset-x-0 after:-inset-y-1 after:z-0 after:rounded-md">
+
+        
+        Development
+        
+
+        
+
+        
+
+        
+    </a>
+</li>
+                
+                
             </ul>
         </div>
     </div>
     
 
+    
+    
     
 
 
@@ -464,21 +504,24 @@
   </div>
   <div class="typography w-full flex-1 *:data-[slot=alert]:first:mt-0">
     <h2 id="overview">Overview</h2>
-<p>The server implements strict DOIP v2.0 framing with the following operations:</p>
-<ul>
-<li>Hello (0x01)</li>
-<li>Retrieve (0x02)</li>
-<li>Invoke (0x05)</li>
-</ul>
-<p>It listens on port 3567 by default (3568 for the compatibility JSON listener).</p>
+<p>Asyncio-based TCP server implementing strict DOIP v2.0 framing. Supported operations:
+- Hello (<code>0x01</code>)
+- Retrieve (<code>0x02</code>)
+- Invoke (<code>0x05</code>)
+- List operations helper (<code>list_ops</code>)</p>
+<p>Two listeners start together:
+- Binary DOIP: default <code>3567</code> (set with <code>--port</code>).
+- Compatibility JSON-segment listener: <code>port + 1</code> (default <code>3568</code>) for doipy-style clients.
+If <code>certs/server.crt</code> and <code>certs/server.key</code> exist, both listeners start with TLS; otherwise they stay plaintext.</p>
 <h2 id="entrypoint">Entrypoint</h2>
-<ul>
-<li>Module: <code>doip_server.main</code></li>
-<li>Run: <code>python -m doip_server.main</code></li>
-</ul>
-<p>Example (plaintext):</p>
+<p>Module <code>doip_server.main</code> exposes the CLI and event loop bootstrap.</p>
+<p>Start the server (plaintext):</p>
 <pre><code class="language-bash">PYTHONPATH=. python -m doip_server.main --port 3567
 </code></pre>
+<p>CLI flags:
+- <code>--port</code>: TCP port for the binary listener.
+- <code>--fdo-api</code>: Override the FDO façade base URL for the current run.</p>
+<p>Configuration order of precedence: <code>config.yaml</code> → environment variables (<code>FDO_API</code>, <code>LAKEFS_*</code>, <code>OLLAMA_API_KEY</code>) → CLI flags. See <strong>Configuration</strong> for details.</p>
 <h2 id="handlers">Handlers</h2>
 <ul>
 <li><code>handle_hello</code></li>
@@ -490,13 +533,18 @@
 <li><code>handle_invoke</code></li>
 <li><strong>Motivation</strong>: Trigger server-side workflows that derive new components or metadata from an object.</li>
 <li><strong>Use case</strong>: A client invokes the <code>equation_extraction</code> workflow on <code>Q123</code> to produce a JSON of extracted equations and receive the derived component and workflow result metadata.</li>
+<li><code>handle_list_ops</code></li>
+<li><strong>Motivation</strong>: Advertise supported operations for discovery.</li>
+<li><strong>Use case</strong>: The client calls <code>list_ops</code> to prime its allowed call set.</li>
 </ul>
 <h2 id="protocol">Protocol</h2>
 <ul>
-<li>Header: <code>&gt;BBBBHI</code></li>
+<li>Header: <code>&gt;BBBBHI</code> (version, msg type, operation, flags, object ID length, payload length).</li>
 <li>Blocks: metadata, component, workflow.</li>
 </ul>
 <p>See <code>doip_server/protocol.py</code> for framing details.</p>
+<h2 id="compatibility-listener">Compatibility listener</h2>
+<p>The companion listener on <code>port + 1</code> accepts doipy-style length-prefixed JSON segments, converts them to DOIP requests, and streams back segments. The first segment is a JSON status block followed by optional component payloads.</p>
   </div>
 </article>
                                 <div class="mx-auto flex flex-wrap h-16 w-full max-w-2xl items-center gap-2 px-4 md:px-0">
@@ -575,10 +623,31 @@
                         
                     </a>
                     
+                    <a class="text-2xl font-medium" href="../configuration/">
+                        
+                        Configuration
+                        
+                    </a>
+                    
+                    <a class="text-2xl font-medium" href="../development/">
+                        
+                        Development
+                        
+                    </a>
+                    
                 </div>
             </div>
             
 
+            
+            <div class="flex flex-col gap-8">
+                
+                <div class="flex flex-col gap-4">
+                    <div class="text-muted-foreground text-sm font-medium">Project Layout</div>
+                    
+                </div>
+                
+            </div>
             
             
 
@@ -624,6 +693,14 @@
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
             data-active="false" data-depth="2">
             Protocol
+        </a>
+        
+
+        
+        <a href="#compatibility-listener"
+            class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
+            data-active="false" data-depth="2">
+            Compatibility listener
         </a>
         
 

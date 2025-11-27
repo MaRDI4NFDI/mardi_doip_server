@@ -366,11 +366,51 @@
 </li>
                 
                 
+                
+                <li data-slot="sidebar-menu-item" data-sidebar="menu-item" class="group/menu-item relative">
+    <a data-slot="sidebar-menu-button" data-active="false" data-sidebar="menu-button"
+        data-size="default" href="/mardi_doip_server/configuration/"
+        class="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground peer/menu-button flex items-center gap-2 rounded-md p-2 text-left outline-hidden ring-sidebar-ring transition-[width,height,padding] focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-data-[sidebar=menu-action]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 data-[active=true]:bg-accent data-[active=true]:border-accent 3xl:fixed:w-full 3xl:fixed:max-w-48 relative h-[30px] w-fit overflow-visible border border-transparent text-[0.8rem] font-medium after:absolute after:inset-x-0 after:-inset-y-1 after:z-0 after:rounded-md">
+
+        
+        Configuration
+        
+
+        
+
+        
+
+        
+    </a>
+</li>
+                
+                
+                
+                <li data-slot="sidebar-menu-item" data-sidebar="menu-item" class="group/menu-item relative">
+    <a data-slot="sidebar-menu-button" data-active="false" data-sidebar="menu-button"
+        data-size="default" href="/mardi_doip_server/development/"
+        class="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground peer/menu-button flex items-center gap-2 rounded-md p-2 text-left outline-hidden ring-sidebar-ring transition-[width,height,padding] focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-data-[sidebar=menu-action]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 data-[active=true]:bg-accent data-[active=true]:border-accent 3xl:fixed:w-full 3xl:fixed:max-w-48 relative h-[30px] w-fit overflow-visible border border-transparent text-[0.8rem] font-medium after:absolute after:inset-x-0 after:-inset-y-1 after:z-0 after:rounded-md">
+
+        
+        Development
+        
+
+        
+
+        
+
+        
+    </a>
+</li>
+                
+                
             </ul>
         </div>
     </div>
     
 
+    
+    
     
 
 
@@ -463,32 +503,39 @@
     </div>
   </div>
   <div class="typography w-full flex-1 *:data-[slot=alert]:first:mt-0">
-    <h2 id="overview">Overview</h2>
-<p><code>doip_client</code> implements a strict DOIP v2.0 client that matches the server framing.</p>
-<h3 id="key-operations">Key operations</h3>
+    <p><code>doip_client</code> implements a strict DOIP v2.0 client that mirrors the server framing (binary envelope, metadata/component/workflow blocks) and supports TLS.</p>
+<h2 id="core-operations">Core operations</h2>
 <ul>
-<li><code>hello()</code>: Perform hello/health check.</li>
-<li><code>list_ops()</code>: Fetch available operations.</li>
-<li><code>retrieve(object_id, component=None)</code>: Retrieve metadata and components.</li>
-<li><code>invoke(object_id, workflow, params=None)</code>: Trigger a workflow on the server.</li>
+<li><code>hello()</code>: Health check and capability discovery.</li>
+<li><code>list_ops()</code>: Fetch the <code>availableOperations</code> map.</li>
+<li><code>retrieve(object_id, component=None)</code>: Return metadata blocks or a specific component.</li>
+<li><code>invoke(object_id, workflow, params=None)</code>: Trigger a workflow; receives workflow metadata and derived components.</li>
 </ul>
 <h2 id="usage">Usage</h2>
 <pre><code class="language-python">from doip_client import StrictDOIPClient
 
 client = StrictDOIPClient(host=&quot;127.0.0.1&quot;, port=3567, use_tls=False)
 hello = client.hello()
-retrieve = client.retrieve(&quot;Q123&quot;)
-invoke = client.invoke(&quot;Q123&quot;, workflow=&quot;equation_extraction&quot;, params={})
+ops = client.list_ops()
+metadata = client.retrieve(&quot;Q123&quot;).metadata_blocks
+pdf = client.retrieve(&quot;Q123&quot;, component=&quot;doip:bitstream/Q123/main-pdf&quot;)
+
+# Invoke a workflow with parameters
+result = client.invoke(&quot;Q123&quot;, workflow=&quot;equation_extraction&quot;, params={&quot;pages&quot;: [1, 2, 3]})
 </code></pre>
-<p>Command-line example:</p>
-<pre><code class="language-bash">PYTHONPATH=. python -m client_cli.main --host 127.0.0.1 --port 3567 --no-tls --object-id Q123
+<h3 id="tls-verification">TLS &amp; verification</h3>
+<p>Pass <code>use_tls=True</code> to wrap the socket. If you use self-signed certs during development, combine <code>use_tls=True</code> with <code>verify=False</code> to skip hostname verification.</p>
+<h3 id="timeouts-clean-up">Timeouts &amp; clean up</h3>
+<p>The client uses blocking sockets; wrap calls in your own timeout logic if needed. Always close the client when finished:</p>
+<pre><code class="language-python">client.close()
 </code></pre>
-<h2 id="protocol">Protocol</h2>
+<h2 id="component-handling">Component handling</h2>
 <ul>
-<li>Header: <code>&gt;BBBBHI</code></li>
-<li>Blocks: metadata (0x01), component (0x02), workflow (0x03)</li>
+<li>For metadata-only requests, send no <code>component</code> and inspect <code>response.metadata_blocks</code>.</li>
+<li>For binaries, pass the component ID; the client returns <code>ComponentBlock</code> objects containing <code>component_id</code>, <code>media_type</code>, and <code>content</code> bytes.</li>
 </ul>
-<p>See <code>doip_client/protocol.py</code> for client-side framing helpers.</p>
+<h2 id="compatibility-listener-support">Compatibility listener support</h2>
+<p>The Python client speaks strict DOIP. To talk to the compatibility JSON-segment listener (<code>port + 1</code>), use the <strong>Client CLI</strong> which wraps the same client but performs JSON bridging for you.</p>
   </div>
 </article>
                                 <div class="mx-auto flex flex-wrap h-16 w-full max-w-2xl items-center gap-2 px-4 md:px-0">
@@ -567,10 +614,31 @@ invoke = client.invoke(&quot;Q123&quot;, workflow=&quot;equation_extraction&quot
                         
                     </a>
                     
+                    <a class="text-2xl font-medium" href="../configuration/">
+                        
+                        Configuration
+                        
+                    </a>
+                    
+                    <a class="text-2xl font-medium" href="../development/">
+                        
+                        Development
+                        
+                    </a>
+                    
                 </div>
             </div>
             
 
+            
+            <div class="flex flex-col gap-8">
+                
+                <div class="flex flex-col gap-4">
+                    <div class="text-muted-foreground text-sm font-medium">Project Layout</div>
+                    
+                </div>
+                
+            </div>
             
             
 
@@ -588,19 +656,11 @@ invoke = client.invoke(&quot;Q123&quot;, workflow=&quot;equation_extraction&quot
         
         
         
-        <a href="#overview"
+        <a href="#core-operations"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
             data-active="false" data-depth="2">
-            Overview
+            Core operations
         </a>
-        
-        
-        <a href="#key-operations"
-            class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3">
-            Key operations
-        </a>
-        
         
 
         
@@ -610,12 +670,34 @@ invoke = client.invoke(&quot;Q123&quot;, workflow=&quot;equation_extraction&quot
             Usage
         </a>
         
+        
+        <a href="#tls-verification"
+            class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
+            data-active="false" data-depth="3">
+            TLS &amp; verification
+        </a>
+        
+        <a href="#timeouts-clean-up"
+            class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
+            data-active="false" data-depth="3">
+            Timeouts &amp; clean up
+        </a>
+        
+        
 
         
-        <a href="#protocol"
+        <a href="#component-handling"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
             data-active="false" data-depth="2">
-            Protocol
+            Component handling
+        </a>
+        
+
+        
+        <a href="#compatibility-listener-support"
+            class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
+            data-active="false" data-depth="2">
+            Compatibility listener support
         </a>
         
 

@@ -366,11 +366,51 @@
 </li>
                 
                 
+                
+                <li data-slot="sidebar-menu-item" data-sidebar="menu-item" class="group/menu-item relative">
+    <a data-slot="sidebar-menu-button" data-active="false" data-sidebar="menu-button"
+        data-size="default" href="/mardi_doip_server/configuration/"
+        class="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground peer/menu-button flex items-center gap-2 rounded-md p-2 text-left outline-hidden ring-sidebar-ring transition-[width,height,padding] focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-data-[sidebar=menu-action]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 data-[active=true]:bg-accent data-[active=true]:border-accent 3xl:fixed:w-full 3xl:fixed:max-w-48 relative h-[30px] w-fit overflow-visible border border-transparent text-[0.8rem] font-medium after:absolute after:inset-x-0 after:-inset-y-1 after:z-0 after:rounded-md">
+
+        
+        Configuration
+        
+
+        
+
+        
+
+        
+    </a>
+</li>
+                
+                
+                
+                <li data-slot="sidebar-menu-item" data-sidebar="menu-item" class="group/menu-item relative">
+    <a data-slot="sidebar-menu-button" data-active="false" data-sidebar="menu-button"
+        data-size="default" href="/mardi_doip_server/development/"
+        class="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground peer/menu-button flex items-center gap-2 rounded-md p-2 text-left outline-hidden ring-sidebar-ring transition-[width,height,padding] focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-data-[sidebar=menu-action]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 data-[active=true]:bg-accent data-[active=true]:border-accent 3xl:fixed:w-full 3xl:fixed:max-w-48 relative h-[30px] w-fit overflow-visible border border-transparent text-[0.8rem] font-medium after:absolute after:inset-x-0 after:-inset-y-1 after:z-0 after:rounded-md">
+
+        
+        Development
+        
+
+        
+
+        
+
+        
+    </a>
+</li>
+                
+                
             </ul>
         </div>
     </div>
     
 
+    
+    
     
 
 
@@ -438,28 +478,31 @@
     </div>
   </div>
   <div class="typography w-full flex-1 *:data-[slot=alert]:first:mt-0">
-    <p>Welcome to the documentation for the strict DOIP v2.0 server and client.</p>
+    <p>Strict DOIP v2.0 implementation for FAIR Digital Objects (FDOs), backed by lakeFS storage and an FDO façade. This site covers how to run the server, call it from Python or the CLI, configure TLS, and build the Docker image.</p>
 <h2 id="why-doip-and-fdo">Why DOIP and FDO?</h2>
 <ul>
-<li><strong>FAIR Digital Objects (FDOs)</strong> provide a persistent, structured way to describe research outputs. They carry metadata, identifiers, and links to content, enabling interoperability and long-term access.</li>
-<li><strong>Digital Object Interface Protocol (DOIP)</strong> defines how to retrieve and operate on FDOs over the network using a consistent binary envelope. DOIP 2.0 specifies headers, block framing, and operation codes so clients and servers can exchange objects reliably.</li>
-<li>This implementation offers a strict DOIP v2.0 server and client so MARDI services can publish and consume FDO content (bitstreams, derived components, workflows) in a predictable, standards-based way.</li>
+<li><strong>FAIR Digital Objects (FDOs)</strong> provide persistent identifiers plus structured metadata and component links, improving interoperability and long-term access.</li>
+<li><strong>Digital Object Interface Protocol (DOIP)</strong> standardizes how to fetch and operate on those objects over the network using binary envelopes and operation codes.</li>
+<li>This project supplies both sides—server and client—so MaRDI services can publish and consume FDO content (bitstreams, derived components, workflow results) consistently.</li>
 </ul>
-<h2 id="whats-here">What’s here</h2>
+<h2 id="capabilities-at-a-glance">Capabilities at a glance</h2>
 <ul>
-<li>Server listens on TCP (default 3567) and uses strict DOIP framing.</li>
-<li>Client implements strict DOIP v2.0 over TCP/TLS with hello, list_ops, and retrieve.</li>
+<li>Binary DOIP listener on TCP (<code>3567</code> by default) with automatic TLS when <code>certs/server.crt</code> and <code>certs/server.key</code> exist.</li>
+<li>Compatibility JSON-segment listener on <code>port + 1</code> (<code>3568</code> by default) for doipy-style clients.</li>
+<li>Operations: <code>hello</code>, <code>retrieve</code>, <code>invoke</code>, plus a <code>list_ops</code> helper.</li>
+<li>lakeFS-backed component retrieval and workflow-driven derived components.</li>
 </ul>
-<p>Use the navigation to learn more about server handlers and client usage.</p>
-<h2 id="quick-start-example">Quick start example</h2>
-<p>Run the server (plaintext for local testing) and call it with the client:</p>
-<pre><code class="language-bash"># Terminal 1
-PYTHONPATH=. python -m doip_server.main --port 3567
-
-# Terminal 2
-PYTHONPATH=. python -m client_cli.main --host 127.0.0.1 --port 3567 --no-tls --action retrieve --object-id Q6190920 --output .
+<h2 id="quick-start">Quick start</h2>
+<p>1) Start the server (plaintext example):</p>
+<pre><code class="language-bash">PYTHONPATH=. python -m doip_server.main --port 3567
 </code></pre>
-<p>The client will issue <code>hello</code> and <code>retrieve</code> requests using strict DOIP framing, print the returned metadata and component counts, and save the first component (using the server-provided filename when available).</p>
+<p>2) Retrieve an object with the CLI:</p>
+<pre><code class="language-bash">PYTHONPATH=. python -m client_cli.main \
+  --host 127.0.0.1 --port 3567 --no-tls \
+  --action retrieve --object-id Q6190920 --output .
+</code></pre>
+<p>The CLI issues <code>hello</code> then <code>retrieve</code>, prints returned metadata, and saves the first component using the server-provided filename when available.</p>
+<p>See <strong>Configuration</strong> to point the server at your lakeFS and FDO endpoints, and <strong>Docker</strong> for containerized runs.</p>
   </div>
 </article>
                                 <div class="mx-auto flex flex-wrap h-16 w-full max-w-2xl items-center gap-2 px-4 md:px-0">
@@ -525,10 +568,31 @@ PYTHONPATH=. python -m client_cli.main --host 127.0.0.1 --port 3567 --no-tls --a
                         
                     </a>
                     
+                    <a class="text-2xl font-medium" href="configuration/">
+                        
+                        Configuration
+                        
+                    </a>
+                    
+                    <a class="text-2xl font-medium" href="development/">
+                        
+                        Development
+                        
+                    </a>
+                    
                 </div>
             </div>
             
 
+            
+            <div class="flex flex-col gap-8">
+                
+                <div class="flex flex-col gap-4">
+                    <div class="text-muted-foreground text-sm font-medium">Project Layout</div>
+                    
+                </div>
+                
+            </div>
             
             
 
@@ -554,18 +618,18 @@ PYTHONPATH=. python -m client_cli.main --host 127.0.0.1 --port 3567 --no-tls --a
         
 
         
-        <a href="#whats-here"
+        <a href="#capabilities-at-a-glance"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
             data-active="false" data-depth="2">
-            What’s here
+            Capabilities at a glance
         </a>
         
 
         
-        <a href="#quick-start-example"
+        <a href="#quick-start"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
             data-active="false" data-depth="2">
-            Quick start example
+            Quick start
         </a>
         
 
