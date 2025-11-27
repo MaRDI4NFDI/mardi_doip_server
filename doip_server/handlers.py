@@ -60,7 +60,15 @@ async def handle_retrieve(msg: DOIPMessage, registry: object_registry.ObjectRegi
     elem   = meta.get("element")  # componentId or None
 
     if elem:
-        content, media, size = await registry.get_component(pid, elem)
+        try:
+            content = await registry.get_component(pid, elem)
+            size = len(content)
+        except Exception as exc:
+            raise KeyError(f"Component id not found: {elem}") from exc
+
+        # TODO: resolve from registry instead of hardcoding
+        media_type = "application/pdf"
+
         return DOIPMessage(
             version=protocol.DOIP_VERSION,
             msg_type=protocol.MSG_TYPE_RESPONSE,
@@ -71,7 +79,7 @@ async def handle_retrieve(msg: DOIPMessage, registry: object_registry.ObjectRegi
             component_blocks=[
                 ComponentBlock(
                     component_id=elem,
-                    media_type=media,
+                    media_type=media_type,
                     content=content,
                     declared_size=size,
                 )

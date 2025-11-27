@@ -138,7 +138,10 @@ async def get_component_bytes(object_id: str, component_id: str) -> bytes:
 
     log.debug( "Try to retrieve object from lakeFS with key: %s", key )
 
-    response = await asyncio.to_thread(_client().get_object, Bucket=_repo(), Key=key)
+    try:
+        response = await asyncio.to_thread(_client().get_object, Bucket=_repo(), Key=key)
+    except Exception as exc:
+        raise KeyError(f"S3 object not found: {key}") from exc
 
     return response["Body"].read()
 

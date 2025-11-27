@@ -32,7 +32,7 @@ class ObjectRegistry:
 
     async def get_component(
             self, object_id: str, component_id: str
-    ) -> tuple[bytes, str, int]:
+    ) -> bytes:
         """
         Load binary component content from storage backend.
 
@@ -42,15 +42,16 @@ class ObjectRegistry:
         if not await storage_lakefs.ensure_lakefs_available():
             raise RuntimeError("storage unavailable")
 
-        content = await storage_lakefs.get_component_bytes(
-            object_id, component_id
-        )
+        try:
+            content = await storage_lakefs.get_component_bytes(
+                object_id, component_id
+            )
+        except KeyError as exc:
+            raise KeyError(f"component-not-found:{component_id}")
+        except Exception as exc:
+            raise RuntimeError("storage-backend error")
 
-        # TODO: guess from extension
-        media_type = "application/pdf"
-
-        size = len(content)
-        return content, media_type, size
+        return content
 
 
     async def get_manifest(self, qid: str) -> Dict:

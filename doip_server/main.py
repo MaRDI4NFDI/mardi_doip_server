@@ -127,7 +127,7 @@ async def handle_connection(registry: object_registry.ObjectRegistry, reader: as
             try:
                 response = await dispatch(msg, registry)
             except protocol.ProtocolError as exc:
-                log.warning("Operation error for %s: %s", peer, exc)
+                log.error("Operation error for %s: %s", peer, exc)
                 response = _error_message(msg, exc)
             except Exception as exc:  # noqa: BLE001
                 log.exception("Unhandled error for %s", peer)
@@ -169,15 +169,20 @@ async def dispatch(msg: protocol.DOIPMessage, registry: object_registry.ObjectRe
     """
     if msg.msg_type != protocol.MSG_TYPE_REQUEST:
         raise protocol.ProtocolError("Only request messages are supported")
-    op_name = _metadata_operation_name(msg)
-    if msg.operation == protocol.OP_HELLO or op_name == "hello":
-        return await handlers.handle_hello(msg, registry)
-    if msg.operation == protocol.OP_RETRIEVE or op_name == "retrieve":
-        return await handlers.handle_retrieve(msg, registry)
-    if msg.operation == protocol.OP_INVOKE or op_name == "invoke":
-        return await handlers.handle_invoke(msg, registry)
-    if msg.operation == protocol.OP_LIST_OPS or op_name in ("list_ops", "list_operations"):
-        return await handlers.handle_list_ops(msg, registry)
+
+    try:
+        op_name = _metadata_operation_name(msg)
+        if msg.operation == protocol.OP_HELLO or op_name == "hello":
+            return await handlers.handle_hello(msg, registry)
+        if msg.operation == protocol.OP_RETRIEVE or op_name == "retrieve":
+            return await handlers.handle_retrieve(msg, registry)
+        if msg.operation == protocol.OP_INVOKE or op_name == "invoke":
+            return await handlers.handle_invoke(msg, registry)
+        if msg.operation == protocol.OP_LIST_OPS or op_name in ("list_ops", "list_operations"):
+            return await handlers.handle_list_ops(msg, registry)
+    except Exception as exc:
+        raise protocol.ProtocolError(f"A problem occured in dispatch() for action {op_name}: {exc}")
+
     raise protocol.ProtocolError(f"Unsupported operation code {msg.operation}")
 
 
