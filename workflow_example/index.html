@@ -36,11 +36,11 @@
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Workflows - Mardi DOIP Server Docs</title>
+    <title>Workflow example - Mardi DOIP Server Docs</title>
     
 
 
-<title>Workflows</title>
+<title>Workflow example</title>
 
 
 
@@ -50,18 +50,18 @@
 
 
 
-<link rel="canonical" href="https://mardi4nfdi.github.io/mardi_doip_server/workflows/">
+<link rel="canonical" href="https://mardi4nfdi.github.io/mardi_doip_server/workflow_example/">
 
 
 <!-- Open Graph (Facebook, LinkedIn) -->
 
-<meta property="og:title" content="Workflows">
+<meta property="og:title" content="Workflow example">
 
 
 
 
 
-<meta property="og:url" content="https://mardi4nfdi.github.io/mardi_doip_server/workflows/">
+<meta property="og:url" content="https://mardi4nfdi.github.io/mardi_doip_server/workflow_example/">
 
 
 
@@ -70,7 +70,7 @@
 
 <!-- Twitter Card -->
 
-<meta name="twitter:title" content="Workflows">
+<meta name="twitter:title" content="Workflow example">
 
 
 
@@ -425,7 +425,7 @@
                 
                 
                 <li data-slot="sidebar-menu-item" data-sidebar="menu-item" class="group/menu-item relative">
-    <a data-slot="sidebar-menu-button" data-active="true" data-sidebar="menu-button"
+    <a data-slot="sidebar-menu-button" data-active="false" data-sidebar="menu-button"
         data-size="default" href="/mardi_doip_server/workflows/"
         class="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground peer/menu-button flex items-center gap-2 rounded-md p-2 text-left outline-hidden ring-sidebar-ring transition-[width,height,padding] focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-data-[sidebar=menu-action]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 data-[active=true]:bg-accent data-[active=true]:border-accent 3xl:fixed:w-full 3xl:fixed:max-w-48 relative h-[30px] w-fit overflow-visible border border-transparent text-[0.8rem] font-medium after:absolute after:inset-x-0 after:-inset-y-1 after:z-0 after:rounded-md">
 
@@ -465,12 +465,12 @@
         <h1
           class="scroll-m-20 text-4xl font-semibold tracking-tight sm:text-3xl xl:text-4xl"
         >
-          Workflows
+          Workflow example
         </h1>
 
         <div class="flex items-center gap-2 pt-1.5">
           
-<button onclick="fetch(`https://mardi4nfdi.github.io/mardi_doip_server/workflows.md`).then((r) => r.blob()).then((blob) => navigator.clipboard.write([new ClipboardItem({ 'text/plain': blob })]))" 
+<button onclick="fetch(`https://mardi4nfdi.github.io/mardi_doip_server/workflow_example.md`).then((r) => r.blob()).then((blob) => navigator.clipboard.write([new ClipboardItem({ 'text/plain': blob })]))" 
         data-slot="button" 
         class="cursor-pointer inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md gap-1.5 px-3 has-[&>svg]:px-2.5 h-8 shadow-none md:h-7 md:text-[0.8rem]">
 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="tabler-icon tabler-icon-copy ">
@@ -478,31 +478,6 @@
 </svg>
 <span class="max-md:hidden">Copy Page</span>
 </button> 
-          
-          <a
-            data-slot="button"
-            id="previous-button"
-            class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&amp;_svg]:pointer-events-none [&amp;_svg:not([class*='size-'])]:size-4 shrink-0 [&amp;_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive bg-secondary text-secondary-foreground hover:bg-secondary/80 extend-touch-target size-8 shadow-none md:size-7"
-            href="/mardi_doip_server/project_structure/"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              class="tabler-icon tabler-icon-arrow-left"
-            >
-              <path d="M5 12l14 0"></path>
-              <path d="M5 12l6 6"></path>
-              <path d="M5 12l6 -6"></path>
-            </svg>
-            <span class="sr-only">Previous</span>
-          </a>
            
           
         </div>
@@ -514,138 +489,145 @@
     </div>
   </div>
   <div class="typography w-full flex-1 *:data-[slot=alert]:first:mt-0">
-    <h2 id="reproducible-workflows-with-snakemake-fdo-conda-based">Reproducible Workflows with Snakemake &amp; FDO (Conda-Based)</h2>
-<p>This document outlines the two main processes—<strong>Creation</strong> and <strong>Execution</strong>—for using Snakemake workflows as Fair Digital Objects (FDOs) managed by a DoIP server. This strategy relies on the <strong>Conda</strong> environment management system to ensure reproducibility across <strong>Windows</strong>, <strong>Linux</strong>, and <strong>macOS</strong> environments without needing Docker or operating system compatibility layers.</p>
-<hr />
-<h2 id="1-target-system-preparation-user-role">1. Target System Preparation (User Role)</h2>
-<p>The User must prepare their local operating system (Windows, Linux, or macOS) by installing the core components necessary to run the Conda-based Snakemake workflow. This setup is required once per machine.</p>
-<h3 id="step-1-prepare-the-windows-environment">Step 1: Prepare the Windows Environment</h3>
-<p>The User needs four essential pieces of software installed:</p>
-<ol>
-<li><strong>Conda/Mamba:</strong> Install <strong>Anaconda</strong> or <strong>Miniconda</strong> (preferred for a smaller footprint).</li>
-<li><strong>Python:</strong> Ensure Python is installed (usually comes with Conda).</li>
-<li><strong>Snakemake:</strong> Install the Snakemake engine:
-    <code>bash
-    conda install -c conda-forge snakemake</code></li>
-<li><strong>FDO Client:</strong> Install your custom command-line client for resolving PIDs and running the workflow.</li>
-</ol>
-<h3 id="step-2-prepare-the-linux-environment">Step 2: Prepare the Linux Environment</h3>
-<p>The User needs four essential pieces of software installed:</p>
-<ol>
-<li><strong>Conda/Mamba:</strong> Install <strong>Anaconda</strong> or <strong>Miniconda</strong> (preferred for a smaller footprint).</li>
-<li><strong>Python:</strong> Ensure Python is installed (usually comes with Conda).</li>
-<li><strong>Snakemake:</strong> Install the Snakemake engine:
-    <code>bash
-    conda install -c conda-forge snakemake</code></li>
-<li><strong>FDO Client:</strong> Install your custom command-line client for resolving PIDs and running the workflow.</li>
-</ol>
-<h3 id="step-3-prepare-the-macos-environment">Step 3: Prepare the macOS Environment</h3>
-<p>The User needs four essential pieces of software installed:</p>
-<ol>
-<li><strong>Conda/Mamba:</strong> Install <strong>Anaconda</strong> or <strong>Miniconda</strong> (preferred for a smaller footprint).</li>
-<li><strong>Python:</strong> Ensure Python is installed (usually comes with Conda).</li>
-<li><strong>Snakemake:</strong> Install the Snakemake engine:
-    <code>bash
-    conda install -c conda-forge snakemake</code></li>
-<li><strong>FDO Client:</strong> Install your custom command-line client for resolving PIDs and running the workflow.</li>
-</ol>
-<hr />
-<h2 id="2-workflow-creation-and-fdo-registration-creator-role">2. Workflow Creation and FDO Registration (Creator Role)</h2>
-<p>The Creator develops a workflow designed for maximum portability and registers the complete package as a persistent FDO artifact. </p>
-<h3 id="21-develop-the-snakemake-pipeline">2.1. Develop the Snakemake Pipeline</h3>
-<p>The workflow must explicitly use the Snakemake <strong>Conda integration</strong> to ensure cross-platform reproducibility.</p>
-<ol>
-<li>
-<p><strong>Write the Snakefile:</strong> Define the logic, rules, inputs, and outputs of your pipeline.</p>
-</li>
-<li>
-<p><strong>Define Isolated Environments:</strong> For every external tool or dependency, create a dedicated <strong><code>environment.yaml</code></strong> file. These files are crucial as they precisely list the version-locked dependencies (e.g., <code>fastqc=0.11.9</code>, <code>python=3.9</code>).</p>
-</li>
-<li>
-<p><strong>Link Environments in the Snakefile:</strong> Ensure every rule points directly to its environment file using the <code>conda:</code> directive.</p>
-<blockquote>
-<p>Example Snakefile Snippet:
-<code>python
-rule fastqc_report:
+    <p>This reproducible workflow requires three main files to be included in your FDO (RO-Crate): the data input, the Conda environment definition, the Octave script, and the Snakemake pipeline itself.</p>
+<h2 id="1-the-input-data-datamatrixcsv">1. The Input Data (data/matrix.csv)</h2>
+<pre><code>1.0, 0.5, 0.2
+0.5, 2.0, 0.3
+0.2, 0.3, 3.0
+</code></pre>
+<h2 id="2-conda-environment-envsoctave_analysisyaml">2. Conda Environment (envs/octave_analysis.yaml)</h2>
+<pre><code>channels:
+  - conda-forge
+dependencies:
+  - octave=6.4.0
+  - python=3.9
+  - pandas=1.3
+  - matplotlib=3.4
+</code></pre>
+<h2 id="3-octave-script-scriptseigen_analysism">3. Octave Script (scripts/eigen_analysis.m)</h2>
+<pre><code>% scripts/eigen_analysis.m
+
+input_file = argv(){1};
+output_file = argv(){2};
+
+M = csvread(input_file);
+
+[V, D] = eig(M);
+
+eigenvalues = diag(D);
+
+csvwrite(output_file, eigenvalues);
+
+disp(&quot;Octave analysis complete. Eigenvalues saved.&quot;);
+</code></pre>
+<h2 id="4-snakemake-pipeline-snakefile">4. Snakemake Pipeline (Snakefile)</h2>
+<pre><code>configfile: &quot;config.yaml&quot;
+
+rule all:
     input:
-        "data/{sample}.fastq"
+        &quot;results/eigenvalues_plot.png&quot;
+
+rule compute_eigenvalues:
+    input:
+        &quot;data/matrix.csv&quot;
     output:
-        "results/{sample}_fastqc.html"
+        &quot;results/eigenvalues.csv&quot;
+    params:
+        octave_script = &quot;scripts/eigen_analysis.m&quot;
     conda:
-        "envs/fastqc.yaml" # Links to the environment definition
+        &quot;envs/octave_analysis.yaml&quot;
     shell:
-        "fastqc {input} -o {output}"</code></p>
-</blockquote>
-</li>
-<li>
-<p><strong>Test for Portability:</strong> Test the workflow on various operating systems (Windows, Linux, macOS) using the <code>--use-conda</code> flag to confirm that the environment files successfully build and the workflow executes identically across platforms.</p>
-</li>
-</ol>
-<h3 id="22-package-and-register-the-fdo">2.2. Package and Register the FDO</h3>
-<p>The validated workflow files are packaged as a Research Object Crate (RO-Crate) and registered to the DoIP/FDO system.</p>
+        &quot;octave --no-gui --silent {params.octave_script} {input} {output}&quot;
+
+rule plot_eigenvalues:
+    input:
+        &quot;results/eigenvalues.csv&quot;
+    output:
+        &quot;results/eigenvalues_plot.png&quot;
+    params:
+        plot_script = &quot;scripts/plot_eigenvalues.py&quot;
+    conda:
+        &quot;envs/octave_analysis.yaml&quot;
+    script:
+        '''
+        import pandas as pd
+        import matplotlib.pyplot as plt
+        import numpy as np
+
+        eigenvalues = pd.read_csv(
+            snakemake.input[0], 
+            header=None
+        ).values
+
+        eigenvalues = np.sort(eigenvalues)
+
+        plt.figure(figsize=(8, 6))
+        plt.bar(
+            range(1, len(eigenvalues) + 1), 
+            eigenvalues
+        )
+
+        plt.xlabel('Eigenvalue Index')
+        plt.ylabel('Eigenvalue Magnitude')
+        plt.title('Eigenvalues of the 3x3 Matrix')
+        plt.xticks(range(1, 4))
+        plt.grid(axis='y')
+
+        plt.savefig(snakemake.output[0])
+        print(snakemake.output[0])
+        '''
+</code></pre>
+<h2 id="summary-of-execution-pid-to-plot">Summary of Execution (PID to Plot)</h2>
+<p>This summary details the entire automated process, from the user providing the <strong>Persistent Identifier (PID)</strong> to the final plot generation, ensuring the role of the DoIP/FDO system is clearly represented.</p>
 <ol>
-<li><strong>Bundle Artifacts (RO-Crate):</strong> Package the <code>Snakefile</code>, all <code>environment.yaml</code> files, configuration files, and a <code>README</code> into a single RO-Crate archive (e.g., a ZIP or TAR archive).</li>
-<li><strong>Calculate Checksum:</strong> Generate a cryptographic hash (e.g., SHA-256) of the final RO-Crate archive.</li>
-<li><strong>Store and Mint PID:</strong><ul>
-<li>Upload the RO-Crate to the durable storage system.</li>
-<li>The automated registration service calls the <strong>DoIP server</strong> to mint a new <strong>PID</strong>. The PID's resolution data must store the storage URL and the <strong>Checksum</strong>.</li>
-</ul>
-</li>
-<li><strong>Register FDO:</strong> Submit the complete FDO metadata (PID, creator, description, input parameters, <strong>checksum</strong>, and dependency list) to the <strong>FDO Registry</strong>.</li>
-</ol>
-<hr />
-<h2 id="3-workflow-execution-user-role">3. Workflow Execution (User Role)</h2>
-<p>The User executes the verified, reproducible workflow on their local machine using the PID and local Conda installation. </p>
-<h3 id="31-execute-the-fdo-client">3.1. Execute the FDO Client</h3>
-<p>The FDO client automates the download, verification, and Snakemake execution steps.</p>
-<ol>
 <li>
-<p><strong>Initiate Run:</strong> The User executes the workflow using its PID and specifies the local input data directory.</p>
-<blockquote>
-<p>Example Command (Windows):
-<code>bash
-fdo-run-client 20.500.12345/workflow_A01 --input "C:\User\Data\RawSequences" --cores 4</code></p>
-</blockquote>
-</li>
-<li>
-<p><strong>Client Verification Logic:</strong></p>
-<p>The client handles the critical, verifiable steps programmatically:
-* <strong>Resolve PID:</strong> Queries the DoIP server to retrieve the Storage URL and the original Checksum.
-* <strong>Download &amp; Extract:</strong> Downloads the RO-Crate and extracts it to a temporary working directory.
-* <strong>Verify Integrity:</strong> Calculates the checksum of the downloaded file. <strong>Execution stops if this value does not match the PID's original checksum.</strong>
-* <strong>Prepare:</strong> Maps the user's input directory into the Snakemake configuration.</p>
-</li>
-<li>
-<p><strong>Snakemake Execution:</strong> The client initiates the Snakemake run command:</p>
-<p><code>bash
-snakemake -s /path/to/Snakefile --cores 4 --use-conda --config input_path="/path/to/input/data"</code></p>
-</li>
-</ol>
-<h3 id="32-guaranteed-reproducibility-across-os">3.2. Guaranteed Reproducibility Across OS</h3>
-<p>Because the <code>--use-conda</code> flag is employed:</p>
+<p><strong>PID Resolution &amp; Retrieval:</strong></p>
 <ul>
-<li><strong>Snakemake</strong> reads the <code>environment.yaml</code> files within the downloaded RO-Crate.</li>
-<li><strong>Conda</strong> automatically creates temporary, isolated software environments with the exact, version-locked dependencies compiled for the <strong>User's specific OS</strong> (Windows, Linux, or macOS).</li>
-<li>The workflow runs identically across all supported platforms, achieving high-fidelity reproducibility without external virtualization layers.</li>
+<li>The user initiates the run via the <strong>FDO Client</strong> using the workflow's PID.</li>
+<li>The <strong>FDO Client</strong> queries the <strong>DoIP server</strong> to resolve the PID, retrieving the RO-Crate's storage URL and its original <strong>Checksum</strong>.</li>
+<li>The Client downloads the RO-Crate archive (containing the <code>Snakefile</code>, <code>envs/</code>, <code>scripts/</code>, etc.) and extracts the contents to a temporary local directory.</li>
 </ul>
-<h2 id="example">Example</h2>
-<p>See <a href="../workflow_example/">this example</a></p>
+</li>
+<li>
+<p><strong>Integrity Verification:</strong></p>
+<ul>
+<li>The Client calculates a new checksum of the downloaded RO-Crate and compares it to the value retrieved from the DoIP server.</li>
+<li><strong>Execution proceeds only if the checksums match</strong>, guaranteeing the integrity and reproducibility of the workflow artifact.</li>
+</ul>
+</li>
+<li>
+<p><strong>Snakemake Orchestration:</strong></p>
+<ul>
+<li>The Client calls the local <code>snakemake --use-conda</code> command within the temporary directory.</li>
+</ul>
+</li>
+<li>
+<p><strong>Rule 1: <code>compute_eigenvalues</code> (Octave):</strong></p>
+<ul>
+<li><strong>Conda</strong> creates the isolated environment containing the specified version of <strong>Octave</strong>.</li>
+<li>The rule executes the Octave script (<code>scripts/eigen_analysis.m</code>).</li>
+<li>Octave reads the input matrix and saves the computed eigenvalues to the intermediate file, <code>results/eigenvalues.csv</code>.</li>
+</ul>
+</li>
+<li>
+<p><strong>Rule 2: <code>plot_eigenvalues</code> (Python/Matplotlib):</strong></p>
+<ul>
+<li>Snakemake uses the <strong>same Conda environment</strong> (which contains Python, Pandas, and Matplotlib).</li>
+<li>The Python script reads the <code>results/eigenvalues.csv</code> file.</li>
+<li>It generates the bar plot visualization and saves the final result as <code>results/eigenvalues_plot.png</code>. </li>
+</ul>
+</li>
+<li>
+<p><strong>Cleanup and Output:</strong></p>
+<ul>
+<li>The workflow finishes, and the <strong>FDO Client</strong> presents the final output file(s) to the user.</li>
+<li>The Client performs cleanup, removing the temporary directory and the created Conda environments.</li>
+</ul>
+</li>
+</ol>
   </div>
 </article>
                                 <div class="mx-auto flex flex-wrap h-16 w-full max-w-2xl items-center gap-2 px-4 md:px-0">
-    
-    <a data-slot="button"
-        class="inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&amp;_svg]:pointer-events-none [&amp;_svg:not([class*='size-'])]:size-4 shrink-0 [&amp;_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive bg-secondary text-secondary-foreground hover:bg-secondary/80 h-8 rounded-md gap-1.5 px-3 has-[&gt;svg]:px-2.5 shadow-none"
-        href="/mardi_doip_server/project_structure/">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-            class="tabler-icon tabler-icon-arrow-left ">
-            <path d="M5 12l14 0"></path>
-            <path d="M5 12l6 6"></path>
-            <path d="M5 12l6 -6"></path>
-        </svg>
-        <span class="max-[500px]:hidden">Project Layout</span>
-    </a>
     
     
 </div>
@@ -713,7 +695,7 @@ snakemake -s /path/to/Snakefile --cores 4 --use-conda --config input_path="/path
                         
                     </a>
                     
-                    <a class="text-2xl font-medium" href="./">
+                    <a class="text-2xl font-medium" href="../workflows/">
                         
                         Workflows
                         
@@ -740,90 +722,42 @@ snakemake -s /path/to/Snakefile --cores 4 --use-conda --config input_path="/path
         
         
         
-        <a href="#reproducible-workflows-with-snakemake-fdo-conda-based"
+        <a href="#1-the-input-data-datamatrixcsv"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
             data-active="false" data-depth="2">
-            Reproducible Workflows with Snakemake &amp; FDO (Conda-Based)
+            1. The Input Data (data/matrix.csv)
         </a>
         
 
         
-        <a href="#1-target-system-preparation-user-role"
+        <a href="#2-conda-environment-envsoctave_analysisyaml"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
             data-active="false" data-depth="2">
-            1. Target System Preparation (User Role)
+            2. Conda Environment (envs/octave_analysis.yaml)
         </a>
-        
-        
-        <a href="#step-1-prepare-the-windows-environment"
-            class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3">
-            Step 1: Prepare the Windows Environment
-        </a>
-        
-        <a href="#step-2-prepare-the-linux-environment"
-            class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3">
-            Step 2: Prepare the Linux Environment
-        </a>
-        
-        <a href="#step-3-prepare-the-macos-environment"
-            class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3">
-            Step 3: Prepare the macOS Environment
-        </a>
-        
         
 
         
-        <a href="#2-workflow-creation-and-fdo-registration-creator-role"
+        <a href="#3-octave-script-scriptseigen_analysism"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
             data-active="false" data-depth="2">
-            2. Workflow Creation and FDO Registration (Creator Role)
+            3. Octave Script (scripts/eigen_analysis.m)
         </a>
-        
-        
-        <a href="#21-develop-the-snakemake-pipeline"
-            class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3">
-            2.1. Develop the Snakemake Pipeline
-        </a>
-        
-        <a href="#22-package-and-register-the-fdo"
-            class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3">
-            2.2. Package and Register the FDO
-        </a>
-        
         
 
         
-        <a href="#3-workflow-execution-user-role"
+        <a href="#4-snakemake-pipeline-snakefile"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
             data-active="false" data-depth="2">
-            3. Workflow Execution (User Role)
+            4. Snakemake Pipeline (Snakefile)
         </a>
-        
-        
-        <a href="#31-execute-the-fdo-client"
-            class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3">
-            3.1. Execute the FDO Client
-        </a>
-        
-        <a href="#32-guaranteed-reproducibility-across-os"
-            class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3">
-            3.2. Guaranteed Reproducibility Across OS
-        </a>
-        
         
 
         
-        <a href="#example"
+        <a href="#summary-of-execution-pid-to-plot"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
             data-active="false" data-depth="2">
-            Example
+            Summary of Execution (PID to Plot)
         </a>
         
 

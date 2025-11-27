@@ -124,3 +124,6 @@ Because the `--use-conda` flag is employed:
 * **Snakemake** reads the `environment.yaml` files within the downloaded RO-Crate.
 * **Conda** automatically creates temporary, isolated software environments with the exact, version-locked dependencies compiled for the **User's specific OS** (Windows, Linux, or macOS).
 * The workflow runs identically across all supported platforms, achieving high-fidelity reproducibility without external virtualization layers.
+
+## Example
+See [this example](workflow_example.md)
