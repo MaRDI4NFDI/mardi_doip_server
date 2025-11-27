@@ -147,6 +147,48 @@ async def test_retrieve_specific_component(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_retrieve_component_defaults_when_manifest_missing(monkeypatch):
+    """Component retrieval falls back to octet-stream when media type unknown."""
+
+    async def fake_ensure():
+        return True
+
+    async def fake_get_bytes(qid, comp):
+        return b"content"
+
+    async def fake_fetch_fdo(pid):
+        # Manifest lacks component listing
+        return {"kernel": {}}
+
+    monkeypatch.setattr(handlers.storage_lakefs, "ensure_lakefs_available", fake_ensure)
+    monkeypatch.setattr(handlers.storage_lakefs, "get_component_bytes", fake_get_bytes)
+
+    registry = StubRegistry({})
+    registry.fetch_fdo_object = fake_fetch_fdo
+
+    request = protocol.DOIPMessage(
+        version=protocol.DOIP_VERSION,
+        msg_type=protocol.MSG_TYPE_REQUEST,
+        operation=protocol.OP_RETRIEVE,
+        flags=0,
+        object_id="Q123",
+        metadata_blocks=[{"element": "primary"}],
+    )
+
+    response = await handlers.handle_retrieve(request, registry)
+
+    assert response.msg_type == protocol.MSG_TYPE_RESPONSE
+    assert response.operation == protocol.OP_RETRIEVE
+    assert response.metadata_blocks == []
+
+    assert len(response.component_blocks) == 1
+    comp = response.component_blocks[0]
+    assert comp.component_id == "primary"
+    assert comp.media_type == "application/octet-stream"
+    assert comp.content == b"content"
+
+
+@pytest.mark.asyncio
 async def test_handle_invoke_returns_workflow_results(monkeypatch):
     """Ensure invoke handler returns workflow metadata and derived components.
 

@@ -87,8 +87,7 @@ async def handle_retrieve(msg: DOIPMessage, registry: object_registry.ObjectRegi
         except Exception as exc:
             raise KeyError(f"Component id not found: {elem}") from exc
 
-        # TODO: resolve from registry instead of hardcoding
-        media_type = "application/pdf"
+        media_type = await _get_component_media_type(registry, pid, elem)
 
         return DOIPMessage(
             version=protocol.DOIP_VERSION,
@@ -216,3 +215,35 @@ def _requested_workflow(msg: DOIPMessage):
         if "workflow" in wf:
             return wf["workflow"], wf.get("params", {})
     raise protocol.ProtocolError("Workflow not specified in invoke request")
+
+
+async def _get_component_media_type(registry: object_registry.ObjectRegistry, pid: str, component_id: str) -> str:
+    """Resolve a component's media type from its manifest when possible.
+
+    Args:
+        registry: Object registry used to fetch manifests.
+        pid: PID/QID of the target object.
+        component_id: Component identifier to inspect.
+
+    Returns:
+        str: Resolved media type or ``application/octet-stream`` fallback.
+    """
+    try:
+        manifest = await registry.fetch_fdo_object(pid)
+    except Exception:
+        return "application/octet-stream"
+
+    kernel = manifest.get("kernel") if isinstance(manifest, dict) else None
+    components = kernel.get("fdo:hasComponent") if isinstance(kernel, dict) else None
+    if not isinstance(components, list):
+        return "application/octet-stream"
+
+    for comp in components:
+        if not isinstance(comp, dict):
+            continue
+        if comp.get("componentId") == component_id:
+            media_type = comp.get("mediaType") or comp.get("mimeType")
+            if isinstance(media_type, str) and media_type.strip():
+                return media_type
+
+    return "application/octet-stream"

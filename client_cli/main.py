@@ -83,16 +83,18 @@ def main(argv: list[str] | None = None) -> int:
                 r = client.retrieve(args.object_id, component_id=args.component)
                 blocks = r.component_blocks
                 if not blocks:
-                    logging.getLogger().error("No components found")
+                    logging.getLogger().error("Component %s not found.", args.component)
                     return 1
+                media_type = blocks[0].media_type
                 content = blocks[0].content
                 if args.output:
-                    logging.getLogger().info(f"Writing to file %s ", args.output )
                     with open(args.output, "wb") as f:
                         f.write(content)
+                    logging.getLogger().info(f"Wrote to file %s - contains media type '%s' ", args.output, media_type )
                     return 0
                 # stdout binary
                 sys.stdout.buffer.write(content)
+                logging.getLogger().info(f"\n\n Output contains media type '%s' ", args.output, media_type )
                 return 0
 
             # Show only meta data - no binary data
