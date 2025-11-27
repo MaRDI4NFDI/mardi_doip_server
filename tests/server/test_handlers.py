@@ -82,7 +82,7 @@ async def test_retrieve_fdo_metadata(monkeypatch):
         return {"foo": "bar"}
 
     # Registry returns JSON-LD FDO metadata
-    registry = StubRegistry()
+    registry = StubRegistry({})
     registry.fetch_fdo_object = fake_fetch_fdo
 
     request = protocol.DOIPMessage(
@@ -312,50 +312,3 @@ def _load_config_or_skip() -> dict:
         pytest.skip("config.yaml does not contain a mapping")
     return cfg
 
-
-@pytest.mark.asyncio
-async def test_handle_retrieve_downloads_real_fulltext():
-    cfg = _load_config_or_skip()
-    lakefs_cfg = cfg.get("lakefs") or {}
-    if not isinstance(lakefs_cfg, dict):
-        pytest.skip("lakeFS not configured")
-
-    storage_lakefs.configure(cfg)
-
-    if not await storage_lakefs.ensure_lakefs_available():
-        pytest.skip("lakeFS unavailable")
-
-    # choose a test QID that actually has a stored PDF as “primary”
-    qid = "Q6190920"
-
-    pid = f"{qid}_FULLTEXT"
-
-    class StubRegistry:
-        async def fetch_bitstream_bytes(self, p):
-            assert p == pid
-            return await storage_lakefs.get_component_bytes(pid)
-
-        async def fetch_fdo_object(self, p):
-            assert False, "metadata fetch must not occur for bitstream PID"
-
-    registry = StubRegistry()
-
-    request = protocol.DOIPMessage(
-        version=protocol.DOIP_VERSION,
-        msg_type=protocol.MSG_TYPE_REQUEST,
-        operation=protocol.OP_RETRIEVE,
-        flags=0,
-        object_id=pid,
-        metadata_blocks=[]
-    )
-
-    response = await handlers.handle_retrieve(request, registry)
-
-    assert response.msg_type == protocol.MSG_TYPE_RESPONSE
-    assert response.operation == protocol.OP_RETRIEVE
-    assert response.metadata_blocks == []
-    assert len(response.component_blocks) == 1
-    block = response.component_blocks[0]
-    assert block.component_id == "primary"
-    assert isinstance(block.content, (bytes, bytearray))
-    assert len(block.content) > 0

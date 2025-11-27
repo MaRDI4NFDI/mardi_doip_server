@@ -114,16 +114,7 @@ def _client():
     )
 
 def s3_key_from_component(object_id: str, component_id: str, media_type: str) -> str:
-    """Construct an S3 key from a DOIP component identifier.
-
-    Args:
-        object_id: Object identifier/QID.
-        component_id: Component identifier within the object.
-        media_type: MIME type used to infer the file extension.
-
-    Returns:
-        str: Fully qualified S3 key for the component.
-    """
+    """Construct an S3 key from a DOIP component identifier. """
 
     qid = _extract_qid(object_id)
     ext = _TYPE_SUFFIX_MAP.get(media_type, "")
@@ -174,7 +165,7 @@ async def put_component_bytes(
     Returns:
         str: Stored S3 key.
     """
-    key = s3_key_from_component(object_id)
+    key = s3_key_from_component(object_id, "primary", content_type)
     await asyncio.to_thread(
         _client().put_object,
         Bucket=_repo(),
