@@ -7,7 +7,12 @@ from __future__ import annotations
 import json
 import logging
 import sys
-from argparse import ArgumentParser
+from argparse import (
+    ArgumentParser,
+    RawDescriptionHelpFormatter,
+    ArgumentDefaultsHelpFormatter,
+)
+
 
 from doip_client import StrictDOIPClient
 
@@ -16,6 +21,14 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(message)s",
     force=True
 )
+
+# Combine both formatters to allow newlines and showing default arguments
+class RawDescriptionDefaultsHelpFormatter(
+    RawDescriptionHelpFormatter,
+    ArgumentDefaultsHelpFormatter,
+):
+    pass
+
 
 def main(argv: list[str] | None = None) -> int:
     """CLI entrypoint for interacting with the strict DOIP client.
@@ -26,8 +39,16 @@ def main(argv: list[str] | None = None) -> int:
     Returns:
         int: Process exit code (0 on success, non-zero on error).
     """
-    parser = ArgumentParser(description="MaRDI DOIP client CLI")
-    parser.add_argument("--host", default="127.0.0.1", help="Server host")
+    parser = ArgumentParser(
+        description="This is the MaRDI DOIP client.\n\n" +
+                    "This client enables direct interaction with the MaRDI DOIP server for retrieving object " +
+                    "metadata or content, and executing predefined server workflows.\n\n" +
+                    "To see a demo with standard values, execute: python -m client_cli.main --action demo\n\n" +
+                    "For more information see: https://mardi4nfdi.github.io/mardi_doip_server/",
+        formatter_class=RawDescriptionDefaultsHelpFormatter
+    )
+
+    parser.add_argument("--host", default="fdo.staging.mardi4nfdi.org", help="Server host")
     parser.add_argument("--port", type=int, default=3567, help="Server port")
     parser.add_argument("--no-tls", action="store_true", help="Disable TLS wrapping")
     parser.add_argument("--secure", action="store_true", help="Enable TLS verification (if you do not use a self-certified cert)")
@@ -36,7 +57,6 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--action",
         choices=["demo", "hello", "list_ops", "retrieve", "invoke"],
-        default="demo",
         help="Action to execute",
     )
     # component removed: server no longer supports component selection
@@ -113,11 +133,17 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(r.metadata_blocks, indent=2))
             return 0
 
-        r = client.hello()
-        print(json.dumps(r, indent=2))
-        meta = client.retrieve(args.object_id)
-        print(json.dumps(meta.metadata_blocks, indent=2))
-        return 0
+        if args.action == "demo":
+            logging.getLogger().info("Contacting DOIP server (using: %s:%s)...", args.host, args.port )
+            r = client.hello()
+            print(json.dumps(r, indent=2))
+            meta = client.retrieve(args.object_id)
+            print(json.dumps(meta.metadata_blocks, indent=2))
+            return 0
+
+        # No action selected, show help
+        parser.print_help()
+        return 1
 
     except Exception as exc:
         sys.stderr.write(
