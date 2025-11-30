@@ -80,6 +80,25 @@ async def handle_retrieve(msg: DOIPMessage, registry: object_registry.ObjectRegi
     meta   = (msg.metadata_blocks[0] if msg.metadata_blocks else {})
     elem   = meta.get("element")  # componentId or None
 
+    if elem == "rocrate":
+        crate = await _build_rocrate_payload(pid, registry)
+        return DOIPMessage(
+            version=protocol.DOIP_VERSION,
+            msg_type=protocol.MSG_TYPE_RESPONSE,
+            operation=protocol.OP_RETRIEVE,
+            flags=0,
+            object_id=pid,
+            metadata_blocks=[],
+            component_blocks=[
+                ComponentBlock(
+                    component_id="rocrate",
+                    media_type="application/zip",
+                    content=crate,
+                    declared_size=len(crate),
+                )
+            ],
+        )
+
     if elem:
         try:
             content = await registry.get_component(pid, elem)
@@ -247,3 +266,61 @@ async def _get_component_media_type(registry: object_registry.ObjectRegistry, pi
                 return media_type
 
     return "application/octet-stream"
+
+async def _build_rocrate_payload(pid: str, registry) -> bytes:
+    """
+    Build a minimal RO-Crate ZIP containing the primary dataset file.
+
+    This constructs an in-memory ZIP archive compliant with the RO-Crate 1.1
+    packaging model. The crate includes:
+      • a single CSV file associated with the PID (assumed to be the only payload)
+      • a generated `ro-crate-metadata.json` file describing the dataset root entity
+        and the file entity using JSON-LD with the official RO-Crate context
+
+    The dataset PID becomes the root `Dataset` identifier and the CSV file is
+    represented as a `File` entity linked via `hasPart`. No additional provenance,
+    licensing, or authorship information is included.
+
+    Args:
+        pid: Upper-case PID string representing the dataset object.
+        registry: ObjectRegistry instance capable of returning the CSV payload.
+
+    Returns:
+        bytes: A ZIP archive as raw bytes containing metadata and the dataset file.
+
+    Raises:
+        KeyError: If the expected dataset component is missing.
+        RuntimeError: If underlying storage access fails.
+    """
+
+    import io, zipfile, json, mimetypes
+
+    component_id = f"{pid}.csv"
+    content = await registry.get_component(pid, component_id)
+    media_type = mimetypes.guess_type(component_id)[0] or "application/octet-stream"
+
+    metadata = {
+        "@context": "https://w3id.org/ro/crate/1.1/context",
+        "@graph": [
+            {
+                "@id": "./",
+                "@type": "Dataset",
+                "name": pid,
+                "hasPart": [{"@id": component_id}],
+                "identifier": pid,
+            },
+            {
+                "@id": component_id,
+                "@type": "File",
+                "name": component_id,
+                "encodingFormat": media_type,
+            },
+        ],
+    }
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("ro-crate-metadata.json", json.dumps(metadata))
+        z.writestr(component_id, content)
+
+    return buf.getvalue()
