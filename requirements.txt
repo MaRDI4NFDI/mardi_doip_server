@@ -1,9 +1,10 @@
-pyyaml
 boto3
 httpx
-requests
+mkdocs
+mkdocs-shadcn
 pytest
 pytest-asyncio
 pytest-mock
-mkdocs
-mkdocs-shadcn
+pyyaml
+requests
+rocrate

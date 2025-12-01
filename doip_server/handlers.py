@@ -1,6 +1,13 @@
 import asyncio
+import io
 import logging
+import mimetypes
+import tempfile
+from pathlib import Path
 from typing import List
+
+from rocrate.rocrate import ROCrate
+from rocrate.model.file import File as CrateFile, File
 
 from . import object_registry, protocol, storage_lakefs, workflows
 from .protocol import ComponentBlock, DOIPMessage
@@ -293,34 +300,27 @@ async def _build_rocrate_payload(pid: str, registry) -> bytes:
         RuntimeError: If underlying storage access fails.
     """
 
-    import io, zipfile, json, mimetypes
-
     component_id = f"{pid}.csv"
     content = await registry.get_component(pid, component_id)
     media_type = mimetypes.guess_type(component_id)[0] or "application/octet-stream"
 
-    metadata = {
-        "@context": "https://w3id.org/ro/crate/1.1/context",
-        "@graph": [
-            {
-                "@id": "./",
-                "@type": "Dataset",
-                "name": pid,
-                "hasPart": [{"@id": component_id}],
-                "identifier": pid,
-            },
-            {
-                "@id": component_id,
-                "@type": "File",
-                "name": component_id,
-                "encodingFormat": media_type,
-            },
-        ],
-    }
+    tmp_dir = tempfile.TemporaryDirectory()
+    tmp_path = Path(tmp_dir.name)
+    tmp_csv = tmp_path / component_id
+    tmp_csv.write_bytes(content)
 
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
-        z.writestr("ro-crate-metadata.json", json.dumps(metadata))
-        z.writestr(component_id, content)
+    crate = ROCrate()
+    file_entity = File(crate, str(tmp_csv), properties={
+        "encodingFormat": media_type,
+        "name": component_id
+    })
+    crate.add(file_entity)
+    crate.root_dataset["name"] = pid
+    crate.root_dataset.append_to("hasPart", file_entity)
 
-    return buf.getvalue()
+    out_zip = tmp_path / "crate.zip"
+    crate.write_zip(str(out_zip))
+
+    data = out_zip.read_bytes()
+    tmp_dir.cleanup()
+    return data
