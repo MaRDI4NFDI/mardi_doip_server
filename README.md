@@ -33,10 +33,10 @@ python -m doip_server.main --fdo-api http://127.0.0.1:8000/fdo/
 ## Getting started with Docker
 
 The Docker version has an additional HTTP gateway to use the DOIP service.  
-Example: `/doip/{object_id}/{component_id}` (This would stream the given component as file download.)
+Example: `/doip/retrieve/{object_id}/{component_id}` (This would stream the given component as file download.)
 Or, using curl:
 ```bash
-curl -OJ http://localhost/doip/Q123/fulltext
+curl -OJ http://localhost/doip/retrieve/Q123/fulltext
 ```
 
 Build the image (from repo root):

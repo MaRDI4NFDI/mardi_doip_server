@@ -9,6 +9,7 @@ theme:
 nav:
   - Home: index.md
   - Server: server.md
+  - Server HTTP Gateway: server_http_gateway.md
   - Client: client.md
   - Client CLI: client_cli.md
   - Docker: docker.md
