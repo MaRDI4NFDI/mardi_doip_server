@@ -27,7 +27,7 @@ from .protocol import (
 class StrictDOIPClient:
     """Blocking TCP/TLS DOIP v2.0 client."""
 
-    def __init__(self, host: str, port: int, use_tls: bool = True, verify_tls: bool = True, timeout: int = 10):
+    def __init__(self, host: str, port: int, use_tls: bool = True, verify_tls: bool = True, timeout: int = 30):
         """Initialize the client.
 
         Args:
