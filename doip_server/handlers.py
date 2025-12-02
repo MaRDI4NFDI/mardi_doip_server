@@ -320,7 +320,8 @@ async def _build_rocrate_payload(pid: str, registry) -> bytes:
 
     # 3) Download and package as RO-Crate
     try:
-        async with httpx.AsyncClient(timeout=15) as client:
+        log.info("Downloading data from %s", source_url)
+        async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.get(source_url)
             resp.raise_for_status()
             payload = resp.content
