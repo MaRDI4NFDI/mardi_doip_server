@@ -8,8 +8,8 @@ PYTHONPATH=. python -m client_cli.main --host 127.0.0.1 --port 3567 --no-tls --o
 ```
 
 Options:
-- `--host`: Server host (default `127.0.0.1`)
-- `--port`: Server port (default `3567`)
+- `--host`: DOIP server host (default `127.0.0.1`)
+- `--port`: DOIP server port (default `3567`)
 - `--no-tls`: Disable TLS wrapping (useful for local plaintext servers)
 - `--insecure`: Disable TLS certificate/hostname verification
 - `--object-id`: Object identifier to retrieve (default `Q123`)
@@ -26,10 +26,7 @@ Options:
 - `retrieve`: Runs retrieve for the given object (and optional component).
 - `invoke`: Runs a workflow for the given object with optional params.
 
-The CLI prints returned metadata, counts components, and optionally writes the first component to disk for quick smoke testing.
-
-### Example: download a PDF
+### Example: Download a PDF
 ```bash
-PYTHONPATH=. python -m client_cli.main --action retrieve --object-id Q6190920 --output .
+PYTHONPATH=. python -m client_cli.main --action retrieve --object-id Q6190920 --component fulltext --output .
 ```
-This saves the first returned component to the current directory, honoring the server-provided original filename when available.
