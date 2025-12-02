@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Start a lightweight static server on port 80 for the landing page.
-python -m http.server 80 --directory /app/landing &
+# Start the DOIP server in the background so the HTTP gateway can run in the foreground.
+python -m doip_server.main "$@" &
 
-# Run the DOIP server in the foreground so PID 1 gets signals.
-exec python -m doip_server.main "$@"
+# Run the FastAPI download gateway (PID 1 receives signals).
+exec uvicorn doip_server.http_gateway:app --host 0.0.0.0 --port 80

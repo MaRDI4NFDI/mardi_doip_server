@@ -497,7 +497,7 @@ async def main(argv: list[str] | None = None):
     registry = object_registry.ObjectRegistry()
     registry.fdo_api = fdo_api
 
-    # Check for lakeaFS availablity
+    # Check for lakeFS availablity
     if not await ensure_lakefs_available():
         log.warning("lakeFS server not available!")
     else:
