@@ -1,14 +1,14 @@
 # Client CLI
 
-The `client_cli` module provides a minimal command-line interface around the strict DOIP client.
+The `client_cli` module provides a minimal command-line interface around the DOIP client.
 
 ## Running
 ```bash
-PYTHONPATH=. python -m client_cli.main --host 127.0.0.1 --port 3567 --no-tls --object-id Q123
+PYTHONPATH=. python -m client_cli.main --object-id Q123 --action retrieve 
 ```
 
 Options:
-- `--host`: DOIP server host (default `127.0.0.1`)
+- `--host`: DOIP server host (default `doip.staging.mardi4nfdi.org`)
 - `--port`: DOIP server port (default `3567`)
 - `--no-tls`: Disable TLS wrapping (useful for local plaintext servers)
 - `--insecure`: Disable TLS certificate/hostname verification
