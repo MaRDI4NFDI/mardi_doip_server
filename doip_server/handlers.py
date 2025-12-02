@@ -1,12 +1,13 @@
 import asyncio
-import io
 import mimetypes
 import tempfile
 from pathlib import Path
 from typing import List
+from urllib.parse import urlparse
 
+import httpx
 from rocrate.rocrate import ROCrate
-from rocrate.model.file import File as CrateFile, File
+from rocrate.model.file import File
 
 from . import object_registry, protocol, storage_lakefs, workflows
 from .logging_config import log
@@ -71,6 +72,11 @@ async def handle_describe(msg: DOIPMessage, registry: object_registry.ObjectRegi
 async def handle_retrieve(msg: DOIPMessage, registry: object_registry.ObjectRegistry) -> DOIPMessage:
     """Retrieve metadata or a specific component for a DOIP object.
 
+    If "element" is set in the meta-data block, the server tries to fetch it from the storage.
+
+    If "element" == "rocrate" the server tries to build a rocrate object from the data stored with
+    the object.
+
     Args:
         msg: Incoming DOIP retrieve request.
         registry: Object registry used to fetch manifests/components.
@@ -83,9 +89,11 @@ async def handle_retrieve(msg: DOIPMessage, registry: object_registry.ObjectRegi
     """
     pid    = msg.object_id.upper()
     meta   = (msg.metadata_blocks[0] if msg.metadata_blocks else {})
-    elem   = meta.get("element")  # componentId or None
+    element   = meta.get("element")  # componentId or None
 
-    if elem == "rocrate":
+    log.info("handle_retrieve() for object_id=%s", pid)
+
+    if element == "rocrate":
         crate = await _build_rocrate_payload(pid, registry)
         return DOIPMessage(
             version=protocol.DOIP_VERSION,
@@ -104,14 +112,14 @@ async def handle_retrieve(msg: DOIPMessage, registry: object_registry.ObjectRegi
             ],
         )
 
-    if elem:
+    if element:
         try:
-            content = await registry.get_component(pid, elem)
+            content = await registry.get_component(pid, element)
             size = len(content)
         except Exception as exc:
-            raise KeyError(f"Component id not found: {elem}") from exc
+            raise KeyError(f"Component id not found: {element}") from exc
 
-        media_type = await _get_component_media_type(registry, pid, elem)
+        media_type = await _get_component_media_type(registry, pid, element)
 
         return DOIPMessage(
             version=protocol.DOIP_VERSION,
@@ -122,7 +130,7 @@ async def handle_retrieve(msg: DOIPMessage, registry: object_registry.ObjectRegi
             metadata_blocks=[],
             component_blocks=[
                 ComponentBlock(
-                    component_id=elem,
+                    component_id=element,
                     media_type=media_type,
                     content=content,
                     declared_size=size,
@@ -273,52 +281,126 @@ async def _get_component_media_type(registry: object_registry.ObjectRegistry, pi
     return "application/octet-stream"
 
 async def _build_rocrate_payload(pid: str, registry) -> bytes:
-    """
-    Build a minimal RO-Crate ZIP containing the primary dataset file.
+    """Return the RO-Crate payload for the given PID.
 
-    This constructs an in-memory ZIP archive compliant with the RO-Crate 1.1
-    packaging model. The crate includes:
-      • a single CSV file associated with the PID (assumed to be the only payload)
-      • a generated `ro-crate-metadata.json` file describing the dataset root entity
-        and the file entity using JSON-LD with the official RO-Crate context
-
-    The dataset PID becomes the root `Dataset` identifier and the CSV file is
-    represented as a `File` entity linked via `hasPart`. No additional provenance,
-    licensing, or authorship information is included.
+    Strategy:
+      1. If a stored ``rocrate`` component exists, return it as-is.
+      2. Otherwise, resolve a source URL from the FDO manifest and download it.
+      3. If a download succeeds, wrap the file into a minimal RO-Crate ZIP.
+      4. If nothing can be resolved, return empty bytes.
 
     Args:
-        pid: Upper-case PID string representing the dataset object.
-        registry: ObjectRegistry instance capable of returning the CSV payload.
+        pid: PID/QID identifying the dataset object.
+        registry: ObjectRegistry instance capable of returning components.
 
     Returns:
-        bytes: A ZIP archive as raw bytes containing metadata and the dataset file.
+        bytes: RO-Crate bytes if available; empty bytes when absent.
 
     Raises:
-        KeyError: If the expected dataset component is missing.
-        RuntimeError: If underlying storage access fails.
+        RuntimeError: If underlying storage access fails (non-missing errors).
     """
 
-    component_id = f"{pid}.csv"
-    content = await registry.get_component(pid, component_id)
-    media_type = mimetypes.guess_type(component_id)[0] or "application/octet-stream"
+    # 1) Try stored rocrate component
+    try:
+        content = await registry.get_component(pid, "rocrate")
+    except KeyError:
+        content = None
+    except ConnectionError:
+        content = None
+    except Exception as exc:
+        raise RuntimeError(f"storage error fetching rocrate for {pid}") from exc
+
+    if content is not None:
+        return content
+
+    # 2) Resolve a source URL from the manifest
+    source_url = await _get_source_url(pid, registry)
+    if source_url is None:
+        return b""
+
+    # 3) Download and package as RO-Crate
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(source_url)
+            resp.raise_for_status()
+            payload = resp.content
+    except Exception as exc:  # noqa: BLE001
+        log.debug("Failed to download rocrate for %s from %s: %s", pid, source_url, exc)
+        return b""
+
+    filename = _filename_from_url(source_url, pid)
+    media_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
 
     tmp_dir = tempfile.TemporaryDirectory()
     tmp_path = Path(tmp_dir.name)
-    tmp_csv = tmp_path / component_id
-    tmp_csv.write_bytes(content)
+    tmp_file = tmp_path / filename
+    tmp_file.write_bytes(payload)
 
     crate = ROCrate()
-    file_entity = File(crate, str(tmp_csv), properties={
-        "encodingFormat": media_type,
-        "name": component_id
-    })
+    file_entity = File(crate, str(tmp_file), properties={"encodingFormat": media_type, "name": filename})
     crate.add(file_entity)
     crate.root_dataset["name"] = pid
     crate.root_dataset.append_to("hasPart", file_entity)
 
     out_zip = tmp_path / "crate.zip"
     crate.write_zip(str(out_zip))
-
     data = out_zip.read_bytes()
     tmp_dir.cleanup()
     return data
+
+
+async def _get_source_url(pid: str, registry) -> str | None:
+    """Return the first distribution/download URL from the FDO manifest.
+
+    For this project the manifest's distribution URLs play the role of P205. The
+    lookup is best-effort; errors are logged and surfaced as ``None`` so the main
+    workflow is never blocked.
+
+    Args:
+        pid: PID/QID for which to resolve distribution URLs.
+        registry: ObjectRegistry used to fetch the manifest.
+
+    Returns:
+        str | None: First distribution URL if found, otherwise ``None``.
+    """
+    try:
+        manifest = await registry.fetch_fdo_object(pid)
+        if not isinstance(manifest, dict):
+            return None
+
+        profile = manifest.get("profile")
+        distributions = profile.get("distribution") if isinstance(profile, dict) else None
+        if not isinstance(distributions, list):
+            log.debug("No distribution list in manifest for %s", pid)
+            return None
+
+        for dist in distributions:
+            if not isinstance(dist, dict):
+                continue
+            url = dist.get("contentUrl") or dist.get("contentURL") or dist.get("url")
+            if isinstance(url, str):
+                log.info("Found distribution URL (P205 equivalent) for %s: %s", pid, url)
+                return url
+
+        log.debug("No distribution URLs (P205 equivalent) found for %s", pid)
+        return None
+    except Exception as exc:  # noqa: BLE001
+        log.debug("Skipping P205 lookup for %s: %s", pid, exc)
+        return None
+
+
+def _filename_from_url(url: str, pid: str) -> str:
+    """Return a filename derived from a URL, with a safe fallback.
+
+    Args:
+        url: Source URL.
+        pid: PID/QID used as fallback stem.
+
+    Returns:
+        str: Filename to use inside the RO-Crate.
+    """
+    parsed = urlparse(url)
+    name = Path(parsed.path).name
+    if name:
+        return name
+    return f"{pid}.bin"

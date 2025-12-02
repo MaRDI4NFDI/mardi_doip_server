@@ -205,6 +205,9 @@ async def dispatch(msg: protocol.DOIPMessage, registry: object_registry.ObjectRe
 
     try:
         op_name = _metadata_operation_name(msg)
+
+        log.info("Dispatching request for %s", op_name)
+
         if msg.operation == protocol.OP_HELLO or op_name == "hello":
             return await handlers.handle_hello(msg, registry)
         if msg.operation == protocol.OP_RETRIEVE or op_name == "retrieve":

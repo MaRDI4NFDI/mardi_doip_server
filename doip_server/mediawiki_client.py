@@ -79,3 +79,51 @@ async def _post_item(payload: Dict):
         json=payload,
         timeout=10,
     )
+
+
+async def fetch_property_values(qid: str, property_id: str) -> list[str]:
+    """Fetch values for a Wikibase property from the MediaWiki API.
+
+    Args:
+        qid: Item identifier (e.g., ``\"Q6190920\"``).
+        property_id: Property identifier (e.g., ``\"P205\"``).
+
+    Returns:
+        list[str]: Extracted string values for the property, empty if missing or on error.
+    """
+    params = {
+        "action": "wbgetentities",
+        "ids": qid,
+        "props": "claims",
+        "format": "json",
+    }
+
+    try:
+        response = await asyncio.to_thread(
+            requests.get, API_URL, params=params, timeout=10
+        )
+        response.raise_for_status()
+        data = response.json()
+    except Exception:
+        return []
+
+    entities = data.get("entities", {})
+    entity = entities.get(qid, {})
+    claims = entity.get("claims", {})
+    statements = claims.get(property_id, []) if isinstance(claims, dict) else []
+
+    values: list[str] = []
+    for stmt in statements:
+        mainsnak = stmt.get("mainsnak") if isinstance(stmt, dict) else None
+        datavalue = mainsnak.get("datavalue") if isinstance(mainsnak, dict) else None
+        if not isinstance(datavalue, dict):
+            continue
+        value = datavalue.get("value")
+        if isinstance(value, dict):
+            if "id" in value and isinstance(value["id"], str):
+                values.append(value["id"])
+            elif "text" in value and isinstance(value["text"], str):
+                values.append(value["text"])
+        elif isinstance(value, str):
+            values.append(value)
+    return values

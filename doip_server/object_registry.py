@@ -53,7 +53,7 @@ class ObjectRegistry:
             KeyError: When the component is missing.
         """
         if not await storage_lakefs.ensure_lakefs_available():
-            raise RuntimeError("storage unavailable")
+            raise ConnectionError()
 
         try:
             content = await storage_lakefs.get_component_bytes(
@@ -91,7 +91,7 @@ class ObjectRegistry:
             httpx.HTTPError: If the remote request fails.
         """
         url = f"{self.fdo_api}{qid}"
-        log.info("FDO API endpoint set to %s", self.fdo_api)
+        log.info("(registry._fetch_manifest) Using FDO API endpoint: %s", self.fdo_api)
         async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.get(url)
             resp.raise_for_status()
