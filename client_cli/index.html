@@ -544,8 +544,8 @@
 <pre><code class="language-bash">PYTHONPATH=. python -m client_cli.main --host 127.0.0.1 --port 3567 --no-tls --object-id Q123
 </code></pre>
 <p>Options:
-- <code>--host</code>: Server host (default <code>127.0.0.1</code>)
-- <code>--port</code>: Server port (default <code>3567</code>)
+- <code>--host</code>: DOIP server host (default <code>127.0.0.1</code>)
+- <code>--port</code>: DOIP server port (default <code>3567</code>)
 - <code>--no-tls</code>: Disable TLS wrapping (useful for local plaintext servers)
 - <code>--insecure</code>: Disable TLS certificate/hostname verification
 - <code>--object-id</code>: Object identifier to retrieve (default <code>Q123</code>)
@@ -562,11 +562,9 @@
 <li><code>retrieve</code>: Runs retrieve for the given object (and optional component).</li>
 <li><code>invoke</code>: Runs a workflow for the given object with optional params.</li>
 </ul>
-<p>The CLI prints returned metadata, counts components, and optionally writes the first component to disk for quick smoke testing.</p>
-<h3 id="example-download-a-pdf">Example: download a PDF</h3>
-<pre><code class="language-bash">PYTHONPATH=. python -m client_cli.main --action retrieve --object-id Q6190920 --output .
+<h3 id="example-download-a-pdf">Example: Download a PDF</h3>
+<pre><code class="language-bash">PYTHONPATH=. python -m client_cli.main --action retrieve --object-id Q6190920 --component fulltext --output .
 </code></pre>
-<p>This saves the first returned component to the current directory, honoring the server-provided original filename when available.</p>
   </div>
 </article>
                                 <div class="mx-auto flex flex-wrap h-16 w-full max-w-2xl items-center gap-2 px-4 md:px-0">
@@ -701,7 +699,7 @@
         <a href="#example-download-a-pdf"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
             data-active="false" data-depth="2">
-            Example: download a PDF
+            Example: Download a PDF
         </a>
         
 
