@@ -30,7 +30,38 @@ python -m doip_server.main --fdo-api http://127.0.0.1:8000/fdo/
 ```
 
 
-Run the client CLI:
+## Getting started with Docker
+
+The Docker version has an additional HTTP gateway to use the DOIP service.  
+Example: `/doip/{object_id}/{component_id}` (This would stream the given component as file download.)
+Or, using curl:
+```bash
+curl -OJ http://localhost/doip/Q123/fulltext
+```
+
+Build the image (from repo root):
+```bash
+docker build -f docker/Dockerfile -t mardi-doip .
+```
+
+Run with TLS (default self-signed cert generated during build):
+```bash
+docker run --rm \
+  -p 80:80 -p 3567:3567 -p 3568:3568 \
+  -e FDO_API=https://fdo.portal.mardi4nfdi.de/fdo/ \
+  -e LAKEFS_URL=<your-lakefs-url> \
+  -e LAKEFS_USER=<user> -e LAKEFS_PASSWORD=<pass> -e LAKEFS_REPO=<repo> \
+  mardi-doip
+```
+
+Example hello via client CLI against the container:
+```bash
+python -m client_cli.main --host localhost --port 3567 --action hello
+```
+
+## Examples
+
+### Run the client CLI:
 
 Retrieve meta-data about an FDO, e.g. a publication with QID Q6190920:
 
@@ -45,7 +76,7 @@ PYTHONPATH=. python -m client_cli.main --host 127.0.0.1 --no-tls --action retrie
 ```
 
 
-Use the DOIP client in Python:
+### Use the DOIP client in Python:
 ```python
 from doip_client import StrictDOIPClient
 
@@ -57,8 +88,3 @@ metadata = client.retrieve("Q123").metadata_blocks
 ## TLS (optional):
 - Place `certs/server.crt` and `certs/server.key` (PEM) to enable TLS automatically; otherwise the server speaks plaintext DOIP.
 - A compatibility listener runs on port 3568 (same TLS setting) accepting doipy JSON-segmented requests and bridging to the DOIP handlers.
-
-## Usage Notes
-- Retrieve (op 0x02): client sends DOIP request with object ID and optional component list; server returns metadata + binary component blocks.
-- Invoke (op 0x05): client includes `workflow` and params; the sample workflow generates derived components and MediaWiki items.
-- Component IDs map to lakeFS keys with repo/branch/object_id: e.g., `fulltext` -> `repo/branch/Q123/fulltext.pdf`. 
