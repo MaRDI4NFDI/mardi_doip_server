@@ -1,5 +1,4 @@
 import asyncio
-import logging
 from functools import lru_cache
 from typing import Dict, List, Optional
 
@@ -7,8 +6,7 @@ import boto3
 import httpx
 from botocore.client import Config
 
-log = logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s %(message)s")
+from .logging_config import log
 
 _CFG: Dict = {}
 
@@ -187,8 +185,8 @@ async def list_components(object_id: str) -> List[str]:
     """
     prefix = f"{object_id}/"
 
-    logging.getLogger(__name__).info(
-        "Using lakeFS \n repo: %s \n branch: %s \n prefix: %s \n object_id %s",
+    log.info(
+        "Using lakeFS repo=%s branch=%s prefix=%s object_id=%s",
         _repo(),
         _branch(),
         prefix,

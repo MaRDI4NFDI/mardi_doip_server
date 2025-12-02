@@ -1,11 +1,11 @@
 import asyncio
-import logging
 import os
 from typing import Dict, List, Optional
 
 import httpx
 
 from . import storage_lakefs
+from .logging_config import log
 
 
 class ObjectRegistry:
@@ -91,7 +91,7 @@ class ObjectRegistry:
             httpx.HTTPError: If the remote request fails.
         """
         url = f"{self.fdo_api}{qid}"
-        logging.getLogger().info(f"##### \n\n {self.fdo_api} \n \n #####")
+        log.info("FDO API endpoint set to %s", self.fdo_api)
         async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.get(url)
             resp.raise_for_status()

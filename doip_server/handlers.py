@@ -1,6 +1,5 @@
 import asyncio
 import io
-import logging
 import mimetypes
 import tempfile
 from pathlib import Path
@@ -10,9 +9,8 @@ from rocrate.rocrate import ROCrate
 from rocrate.model.file import File as CrateFile, File
 
 from . import object_registry, protocol, storage_lakefs, workflows
+from .logging_config import log
 from .protocol import ComponentBlock, DOIPMessage
-
-log = logging.getLogger(__name__)
 
 
 async def handle_hello(msg: DOIPMessage, registry: object_registry.ObjectRegistry) -> DOIPMessage:

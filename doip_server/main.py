@@ -1,6 +1,5 @@
 import asyncio
 import json
-import logging
 import os
 import ssl
 import struct
@@ -15,9 +14,9 @@ import yaml
 
 from doip_server.storage_lakefs import ensure_lakefs_available
 from . import handlers, object_registry, protocol, storage_lakefs
+from .logging_config import configure_logging, log
 
-log = logging.getLogger("doip_server")
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+configure_logging()
 
 def set_config(args) -> dict:
     """Build configuration from local config.yaml overlaid with environment variables.

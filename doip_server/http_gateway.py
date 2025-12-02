@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import os
 import asyncio
-import logging
 from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
@@ -20,6 +19,7 @@ from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from doip_client import StrictDOIPClient
+from doip_server.logging_config import log
 
 
 def _parse_host(raw: Optional[str]) -> str:
@@ -62,9 +62,7 @@ def _parse_port(raw: Optional[str], default: int = 3567) -> int:
             maybe_port = raw.rsplit(":", 1)[-1]
             return int(maybe_port)
         except Exception:
-            logging.getLogger(__name__).warning(
-                "Invalid DOIP_PORT value '%s', falling back to %s", raw, default
-            )
+            log.warning("Invalid DOIP_PORT value '%s', falling back to %s", raw, default)
             return default
 
 
@@ -96,7 +94,6 @@ def _client(use_tls: Optional[bool] = None) -> StrictDOIPClient:
 
 
 app = FastAPI(title="MaRDI DOIP HTTP Gateway")
-log = logging.getLogger(__name__)
 
 
 @app.get("/doip/retrieve/{object_id}/{component_id}")
