@@ -42,13 +42,13 @@ def main(argv: list[str] | None = None) -> int:
     parser = ArgumentParser(
         description="This is the MaRDI DOIP client.\n\n" +
                     "This client enables direct interaction with the MaRDI DOIP server for retrieving object " +
-                    "metadata or content, and executing predefined server workflows.\n\n" +
-                    "To see a demo with standard values, execute: python -m client_cli.main --action demo\n\n" +
+                    "metadata or content, and executing predefined server workflows.\n" +
+                    "To see a demo with standard values, execute: python -m client_cli.main --action demo\n" +
                     "For more information see: https://mardi4nfdi.github.io/mardi_doip_server/",
         formatter_class=RawDescriptionDefaultsHelpFormatter
     )
 
-    parser.add_argument("--host", default="doip.portal.mardi4nfdi.de", help="DOIP Server hostname")
+    parser.add_argument("--host", default="doip.staging.mardi4nfdi.org", help="DOIP Server hostname")
     parser.add_argument("--port", type=int, default=3567, help="Server port")
     parser.add_argument("--no-tls", action="store_true", help="Disable TLS wrapping")
     parser.add_argument("--secure", action="store_true", help="Enable TLS verification (if you do not use a self-certified cert)")
