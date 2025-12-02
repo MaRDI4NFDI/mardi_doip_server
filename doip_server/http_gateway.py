@@ -99,7 +99,7 @@ app = FastAPI(title="MaRDI DOIP HTTP Gateway")
 log = logging.getLogger(__name__)
 
 
-@app.get("/doip/{object_id}/{component_id}")
+@app.get("/doip/retrieve/{object_id}/{component_id}")
 async def download_component(object_id: str, component_id: str):
     """Stream a DOIP component to the caller as an HTTP download.
 
