@@ -30,3 +30,10 @@ Options:
 ```bash
 PYTHONPATH=. python -m client_cli.main --action retrieve --object-id Q6190920 --component fulltext --output .
 ```
+
+### Example: Download a RO-CRATE
+```bash
+python -m client_cli.main --host localhost --no-tls --action retrieve --object-id Q6032968 --component rocrate --output crate.zip
+```
+
+

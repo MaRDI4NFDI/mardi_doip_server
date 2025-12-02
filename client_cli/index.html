@@ -584,6 +584,9 @@
 <h3 id="example-download-a-pdf">Example: Download a PDF</h3>
 <pre><code class="language-bash">PYTHONPATH=. python -m client_cli.main --action retrieve --object-id Q6190920 --component fulltext --output .
 </code></pre>
+<h3 id="example-download-a-ro-crate">Example: Download a RO-CRATE</h3>
+<pre><code class="language-bash">python -m client_cli.main --host localhost --no-tls --action retrieve --object-id Q6032968 --component rocrate --output crate.zip
+</code></pre>
   </div>
 </article>
                                 <div class="mx-auto flex flex-wrap h-16 w-full max-w-2xl items-center gap-2 px-4 md:px-0">
@@ -725,6 +728,14 @@
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
             data-active="false" data-depth="2">
             Example: Download a PDF
+        </a>
+        
+
+        
+        <a href="#example-download-a-ro-crate"
+            class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
+            data-active="false" data-depth="2">
+            Example: Download a RO-CRATE
         </a>
         
 
