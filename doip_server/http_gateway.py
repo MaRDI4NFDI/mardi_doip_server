@@ -13,6 +13,7 @@ import asyncio
 import logging
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlparse
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
@@ -20,8 +21,55 @@ from fastapi.staticfiles import StaticFiles
 
 from doip_client import StrictDOIPClient
 
-DEFAULT_DOIP_HOST = os.getenv("DOIP_HOST", "127.0.0.1")
-DEFAULT_DOIP_PORT = int(os.getenv("DOIP_PORT", "3567"))
+
+def _parse_host(raw: Optional[str]) -> str:
+    """Return a host string, handling values like ``tcp://host:port``.
+
+    Args:
+        raw: Raw host value from the environment.
+
+    Returns:
+        str: Hostname portion suitable for socket connections.
+    """
+
+    if not raw:
+        return "127.0.0.1"
+    parsed = urlparse(raw)
+    return parsed.hostname or raw
+
+
+def _parse_port(raw: Optional[str], default: int = 3567) -> int:
+    """Return an integer port, tolerating Kubernetes-style ``tcp://HOST:PORT`` envs.
+
+    Args:
+        raw: Raw port value from the environment.
+        default: Fallback port when parsing fails.
+
+    Returns:
+        int: Parsed port number.
+    """
+
+    if raw is None:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        parsed = urlparse(raw)
+        if parsed.port:
+            return parsed.port
+        # Fallback for values like host:port without scheme
+        try:
+            maybe_port = raw.rsplit(":", 1)[-1]
+            return int(maybe_port)
+        except Exception:
+            logging.getLogger(__name__).warning(
+                "Invalid DOIP_PORT value '%s', falling back to %s", raw, default
+            )
+            return default
+
+
+DEFAULT_DOIP_HOST = _parse_host(os.getenv("DOIP_HOST"))
+DEFAULT_DOIP_PORT = _parse_port(os.getenv("DOIP_PORT"), default=3567)
 CERT_PATH = Path("certs/server.crt")
 
 
