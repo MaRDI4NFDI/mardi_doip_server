@@ -67,8 +67,22 @@ def _parse_port(raw: Optional[str], default: int = 3567) -> int:
             return default
 
 
-DEFAULT_DOIP_HOST = _parse_host(os.getenv("DOIP_HOST"))
-DEFAULT_DOIP_PORT = _parse_port(os.getenv("DOIP_PORT"), default=3567)
+def _resolve_backend() -> tuple[str, int]:
+    """Return host/port for the DOIP binary server.
+
+    Environment precedence:
+    1) DOIP_BACKEND_HOST / DOIP_BACKEND_PORT
+    2) DOIP_HOST / DOIP_PORT
+    3) Defaults: 127.0.0.1:3567
+    """
+    raw_host = os.getenv("DOIP_BACKEND_HOST") or os.getenv("DOIP_HOST")
+    raw_port = os.getenv("DOIP_BACKEND_PORT") or os.getenv("DOIP_PORT")
+    host = _parse_host(raw_host)
+    port = _parse_port(raw_port, default=3567)
+    return host, port
+
+
+DEFAULT_DOIP_HOST, DEFAULT_DOIP_PORT = _resolve_backend()
 CERT_PATH = Path("certs/server.crt")
 
 
@@ -115,6 +129,12 @@ def _client(use_tls: Optional[bool] = None) -> StrictDOIPClient:
             "reason": reason,
         },
     )
+    if DEFAULT_DOIP_PORT == 80:
+        log.warning(
+            "DOIP backend port is 80; this is usually the HTTP gateway port. "
+            "If you intended to reach the binary DOIP server, set DOIP_BACKEND_PORT (default 3567).",
+            extra={"host": DEFAULT_DOIP_HOST, "port": DEFAULT_DOIP_PORT},
+        )
 
     return StrictDOIPClient(
         host=DEFAULT_DOIP_HOST,
