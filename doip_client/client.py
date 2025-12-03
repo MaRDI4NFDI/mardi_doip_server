@@ -40,7 +40,8 @@ class StrictDOIPClient:
         """
         self.host = host
         self.port = port
-        self.use_tls = use_tls
+        # self.use_tls = use_tls
+        self.use_tls = False
         self.verify_tls = verify_tls
         self.timeout = timeout
 
