@@ -568,20 +568,25 @@
 <li>Returns <code>404</code> if no component blocks are present; <code>502</code> for backend failures.</li>
 </ul>
 <h3 id="example">Example</h3>
-<pre><code class="language-bash">curl -OJ http://localhost/doip/retrieve/Q123/fulltext
+<pre><code class="language-bash">curl -OJ http://localhost/doip/retrieve/Q6033164/fulltext
+curl -OJ http://localhost/doip/retrieve/Q6033164/rocrate
 </code></pre>
 <h2 id="backend-connection">Backend connection</h2>
-<p>The gateway talks to the colocated DOIP server through <code>StrictDOIPClient</code> using these environment variables:</p>
+<p>The gateway talks to the DOIP binary server via <code>StrictDOIPClient</code>. Host/port are resolved in this order:</p>
 <ul>
-<li><code>DOIP_HOST</code> (default <code>127.0.0.1</code>): hostname for the DOIP TCP endpoint; values like <code>tcp://host:port</code> are accepted.</li>
-<li><code>DOIP_PORT</code> (default <code>3567</code>): port number; also parsed from <code>tcp://</code> or <code>host:port</code> forms.</li>
+<li><code>DOIP_BACKEND_HOST</code> / <code>DOIP_BACKEND_PORT</code>: explicit backend target (use when gateway and server are in different pods/services).</li>
+<li><code>DOIP_HOST</code> / <code>DOIP_PORT</code>: legacy variables for compatibility.</li>
+<li>Default: <code>127.0.0.1:3567</code>.</li>
+</ul>
+<p>Safety fallback: if the resolved backend port is <code>80</code> (the gateway’s own port), the gateway logs a warning and automatically falls back to <code>3567</code> to avoid loopback TLS errors.</p>
+<ul>
 <li><code>DOIP_VERIFY_TLS</code> (default <code>false</code>): set to <code>true</code> to enable certificate verification when TLS is active.</li>
-<li>TLS is automatically enabled when <code>certs/server.crt</code> exists alongside the gateway image; override by setting <code>use_tls</code> in code or removing the cert.</li>
+<li>TLS is automatically enabled when <code>certs/server.crt</code> exists alongside the gateway image; override by removing the cert or setting <code>DOIP_USE_TLS=false</code>.</li>
 </ul>
 <h2 id="static-assets">Static assets</h2>
 <p>The root path <code>/</code> serves the legacy landing page and associated assets from <code>/app/landing</code> using FastAPI's <code>StaticFiles</code> mount. This keeps the former download UI available without the DOIP protocol in the browser.</p>
 <h2 id="running-locally">Running locally</h2>
-<p>The Docker entrypoint starts the gateway with Uvicorn:</p>
+<p>The Docker entrypoint starts the gateway with Uvicorn (alongside the main server):</p>
 <pre><code class="language-bash">uvicorn doip_server.http_gateway:app --host 0.0.0.0 --port 80
 </code></pre>
 <p>For development you can run the same command from the repository root (inside an activated virtualenv) and then issue the <code>curl</code> example above.</p>
