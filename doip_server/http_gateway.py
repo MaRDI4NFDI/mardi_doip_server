@@ -95,6 +95,12 @@ def _client(use_tls: Optional[bool] = None) -> StrictDOIPClient:
 
 app = FastAPI(title="MaRDI DOIP HTTP Gateway")
 
+@app.on_event("startup")
+async def on_startup():
+    log.info(
+        "HTTP Gateway started",
+        extra={"host": DEFAULT_DOIP_HOST, "port": DEFAULT_DOIP_PORT}
+    )
 
 @app.get("/doip/retrieve/{object_id}/{component_id}")
 async def download_component(object_id: str, component_id: str):

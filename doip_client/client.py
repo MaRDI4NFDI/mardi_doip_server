@@ -9,6 +9,7 @@ from typing import Optional
 from doip_shared.constants import OP_HELLO, OP_INVOKE, OP_LIST_OPS, OP_RETRIEVE
 
 from . import protocol, tls, utils
+from .logging_config import log
 from .messages import ComponentBlock, DoipRequest, DoipResponse
 from .protocol import (
     BLOCK_COMPONENT,
@@ -84,6 +85,8 @@ class StrictDOIPClient:
         meta = {"operation": "retrieve"}
         if component_id:
             meta["element"] = component_id
+
+        log.info("retrieve() for object_id=%s and element=%s", object_id, component_id)
 
         request = DoipRequest(
             header=Header(DOIP_VERSION, MSG_TYPE_REQUEST, OP_RETRIEVE, 0, 0, 0),
