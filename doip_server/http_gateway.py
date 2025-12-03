@@ -68,7 +68,7 @@ def _parse_port(raw: Optional[str], default: int = 3567) -> int:
 
 
 def _resolve_backend() -> tuple[str, int]:
-    """Return host/port for the DOIP binary server.
+    """Return host/port for the DOIP binary server, with a safe fallback.
 
     Environment precedence:
     1) DOIP_BACKEND_HOST / DOIP_BACKEND_PORT
@@ -79,6 +79,12 @@ def _resolve_backend() -> tuple[str, int]:
     raw_port = os.getenv("DOIP_BACKEND_PORT") or os.getenv("DOIP_PORT")
     host = _parse_host(raw_host)
     port = _parse_port(raw_port, default=3567)
+    if port == 80:
+        log.warning(
+            "DOIP backend port resolved to 80 (likely the HTTP gateway); falling back to 3567",
+            extra={"host": host, "port": port},
+        )
+        port = 3567
     return host, port
 
 
@@ -129,12 +135,6 @@ def _client(use_tls: Optional[bool] = None) -> StrictDOIPClient:
             "reason": reason,
         },
     )
-    if DEFAULT_DOIP_PORT == 80:
-        log.warning(
-            "DOIP backend port is 80; this is usually the HTTP gateway port. "
-            "If you intended to reach the binary DOIP server, set DOIP_BACKEND_PORT (default 3567).",
-            extra={"host": DEFAULT_DOIP_HOST, "port": DEFAULT_DOIP_PORT},
-        )
 
     return StrictDOIPClient(
         host=DEFAULT_DOIP_HOST,
@@ -181,6 +181,13 @@ async def download_component(object_id: str, component_id: str):
         )
         client = _client(use_tls=False)
         response = await asyncio.to_thread(client.retrieve, object_id, component_id)
+    except ConnectionError as exc:
+        log.error(
+            "Connection to DOIP backend closed unexpectedly; verify DOIP_BACKEND_HOST/PORT and TLS settings",
+            extra={"object_id": object_id, "component_id": component_id},
+            exc_info=exc,
+        )
+        raise HTTPException(status_code=502, detail="DOIP backend connection closed unexpectedly")
     except Exception as exc:  # noqa: BLE001
         log.exception(
             "DOIP backend error during retrieve", extra={"object_id": object_id, "component_id": component_id}
