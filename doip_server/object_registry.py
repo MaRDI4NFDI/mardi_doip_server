@@ -29,6 +29,7 @@ class ObjectRegistry:
         pid = pid.upper()
         async with self._lock:
             if pid in self._manifest_cache:
+                log.info(f"Cache hit for {pid}.")
                 return self._manifest_cache[pid]
 
         data = await self._fetch_manifest(pid)
