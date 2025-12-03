@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import os
 import asyncio
+import ssl
 from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
@@ -71,6 +72,26 @@ DEFAULT_DOIP_PORT = _parse_port(os.getenv("DOIP_PORT"), default=3567)
 CERT_PATH = Path("certs/server.crt")
 
 
+def _should_use_tls(raw: Optional[str]) -> tuple[bool, str]:
+    """Return whether TLS should be used, with a reason string.
+
+    Args:
+        raw: Optional env-provided value for ``DOIP_USE_TLS``.
+
+    Returns:
+        tuple[bool, str]: (use_tls flag, reason description).
+    """
+    if isinstance(raw, str):
+        lowered = raw.strip().lower()
+        if lowered in ("1", "true", "yes", "on"):
+            return True, "DOIP_USE_TLS env forced on"
+        if lowered in ("0", "false", "no", "off"):
+            return False, "DOIP_USE_TLS env forced off"
+    if CERT_PATH.exists():
+        return True, f"certificate present at {CERT_PATH}"
+    return False, f"certificate missing at {CERT_PATH}"
+
+
 def _client(use_tls: Optional[bool] = None) -> StrictDOIPClient:
     """Create a StrictDOIPClient configured for the local server.
 
@@ -82,8 +103,18 @@ def _client(use_tls: Optional[bool] = None) -> StrictDOIPClient:
         StrictDOIPClient: Configured client instance.
     """
 
-    tls_enabled = CERT_PATH.exists() if use_tls is None else use_tls
+    tls_enabled, reason = _should_use_tls(os.getenv("DOIP_USE_TLS")) if use_tls is None else (use_tls, "explicit override")
     verify_tls = os.getenv("DOIP_VERIFY_TLS", "false").lower() == "true"
+    log.info(
+        "Constructed DOIP client",
+        extra={
+            "host": DEFAULT_DOIP_HOST,
+            "port": DEFAULT_DOIP_PORT,
+            "use_tls": tls_enabled,
+            "verify_tls": verify_tls,
+            "reason": reason,
+        },
+    )
 
     return StrictDOIPClient(
         host=DEFAULT_DOIP_HOST,
@@ -121,6 +152,14 @@ async def download_component(object_id: str, component_id: str):
 
     client = _client()
     try:
+        response = await asyncio.to_thread(client.retrieve, object_id, component_id)
+    except ssl.SSLError as exc:
+        log.warning(
+            "TLS handshake with DOIP backend failed; retrying without TLS",
+            extra={"object_id": object_id, "component_id": component_id},
+            exc_info=exc,
+        )
+        client = _client(use_tls=False)
         response = await asyncio.to_thread(client.retrieve, object_id, component_id)
     except Exception as exc:  # noqa: BLE001
         log.exception(
