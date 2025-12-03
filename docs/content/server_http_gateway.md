@@ -13,17 +13,22 @@ This component provides a thin HTTP layer that forwards browser-friendly downloa
 ### Example
 
 ```bash
-curl -OJ http://localhost/doip/retrieve/Q123/fulltext
+curl -OJ http://localhost/doip/retrieve/Q6033164/fulltext
+curl -OJ http://localhost/doip/retrieve/Q6033164/rocrate
 ```
 
 ## Backend connection
 
-The gateway talks to the colocated DOIP server through `StrictDOIPClient` using these environment variables:
+The gateway talks to the DOIP binary server via `StrictDOIPClient`. Host/port are resolved in this order:
 
-- `DOIP_HOST` (default `127.0.0.1`): hostname for the DOIP TCP endpoint; values like `tcp://host:port` are accepted.
-- `DOIP_PORT` (default `3567`): port number; also parsed from `tcp://` or `host:port` forms.
+- `DOIP_BACKEND_HOST` / `DOIP_BACKEND_PORT`: explicit backend target (use when gateway and server are in different pods/services).
+- `DOIP_HOST` / `DOIP_PORT`: legacy variables for compatibility.
+- Default: `127.0.0.1:3567`.
+
+Safety fallback: if the resolved backend port is `80` (the gateway’s own port), the gateway logs a warning and automatically falls back to `3567` to avoid loopback TLS errors.
+
 - `DOIP_VERIFY_TLS` (default `false`): set to `true` to enable certificate verification when TLS is active.
-- TLS is automatically enabled when `certs/server.crt` exists alongside the gateway image; override by setting `use_tls` in code or removing the cert.
+- TLS is automatically enabled when `certs/server.crt` exists alongside the gateway image; override by removing the cert or setting `DOIP_USE_TLS=false`.
 
 ## Static assets
 
@@ -31,7 +36,7 @@ The root path `/` serves the legacy landing page and associated assets from `/ap
 
 ## Running locally
 
-The Docker entrypoint starts the gateway with Uvicorn:
+The Docker entrypoint starts the gateway with Uvicorn (alongside the main server):
 
 ```bash
 uvicorn doip_server.http_gateway:app --host 0.0.0.0 --port 80
