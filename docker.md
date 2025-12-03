@@ -30,6 +30,12 @@ docker run --rm \
   mardi-doip-server
 ```
 
+### Logging
+If you are experiencing lost logger messages, try 
+```bash
+docker logs <container> 
+```
+
 ### TLS
 The server auto-enables TLS when both `certs/server.crt` and `certs/server.key` are present.
 

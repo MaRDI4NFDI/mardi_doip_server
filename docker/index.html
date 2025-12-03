@@ -580,6 +580,10 @@
   -v $(pwd)/config.yaml:/app/config.yaml:ro \
   mardi-doip-server
 </code></pre>
+<h3 id="logging">Logging</h3>
+<p>If you are experiencing lost logger messages, try </p>
+<pre><code class="language-bash">docker logs &lt;container&gt; 
+</code></pre>
 <h3 id="tls">TLS</h3>
 <p>The server auto-enables TLS when both <code>certs/server.crt</code> and <code>certs/server.key</code> are present.</p>
 <p>With Docker, mount your certificate directory into <code>/app/certs</code> so the container can detect and load them:</p>
@@ -732,6 +736,12 @@
             Run
         </a>
         
+        
+        <a href="#logging"
+            class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
+            data-active="false" data-depth="3">
+            Logging
+        </a>
         
         <a href="#tls"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
