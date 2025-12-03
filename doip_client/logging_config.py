@@ -5,13 +5,12 @@ from __future__ import annotations
 import logging
 import os
 import sys
-from typing import Optional
 
 # Shared application logger used across modules.
 log = logging.getLogger("doip_client")
 
 
-def configure_logging(level: Optional[str | int] = None) -> logging.Logger:
+def configure_logging(level: str | int | None = None) -> logging.Logger:
     """Configure console logging with a sensible default format and level.
 
     Args:
@@ -44,7 +43,7 @@ def configure_logging(level: Optional[str | int] = None) -> logging.Logger:
     return log
 
 
-def _coerce_level(level: Optional[str | int]) -> int:
+def _coerce_level(level: str | int | None) -> int:
     """Return a numeric logging level from user input or environment.
 
     Args:

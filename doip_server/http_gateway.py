@@ -12,7 +12,6 @@ import os
 import asyncio
 import ssl
 from pathlib import Path
-from typing import Optional
 from urllib.parse import urlparse
 
 from fastapi import FastAPI, HTTPException
@@ -23,7 +22,7 @@ from doip_client import StrictDOIPClient
 from doip_server.logging_config import log
 
 
-def _parse_host(raw: Optional[str]) -> str:
+def _parse_host(raw: str | None) -> str:
     """Return a host string, handling values like ``tcp://host:port``.
 
     Args:
@@ -39,7 +38,7 @@ def _parse_host(raw: Optional[str]) -> str:
     return parsed.hostname or raw
 
 
-def _parse_port(raw: Optional[str], default: int = 3567) -> int:
+def _parse_port(raw: str | None, default: int = 3567) -> int:
     """Return an integer port, tolerating Kubernetes-style ``tcp://HOST:PORT`` envs.
 
     Args:
@@ -92,7 +91,7 @@ DEFAULT_DOIP_HOST, DEFAULT_DOIP_PORT = _resolve_backend()
 CERT_PATH = Path("certs/server.crt")
 
 
-def _should_use_tls(raw: Optional[str]) -> tuple[bool, str]:
+def _should_use_tls(raw: str | None) -> tuple[bool, str]:
     """Return whether TLS should be used, with a reason string.
 
     Args:
@@ -112,7 +111,7 @@ def _should_use_tls(raw: Optional[str]) -> tuple[bool, str]:
     return False, f"certificate missing at {CERT_PATH}"
 
 
-def _client(use_tls: Optional[bool] = None) -> StrictDOIPClient:
+def _client(use_tls: bool | None = None) -> StrictDOIPClient:
     """Create a StrictDOIPClient configured for the local server.
 
     Args:

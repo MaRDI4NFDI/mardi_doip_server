@@ -6,7 +6,6 @@ import socket
 import struct
 import ssl
 from pathlib import Path
-from typing import Optional
 
 from doip_shared.constants import OP_HELLO, OP_INVOKE, OP_LIST_OPS, OP_RETRIEVE
 
@@ -110,8 +109,12 @@ class StrictDOIPClient:
         )
         return self.send_message(request)
 
+    def retrieve_component(self, qid: str, component_id: str) -> DoipResponse:
+        """Convenience wrapper for retrieving a specific component."""
+        return self.retrieve(qid, component_id)
 
-    def invoke(self, object_id: str, workflow: str, params: Optional[dict] = None) -> DoipResponse:
+
+    def invoke(self, object_id: str, workflow: str, params: dict | None = None) -> DoipResponse:
         """Invoke a workflow on the server for a given object ID.
 
         Args:

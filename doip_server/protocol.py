@@ -2,7 +2,7 @@ import asyncio
 import json
 import struct
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List
 
 from doip_shared.constants import (
     BLOCK_COMPONENT,
@@ -34,7 +34,7 @@ class ComponentBlock:
     component_id: str
     content: bytes
     media_type: str = "application/octet-stream"
-    declared_size: Optional[int] = None
+    declared_size: int | None = None
 
 
 @dataclass

@@ -2,7 +2,7 @@ import asyncio
 import os
 import time
 import uuid
-from typing import Dict, Optional
+from typing import Dict
 
 import requests
 
@@ -19,7 +19,7 @@ def _generate_qid() -> str:
     return f"Q{int(time.time())}{uuid.uuid4().hex[:6]}"
 
 
-async def create_equation_item(source_qid: str, latex: str, metadata: Optional[Dict] = None) -> str:
+async def create_equation_item(source_qid: str, latex: str, metadata: Dict | None = None) -> str:
     """Create a MediaWiki/Wikibase item representing an extracted equation.
 
     Args:
@@ -43,7 +43,7 @@ async def create_equation_item(source_qid: str, latex: str, metadata: Optional[D
     return _generate_qid()
 
 
-async def create_generic_item(label: str, description: str, claims: Optional[Dict] = None) -> str:
+async def create_generic_item(label: str, description: str, claims: Dict | None = None) -> str:
     """Create a generic item with label, description, and claims.
 
     Args:

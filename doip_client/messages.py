@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List
 
 from .protocol import Header
 
@@ -15,7 +15,7 @@ class ComponentBlock:
     component_id: str
     content: bytes
     media_type: str = "application/octet-stream"
-    declared_size: Optional[int] = None
+    declared_size: int | None = None
 
 
 @dataclass

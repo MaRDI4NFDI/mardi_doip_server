@@ -1,12 +1,13 @@
 import asyncio
 from functools import lru_cache
-from typing import Dict, List, Optional
+from typing import Dict, List, Tuple
 
 import boto3
 import httpx
 from botocore.client import Config
 
 from .logging_config import log
+from doip_shared.sharding import get_component_path, shard_qid
 
 _CFG: Dict = {}
 
@@ -15,6 +16,7 @@ _TYPE_SUFFIX_MAP = {
     "image/png": ".png",
     "image/jpeg": ".jpg",
     "image/svg+xml": ".svg",
+    "application/json": ".json",
 }
 
 
@@ -53,7 +55,7 @@ def _branch() -> str:
     return lakefs_cfg.get("branch") or "main"
 
 
-def _endpoint_url() -> Optional[str]:
+def _endpoint_url() -> str | None:
     """Resolve the lakeFS/S3-compatible endpoint URL.
 
     Returns:
@@ -111,21 +113,55 @@ def _client():
         ),
     )
 
-def s3_key_from_component(object_id: str, component_id: str, media_type: str) -> str:
-    """Construct an S3 key from a DOIP component identifier. """
+def _extension_from_media_type(media_type: str | None, explicit_extension: str | None) -> str:
+    """Return a normalized extension (with leading dot) for a media type or explicit extension.
 
-    qid = _extract_qid(object_id)
-    ext = _TYPE_SUFFIX_MAP.get(media_type, "")
+    Args:
+        media_type: MIME type string.
+        explicit_extension: Optional extension provided by caller.
 
-    return f"{_branch()}/{qid}/{component_id}{ext}"
+    Returns:
+        str: Extension including a leading dot or empty string when unknown.
+    """
+    if explicit_extension:
+        ext = explicit_extension if explicit_extension.startswith(".") else f".{explicit_extension}"
+        return ext
+    if media_type and media_type in _TYPE_SUFFIX_MAP:
+        return _TYPE_SUFFIX_MAP[media_type]
+    return ".bin"
 
 
-async def get_component_bytes(object_id: str, component_id: str) -> bytes:
-    """Fetch component content bytes from lakeFS/S3.
+def build_object_key(qid: str, component_id: str, extension: str, branch: str | None = None) -> str:
+    """Return the full lakeFS key (including branch) for a component.
+
+    Args:
+        qid: QID of the object.
+        component_id: Component identifier.
+        extension: File extension with or without leading dot.
+        branch: Optional branch override; defaults to configured branch.
+
+    Returns:
+        str: LakeFS object key suitable for S3 operations.
+    """
+    ext = extension.lstrip(".")
+    branch_name = branch or _branch()
+    path = get_component_path(qid, component_id, ext)
+    return f"{branch_name}/{path}"
+
+
+async def get_component_bytes(
+    object_id: str,
+    component_id: str,
+    media_type: str | None = None,
+    extension: str | None = None,
+) -> bytes:
+    """Fetch component content bytes from lakeFS/S3 using sharded paths.
 
     Args:
         object_id: Object identifier/QID.
-        component_id: Component identifier (e.g. "fulltext")
+        component_id: Component identifier (e.g. "fulltext").
+        media_type: Optional media type used to derive file extension.
+        extension: Optional file extension override.
 
     Returns:
         bytes: Component content.
@@ -133,15 +169,11 @@ async def get_component_bytes(object_id: str, component_id: str) -> bytes:
     Raises:
         KeyError: If the component is not found in storage.
     """
+    qid = _extract_qid(object_id)
+    ext = _extension_from_media_type(media_type, extension)
+    key = build_object_key(qid, component_id, ext)
 
-    log.debug( "Try to retrieve object with \n object_id: %s and \n component_id: %s", object_id, component_id )
-
-    # TODO: resolve from registry instead of hardcoding
-    media_type = "application/pdf"
-
-    key = s3_key_from_component(object_id, component_id, media_type)
-
-    log.debug( "Try to retrieve object from lakeFS with key: %s", key )
+    log.info("Retrieving lakeFS object key=%s", key)
 
     try:
         response = await asyncio.to_thread(_client().get_object, Bucket=_repo(), Key=key)
@@ -151,25 +183,33 @@ async def get_component_bytes(object_id: str, component_id: str) -> bytes:
     return response["Body"].read()
 
 async def put_component_bytes(
-    object_id: str, data: bytes, content_type: str = "application/octet-stream"
+    object_id: str,
+    component_id: str,
+    data: bytes,
+    media_type: str = "application/octet-stream",
+    extension: str | None = None,
 ) -> str:
-    """Store component bytes to lakeFS/S3 and return the key.
+    """Store component bytes to lakeFS/S3 and return the object key.
 
     Args:
         object_id: Object identifier/QID.
+        component_id: Component identifier to store.
         data: Content bytes to upload.
-        content_type: MIME type for the object.
+        media_type: MIME type for the object (used for extension).
+        extension: Optional file extension override.
 
     Returns:
-        str: Stored S3 key.
+        str: Stored S3 key (branch + sharded path).
     """
-    key = s3_key_from_component(object_id, "primary", content_type)
+    qid = _extract_qid(object_id)
+    ext = _extension_from_media_type(media_type, extension)
+    key = build_object_key(qid, component_id, ext)
     await asyncio.to_thread(
         _client().put_object,
         Bucket=_repo(),
         Key=key,
         Body=data,
-        ContentType=content_type,
+        ContentType=media_type,
     )
     return key
 
@@ -183,10 +223,11 @@ async def list_components(object_id: str) -> List[str]:
     Returns:
         List[str]: Component suffixes stored for the object.
     """
-    prefix = f"{object_id}/"
+    qid = _extract_qid(object_id)
+    prefix = f"{_branch()}/{shard_qid(qid)}/components/"
 
     log.info(
-        "Using lakeFS repo=%s branch=%s prefix=%s object_id=%s",
+        "Listing components repo=%s branch=%s prefix=%s object_id=%s",
         _repo(),
         _branch(),
         prefix,
@@ -195,12 +236,11 @@ async def list_components(object_id: str) -> List[str]:
 
     paginator = _client().get_paginator("list_objects_v2")
     result: List[str] = []
-    async for page in _async_paginate(paginator, Bucket=_repo(), Prefix=f"{_branch()}/{prefix}"):
+    async for page in _async_paginate(paginator, Bucket=_repo(), Prefix=prefix):
         for obj in page.get("Contents", []):
             key = obj["Key"]
-            expected_prefix = f"{_branch()}/{prefix}"
-            if key.startswith(expected_prefix):
-                result.append(key[len(expected_prefix) :])
+            if key.startswith(prefix):
+                result.append(key[len(prefix) :])
     return result
 
 

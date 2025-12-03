@@ -28,6 +28,10 @@ class StubRegistry(object_registry.ObjectRegistry):
         """
         return self._components
 
+    async def fetch_fdo_object(self, pid):
+        """Return a minimal manifest to avoid network access during tests."""
+        return {"kernel": {"fdo:hasComponent": self._components}}
+
 
 @pytest.mark.asyncio
 async def test_handle_hello_returns_capabilities():
@@ -107,7 +111,7 @@ async def test_retrieve_fdo_metadata(monkeypatch):
 @pytest.mark.asyncio
 async def test_retrieve_specific_component(monkeypatch):
     async def fake_ensure(): return True
-    async def fake_get_bytes(qid, comp): return b"hello"
+    async def fake_get_bytes(qid, comp, media_type=None, extension=None): return b"hello"
     async def fake_fetch_fdo(pid):
         # include component in kernel so handler knows it exists
         return {
@@ -153,12 +157,18 @@ async def test_retrieve_component_defaults_when_manifest_missing(monkeypatch):
     async def fake_ensure():
         return True
 
-    async def fake_get_bytes(qid, comp):
+    async def fake_get_bytes(qid, comp, media_type=None, extension=None):
         return b"content"
 
     async def fake_fetch_fdo(pid):
-        # Manifest lacks component listing
-        return {"kernel": {}}
+        # Manifest lists component without media type
+        return {
+            "kernel": {
+                "fdo:hasComponent": [
+                    {"componentId": "primary"}
+                ]
+            }
+        }
 
     monkeypatch.setattr(handlers.storage_lakefs, "ensure_lakefs_available", fake_ensure)
     monkeypatch.setattr(handlers.storage_lakefs, "get_component_bytes", fake_get_bytes)
@@ -225,11 +235,14 @@ async def test_handle_invoke_returns_workflow_results(monkeypatch):
         return workflow_result
 
     monkeypatch.setattr(handlers.workflows, "run_equation_extraction_workflow", fake_workflow)
-    async def fake_get_component_bytes(object_id):
+    async def fake_get_component_bytes(object_id, component_id="primary", media_type=None, extension=None):
         """Return stubbed workflow-derived component bytes.
 
         Args:
             object_id: Requested object identifier.
+            component_id: Component identifier being fetched.
+            media_type: Media type (unused).
+            extension: Extension (unused).
 
         Returns:
             bytes: Dummy workflow content.
@@ -273,7 +286,7 @@ async def test_handle_retrieve_uses_registry_and_storage(monkeypatch):
     registry = StubRegistry()
 
     # verify storage backend is NOT called for metadata PIDs
-    async def fake_get_bytes(qid, comp):
+    async def fake_get_bytes(qid, comp, media_type=None, extension=None):
         assert False, "Should not fetch bitstream bytes for non-bitstream PID"
 
     async def fake_ensure():

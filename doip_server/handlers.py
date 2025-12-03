@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import mimetypes
 import tempfile
@@ -94,7 +96,12 @@ async def handle_retrieve(msg: DOIPMessage, registry: object_registry.ObjectRegi
     log.info("handle_retrieve() for object_id=%s", pid)
 
     if element == "rocrate":
-        crate = await _build_rocrate_payload(pid, registry)
+        try:
+            crate, _ = await registry.get_component(pid, "rocrate")
+        except KeyError:
+            crate = await _build_rocrate_payload(pid, registry)
+        except Exception as exc:
+            raise KeyError(f"Component id not found: {element}") from exc
         return DOIPMessage(
             version=protocol.DOIP_VERSION,
             msg_type=protocol.MSG_TYPE_RESPONSE,
@@ -114,12 +121,10 @@ async def handle_retrieve(msg: DOIPMessage, registry: object_registry.ObjectRegi
 
     if element:
         try:
-            content = await registry.get_component(pid, element)
+            content, media_type = await registry.get_component(pid, element)
             size = len(content)
         except Exception as exc:
             raise KeyError(f"Component id not found: {element}") from exc
-
-        media_type = await _get_component_media_type(registry, pid, element)
 
         return DOIPMessage(
             version=protocol.DOIP_VERSION,
@@ -171,7 +176,11 @@ async def handle_invoke(msg: DOIPMessage, registry: object_registry.ObjectRegist
     derived_blocks: List[ComponentBlock] = []
     for comp in result.get("derivedComponents", []):
         comp_id = comp["componentId"]
-        content = await storage_lakefs.get_component_bytes(qid)
+        content = await storage_lakefs.get_component_bytes(
+            qid,
+            comp_id,
+            media_type=comp.get("mediaType"),
+        )
         derived_blocks.append(
             ComponentBlock(
                 component_id=comp_id,
@@ -302,7 +311,9 @@ async def _build_rocrate_payload(pid: str, registry) -> bytes:
 
     # 1) Try stored rocrate component
     try:
-        content = await registry.get_component(pid, "rocrate")
+        result = await registry.get_component(pid, "rocrate")
+        # tolerate legacy signature returning bytes only
+        content = result[0] if isinstance(result, tuple) else result
     except KeyError:
         content = None
     except ConnectionError:
