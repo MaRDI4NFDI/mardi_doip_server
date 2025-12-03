@@ -48,7 +48,7 @@ def main(argv: list[str] | None = None) -> int:
         formatter_class=RawDescriptionDefaultsHelpFormatter
     )
 
-    parser.add_argument("--host", default="doip.staging.mardi4nfdi.org", help="DOIP Server hostname")
+    parser.add_argument("--host", default="doip.portal.mardi4nfdi.org", help="DOIP Server hostname")
     parser.add_argument("--port", type=int, default=3567, help="Server port")
     parser.add_argument("--no-tls", action="store_true", help="Disable TLS wrapping")
     parser.add_argument("--secure", action="store_true", help="Enable TLS verification (if you do not use a self-certified cert)")

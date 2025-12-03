@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import socket
 import struct
+import ssl
+from pathlib import Path
 from typing import Optional
 
 from doip_shared.constants import OP_HELLO, OP_INVOKE, OP_LIST_OPS, OP_RETRIEVE
@@ -40,8 +42,7 @@ class StrictDOIPClient:
         """
         self.host = host
         self.port = port
-        # self.use_tls = use_tls
-        self.use_tls = False
+        self.use_tls = use_tls
         self.verify_tls = verify_tls
         self.timeout = timeout
 
@@ -51,6 +52,19 @@ class StrictDOIPClient:
         Returns:
             Metadata dictionary from the server.
         """
+        log.info("hello() - use-tls=%s", self.use_tls)
+
+        if self.use_tls:
+            ca_paths = ssl.get_default_verify_paths()
+            certs_available = self._certs_available(ca_paths)
+            log.info(
+                "TLS enabled; verify=%s; certs_available=%s; cafile=%s; capath=%s",
+                self.verify_tls,
+                certs_available,
+                ca_paths.cafile,
+                ca_paths.capath,
+            )
+
         request = DoipRequest(
             header=Header(DOIP_VERSION, MSG_TYPE_REQUEST, OP_HELLO, 0, 0, 0),
             object_id="",
@@ -228,6 +242,20 @@ class StrictDOIPClient:
             chunks.append(chunk)
             remaining -= len(chunk)
         return b"".join(chunks)
+
+    @staticmethod
+    def _certs_available(paths: ssl.DefaultVerifyPaths) -> bool:
+        """Return True when a system CA file or directory exists.
+
+        Args:
+            paths: Default verification paths derived from the SSL module.
+
+        Returns:
+            bool: True if either ``cafile`` or ``capath`` exists.
+        """
+        cafile_exists = bool(paths.cafile and Path(paths.cafile).exists())
+        capath_exists = bool(paths.capath and Path(paths.capath).exists())
+        return cafile_exists or capath_exists
 
     @staticmethod
     def save_first_component(response: DoipResponse, output_path: str | None = None) -> str:
