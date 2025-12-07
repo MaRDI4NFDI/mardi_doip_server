@@ -25,75 +25,111 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Create venv
-        run: |
-          python -m venv venv
+      - name: Create venv (Unix)
+        if: runner.os != 'Windows'
+        run: python -m venv venv
         shell: bash
 
-      ##
-      ## Remove mkdocs* only for CLI build!
-      ##
-      - name: Filter out mkdocs deps for CLI
+      - name: Create venv (Windows)
+        if: runner.os == 'Windows'
+        run: python -m venv venv
+        shell: pwsh
+
+      # =========================
+      # FILTER OUT MKDOCS FOR CLI
+      # =========================
+      - name: Filter CLI deps (Windows)
+        if: runner.os == 'Windows'
         run: |
-          if [ "$RUNNER_OS" = "Windows" ]; then
-            powershell -Command "(Get-Content requirements.txt) | Where-Object {$_ -notmatch 'mkdocs'} | Set-Content requirements.txt"
-          else
-            sed -i '/mkdocs/d' requirements.txt
-          fi
+          (Get-Content requirements.txt) |
+            Where-Object { $_ -notmatch "mkdocs" } |
+            Set-Content requirements.txt
+        shell: pwsh
+
+      - name: Filter CLI deps (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          sed -i.bak '/mkdocs/d' requirements.txt
+          rm requirements.txt.bak
         shell: bash
 
-      - name: Install CLI dependencies + PyInstaller
+      # =========================
+      # INSTALL
+      # =========================
+      - name: Install deps (Windows)
+        if: runner.os == 'Windows'
         run: |
-          if [ "$RUNNER_OS" = "Windows" ]; then
-            call venv\Scripts\activate && pip install --upgrade pip wheel setuptools
-            call venv\Scripts\activate && pip install pyinstaller
-            call venv\Scripts\activate && pip install -r requirements.txt
-          else
-            source venv/bin/activate && pip install --upgrade pip wheel setuptools
-            source venv/bin/activate && pip install pyinstaller
-            source venv/bin/activate && pip install -r requirements.txt
-          fi
-        shell: CMD
+          venv\Scripts\Activate.ps1
+          pip install --upgrade pip wheel setuptools
+          pip install pyinstaller
+          pip install -r requirements.txt
+        shell: pwsh
 
-      - name: Run tests
+      - name: Install deps (Unix)
+        if: runner.os != 'Windows'
         run: |
-          if [ "$RUNNER_OS" = "Windows" ]; then
-            call venv\Scripts\activate && pytest -vv
-          else
-            source venv/bin/activate && pytest -vv
-          fi
-        shell: CMD
+          source venv/bin/activate
+          pip install --upgrade pip wheel setuptools
+          pip install pyinstaller
+          pip install -r requirements.txt
+        shell: bash
 
-      - name: Build binary
+      # =========================
+      # TESTS
+      # =========================
+      - name: Test (Windows)
+        if: runner.os == 'Windows'
         run: |
-          if [ "$RUNNER_OS" = "Windows" ]; then
-            call venv\Scripts\activate && pyinstaller ^
-              --onefile client_cli\main.py ^
-              --name mardi-doip-cli ^
-              --console ^
-              --hidden-import=anyio ^
-              --hidden-import=sniffio ^
-              --hidden-import=h11 ^
-              --clean ^
-              --log-level=WARN
-            # Add checksum
-            certutil -hashfile dist\mardi-doip-cli.exe SHA256 > dist\checksum.txt
-          else
-            source venv/bin/activate && pyinstaller \
-              --onefile client_cli/main.py \
-              --name mardi-doip-cli \
-              --console \
-              --hidden-import=anyio \
-              --hidden-import=sniffio \
-              --hidden-import=h11 \
-              --clean \
-              --log-level=WARN
-            # Add checksum
-            sha256sum dist/mardi-doip-cli > dist/checksum.txt
-          fi
-        shell: CMD
+          venv\Scripts\Activate.ps1
+          pytest -vv
+        shell: pwsh
 
-      - name: Upload Artifact
+      - name: Test (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          source venv/bin/activate
+          pytest -vv
+        shell: bash
+
+      # =========================
+      # BUILD
+      # =========================
+      - name: Build binary (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          venv\Scripts\Activate.ps1
+          pyinstaller `
+            --onefile client_cli\main.py `
+            --name mardi-doip-cli `
+            --console `
+            --hidden-import=anyio `
+            --hidden-import=sniffio `
+            --hidden-import=h11 `
+            --clean `
+            --log-level=WARN
+          certutil -hashfile dist\mardi-doip-cli.exe SHA256 > dist\checksum.txt
+        shell: pwsh
+
+      - name: Build binary (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          source venv/bin/activate
+          pyinstaller \
+            --onefile client_cli/main.py \
+            --name mardi-doip-cli \
+            --console \
+            --hidden-import=anyio \
+            --hidden-import=sniffio \
+            --hidden-import=h11 \
+            --clean \
+            --log-level=WARN
+          sha256sum dist/mardi-doip-cli > dist/checksum.txt
+        shell: bash
+
+      # =========================
+      # ARTIFACTS
+      # =========================
+      - name: Upload CLI binary artifacts
         uses: actions/upload-artifact@v4
         with:
           name: mardi-doip-cli-${{ matrix.os }}
