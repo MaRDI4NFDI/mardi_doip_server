@@ -1,142 +1,104 @@
-name: Build DOIP CLI - MultiOS
+name: Build DOIP CLI Binaries
 
 on:
-  workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: [ "main" ]
+  workflow_dispatch:
 
 jobs:
   build:
+    name: Build CLI (${{ matrix.os }}, Python ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, macos-latest, ubuntu-22.04]
+        os: [windows-latest, ubuntu-20.04, macos-latest]
         python-version: ["3.12"]
 
-    runs-on: ${{ matrix.os }}
-
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
-      ###################################################################
-      # INSTALL DEPENDENCIES
-      ###################################################################
-
-      - name: Install deps (macOS/Linux-native)
-        if: matrix.os == 'macos-latest'
-        shell: bash
+      - name: Create venv
         run: |
           python -m venv venv
-          source venv/bin/activate
-          pip install --upgrade pip wheel setuptools
-          pip install pyinstaller
-          pip install -r requirements.txt
-
-      - name: Install deps (Windows)
-        if: matrix.os == 'windows-latest'
-        shell: cmd
-        run: |
-          python -m venv venv
-          call venv\Scripts\activate
-          pip install --upgrade pip wheel setuptools
-          pip install pyinstaller
-          pip install -r requirements.txt
-
-      ###################################################################
-      # RUN TESTS
-      ###################################################################
-
-      - name: Run tests (macOS)
-        if: matrix.os == 'macos-latest'
         shell: bash
+
+      ##
+      ## Remove mkdocs* only for CLI build!
+      ##
+      - name: Filter out mkdocs deps for CLI
         run: |
-          source venv/bin/activate
-          pytest -vv
-
-      - name: Run tests (Windows)
-        if: matrix.os == 'windows-latest'
-        shell: cmd
-        run: |
-          call venv\Scripts\activate
-          pytest -vv
-
-      ###################################################################
-      # BUILD BINARIES
-      ###################################################################
-
-      # Windows executable
-      - name: Build CLI (Windows)
-        if: matrix.os == 'windows-latest'
-        shell: cmd
-        run: |
-          call venv\Scripts\activate
-          pyinstaller --onefile client_cli\main.py ^
-            --name mardi-doip-cli ^
-            --console ^
-            --clean ^
-            --log-level=WARN ^
-            --hidden-import=anyio ^
-            --hidden-import=sniffio ^
-            --hidden-import=h11
-          certutil -hashfile dist\mardi-doip-cli.exe SHA256 > dist\checksum.txt
-
-      # macOS executable
-      - name: Build CLI (macOS)
-        if: matrix.os == 'macos-latest'
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            powershell -Command "(Get-Content requirements.txt) | Where-Object {$_ -notmatch 'mkdocs'} | Set-Content requirements.txt"
+          else
+            sed -i '/mkdocs/d' requirements.txt
+          fi
         shell: bash
+
+      - name: Install CLI dependencies + PyInstaller
         run: |
-          source venv/bin/activate
-          pyinstaller --onefile client_cli/main.py \
-            --name mardi-doip-cli \
-            --console \
-            --clean \
-            --log-level=WARN \
-            --hidden-import=anyio \
-            --hidden-import=sniffio \
-            --hidden-import=h11
-          shasum -a 256 dist/mardi-doip-cli > dist/checksum.txt
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            call venv\Scripts\activate && pip install --upgrade pip wheel setuptools
+            call venv\Scripts\activate && pip install pyinstaller
+            call venv\Scripts\activate && pip install -r requirements.txt
+          else
+            source venv/bin/activate && pip install --upgrade pip wheel setuptools
+            source venv/bin/activate && pip install pyinstaller
+            source venv/bin/activate && pip install -r requirements.txt
+          fi
+        shell: CMD
 
-      # ManyLinux executable (best compatibility)
-      - name: Build CLI (ManyLinux2014)
-        if: matrix.os == 'ubuntu-22.04'
-        shell: bash
+      - name: Run tests
         run: |
-          docker run --rm \
-            -v ${{ github.workspace }}:/src \
-            -w /src \
-            quay.io/pypa/manylinux2014_x86_64 \
-            bash -c "
-              yum install -y python3 python3-devel && \
-              python3 -m venv venv && \
-              source venv/bin/activate && \
-              pip install --upgrade pip wheel setuptools && \
-              pip install pyinstaller && \
-              pip install -r requirements.txt && \
-              pyinstaller --onefile client_cli/main.py \
-                --name mardi-doip-cli \
-                --console \
-                --clean \
-                --log-level=WARN \
-                --hidden-import=anyio \
-                --hidden-import=sniffio \
-                --hidden-import=h11 \
-              && sha256sum dist/mardi-doip-cli > dist/checksum.txt
-            "
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            call venv\Scripts\activate && pytest -vv
+          else
+            source venv/bin/activate && pytest -vv
+          fi
+        shell: CMD
 
-      ###################################################################
-      # UPLOAD
-      ###################################################################
+      - name: Build binary
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            call venv\Scripts\activate && pyinstaller ^
+              --onefile client_cli\main.py ^
+              --name mardi-doip-cli ^
+              --console ^
+              --hidden-import=anyio ^
+              --hidden-import=sniffio ^
+              --hidden-import=h11 ^
+              --clean ^
+              --log-level=WARN
+            # Add checksum
+            certutil -hashfile dist\mardi-doip-cli.exe SHA256 > dist\checksum.txt
+          else
+            source venv/bin/activate && pyinstaller \
+              --onefile client_cli/main.py \
+              --name mardi-doip-cli \
+              --console \
+              --hidden-import=anyio \
+              --hidden-import=sniffio \
+              --hidden-import=h11 \
+              --clean \
+              --log-level=WARN
+            # Add checksum
+            sha256sum dist/mardi-doip-cli > dist/checksum.txt
+          fi
+        shell: CMD
 
-      - name: Upload CLI Artifact
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: mardi-doip-cli-${{ matrix.os }}-latest
+          name: mardi-doip-cli-${{ matrix.os }}
           path: |
             dist/mardi-doip-cli*
             dist/checksum.txt
           if-no-files-found: error
+          overwrite: true
