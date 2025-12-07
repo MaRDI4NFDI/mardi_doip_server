@@ -6,7 +6,8 @@ from __future__ import annotations
 
 import json
 import logging
-import sys
+import os, sys
+
 from argparse import (
     ArgumentParser,
     RawDescriptionHelpFormatter,
@@ -21,6 +22,26 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(message)s",
     force=True
 )
+
+def print_mardi_logo():
+    # Enable ANSI support on Windows (if needed)
+    if os.name == "nt":
+        import ctypes
+        kernel32 = ctypes.windll.kernel32
+        kernel32.SetConsoleMode(kernel32.GetStdHandle(-11), 7)
+
+    # ANSI colors
+    ORANGE = "\033[38;5;208m"
+    RESET = "\033[0m"
+
+    mardi_nfo = r"""
+██▄  ▄██  ▄▄▄  █████▄  ████▄  ██   ██  ██   ███  ██ ██████ ████▄  ██ 
+██ ▀▀ ██ ██▀██ ██▄▄██▄ ██  ██ ██   ▀█████   ██ ▀▄██ ██▄▄   ██  ██ ██ 
+██    ██ ██▀██ ██   ██ ████▀  ██       ██   ██   ██ ██     ████▀  ██
+"""
+
+    print(ORANGE + mardi_nfo + RESET)
+
 
 # Combine both formatters to allow newlines and showing default arguments
 class RawDescriptionDefaultsHelpFormatter(
@@ -153,4 +174,5 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
+    print_mardi_logo()
     sys.exit(main())
