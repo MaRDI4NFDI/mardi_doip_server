@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, ubuntu-20.04, macos-latest]
+        os: [windows-latest, macos-latest, ubuntu-22.04]
         python-version: ["3.12"]
 
     runs-on: ${{ matrix.os }}
@@ -23,9 +23,12 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      # Linux + macOS dependencies
-      - name: Install deps (Linux/Mac)
-        if: matrix.os != 'windows-latest'
+      ###################################################################
+      # INSTALL DEPENDENCIES
+      ###################################################################
+
+      - name: Install deps (macOS/Linux-native)
+        if: matrix.os == 'macos-latest'
         shell: bash
         run: |
           python -m venv venv
@@ -34,7 +37,6 @@ jobs:
           pip install pyinstaller
           pip install -r requirements.txt
 
-      # Windows dependencies
       - name: Install deps (Windows)
         if: matrix.os == 'windows-latest'
         shell: cmd
@@ -45,9 +47,12 @@ jobs:
           pip install pyinstaller
           pip install -r requirements.txt
 
-      # Tests
-      - name: Run tests (Linux/Mac)
-        if: matrix.os != 'windows-latest'
+      ###################################################################
+      # RUN TESTS
+      ###################################################################
+
+      - name: Run tests (macOS)
+        if: matrix.os == 'macos-latest'
         shell: bash
         run: |
           source venv/bin/activate
@@ -60,22 +65,11 @@ jobs:
           call venv\Scripts\activate
           pytest -vv
 
-      # Build binaries
-      - name: Build CLI (Linux/Mac)
-        if: matrix.os != 'windows-latest'
-        shell: bash
-        run: |
-          source venv/bin/activate
-          pyinstaller --onefile client_cli/main.py \
-            --name mardi-doip-cli \
-            --console \
-            --hidden-import=anyio \
-            --hidden-import=sniffio \
-            --hidden-import=h11 \
-            --clean \
-            --log-level=WARN
-          shasum -a 256 dist/mardi-doip-cli > dist/checksum.txt
+      ###################################################################
+      # BUILD BINARIES
+      ###################################################################
 
+      # Windows executable
       - name: Build CLI (Windows)
         if: matrix.os == 'windows-latest'
         shell: cmd
@@ -84,14 +78,59 @@ jobs:
           pyinstaller --onefile client_cli\main.py ^
             --name mardi-doip-cli ^
             --console ^
+            --clean ^
+            --log-level=WARN ^
             --hidden-import=anyio ^
             --hidden-import=sniffio ^
-            --hidden-import=h11 ^
-            --clean ^
-            --log-level=WARN
+            --hidden-import=h11
           certutil -hashfile dist\mardi-doip-cli.exe SHA256 > dist\checksum.txt
 
-      # Upload results
+      # macOS executable
+      - name: Build CLI (macOS)
+        if: matrix.os == 'macos-latest'
+        shell: bash
+        run: |
+          source venv/bin/activate
+          pyinstaller --onefile client_cli/main.py \
+            --name mardi-doip-cli \
+            --console \
+            --clean \
+            --log-level=WARN \
+            --hidden-import=anyio \
+            --hidden-import=sniffio \
+            --hidden-import=h11
+          shasum -a 256 dist/mardi-doip-cli > dist/checksum.txt
+
+      # ManyLinux executable (best compatibility)
+      - name: Build CLI (ManyLinux2014)
+        if: matrix.os == 'ubuntu-22.04'
+        shell: bash
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/src \
+            -w /src \
+            quay.io/pypa/manylinux2014_x86_64 \
+            bash -c "
+              /opt/python/cp312-cp312/bin/python -m venv venv &&
+              source venv/bin/activate &&
+              pip install --upgrade pip wheel setuptools &&
+              pip install pyinstaller &&
+              pip install -r requirements.txt &&
+              pyinstaller --onefile client_cli/main.py \
+                --name mardi-doip-cli \
+                --console \
+                --clean \
+                --log-level=WARN \
+                --hidden-import=anyio \
+                --hidden-import=sniffio \
+                --hidden-import=h11
+            "
+          sha256sum dist/mardi-doip-cli > dist/checksum.txt
+
+      ###################################################################
+      # UPLOAD
+      ###################################################################
+
       - name: Upload CLI Artifact
         uses: actions/upload-artifact@v4
         with:
