@@ -1,0 +1,54 @@
+name: Build DOIP CLI (Windows EXE)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies (runtime + test)
+        run: |
+          python -m venv venv
+          venv\Scripts\activate
+          pip install --upgrade pip wheel setuptools
+          pip install pyinstaller
+          pip install -r requirements.txt
+        shell: cmd
+
+      - name: Run tests
+        run: |
+          venv\Scripts\activate
+          pytest -vv
+        shell: cmd
+
+      - name: Build DOIP CLI EXE
+        run: |
+          venv\Scripts\activate
+          pyinstaller --onefile client_cli/main.py ^
+            --name mardi-doip-cli ^
+            --console ^
+            --hidden-import=anyio ^
+            --hidden-import=sniffio ^
+            --hidden-import=h11 ^
+            --clean ^
+            --log-level=WARN
+        shell: cmd
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mardi-doip-cli-windows
+          path: dist/mardi-doip-cli.exe
