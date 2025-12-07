@@ -19,26 +19,25 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install dependencies (runtime + test)
+      - name: Install dependencies
         shell: cmd
         run: |
           python -m venv venv
-          venv\Scripts\activate
-          pip install --upgrade pip wheel setuptools
-          pip install pyinstaller
-          pip install -r requirements.txt
+          call venv\Scripts\activate && pip install --upgrade pip wheel setuptools
+          call venv\Scripts\activate && pip install pyinstaller
+          call venv\Scripts\activate && pip install -r requirements.txt
+          call venv\Scripts\activate && python -c "import sys; print('Python:', sys.version)"
+          call venv\Scripts\activate && pyinstaller --version
 
       - name: Run tests
         shell: cmd
         run: |
-          venv\Scripts\activate
-          pytest -vv
+          call venv\Scripts\activate && pytest -vv
 
       - name: Build DOIP CLI EXE
         shell: cmd
         run: |
-          venv\Scripts\activate
-          pyinstaller ^
+          call venv\Scripts\activate && pyinstaller ^
             --onefile client_cli/main.py ^
             --name mardi-doip-cli ^
             --console ^
@@ -47,6 +46,7 @@ jobs:
             --hidden-import=h11 ^
             --clean ^
             --log-level=WARN
+          dir dist
 
       - name: Upload Windows binary artifact
         uses: actions/upload-artifact@v4
