@@ -92,6 +92,7 @@ metadata = client.retrieve("Q123").metadata_blocks
 
 # Latest Development CLI Build
 
-[![Build Status](https://github.com/MaRDI4NFDI/mardi_doip_server/actions/workflows/build-doip-cli-binary/badge.svg)](https://github.com/MaRDI4NFDI/mardi_doip_server/actions/workflows/build-doip-cli-binary.yml)
 
-Download the latest Windows EXE from the **Artifacts** section of the most recent successful run.
+[![Build Status](https://github.com/MaRDI4NFDI/mardi_doip_server/actions/workflows/build-doip-cli-binary.yml/badge.svg)](https://github.com/MaRDI4NFDI/mardi_doip_server/actions/workflows/build-doip-cli-binary.yml)
+
+Download the latest CLI binaries (Windows/macOS/Linux) from the **Artifacts** section of the most recent successful run.
