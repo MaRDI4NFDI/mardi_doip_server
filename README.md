@@ -88,3 +88,10 @@ metadata = client.retrieve("Q123").metadata_blocks
 ## TLS (optional):
 - Place `certs/server.crt` and `certs/server.key` (PEM) to enable TLS automatically; otherwise the server speaks plaintext DOIP.
 - A compatibility listener runs on port 3568 (same TLS setting) accepting doipy JSON-segmented requests and bridging to the DOIP handlers.
+
+
+# Latest Development CLI Build
+
+[![Build Status](https://github.com/MaRDI4NFDI/mardi_doip_server/actions/workflows/build-doip-cli-binary/badge.svg)](https://github.com/MaRDI4NFDI/mardi_doip_server/actions/workflows/build-doip-cli-binary.yml)
+
+Download the latest Windows EXE from the **Artifacts** section of the most recent successful run.
