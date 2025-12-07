@@ -1,4 +1,4 @@
-name: Build DOIP CLI (Windows EXE)
+name: Build DOIP CLI - Windows
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ on:
       - main
 
 jobs:
-  build:
+  build-windows:
     runs-on: windows-latest
 
     steps:
@@ -20,24 +20,26 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies (runtime + test)
+        shell: cmd
         run: |
           python -m venv venv
           venv\Scripts\activate
           pip install --upgrade pip wheel setuptools
           pip install pyinstaller
           pip install -r requirements.txt
-        shell: cmd
 
       - name: Run tests
+        shell: cmd
         run: |
           venv\Scripts\activate
           pytest -vv
-        shell: cmd
 
       - name: Build DOIP CLI EXE
+        shell: cmd
         run: |
           venv\Scripts\activate
-          pyinstaller --onefile client_cli/main.py ^
+          pyinstaller ^
+            --onefile client_cli/main.py ^
             --name mardi-doip-cli ^
             --console ^
             --hidden-import=anyio ^
@@ -45,10 +47,10 @@ jobs:
             --hidden-import=h11 ^
             --clean ^
             --log-level=WARN
-        shell: cmd
 
-      - name: Upload binary artifact
+      - name: Upload Windows binary artifact
         uses: actions/upload-artifact@v4
         with:
           name: mardi-doip-cli-windows
           path: dist/mardi-doip-cli.exe
+          if-no-files-found: error
