@@ -23,61 +23,87 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      ############################
       # Install dependencies
-      - name: Install Python deps
+      ############################
+
+      - name: Install Python deps (Linux/Mac)
+        if: matrix.os != 'windows-latest'
+        shell: bash
         run: |
           python -m venv venv
-          if [ "$RUNNER_OS" = "Windows" ]; then
-            call venv\Scripts\activate && pip install --upgrade pip wheel setuptools
-            call venv\Scripts\activate && pip install pyinstaller
-            call venv\Scripts\activate && pip install -r requirements.txt
-          else
-            source venv/bin/activate && pip install --upgrade pip wheel setuptools
-            source venv/bin/activate && pip install pyinstaller
-            source venv/bin/activate && pip install -r requirements.txt
-          fi
-        shell: bash
+          source venv/bin/activate
+          pip install --upgrade pip wheel setuptools
+          pip install pyinstaller
+          pip install -r requirements.txt
 
+      - name: Install Python deps (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: cmd
+        run: |
+          python -m venv venv
+          venv\Scripts\activate
+          pip install --upgrade pip wheel setuptools
+          pip install pyinstaller
+          pip install -r requirements.txt
+
+      ############################
       # Run tests
-      - name: Run tests
-        run: |
-          if [ "$RUNNER_OS" = "Windows" ]; then
-            call venv\Scripts\activate && pytest -vv
-          else
-            source venv/bin/activate && pytest -vv
-          fi
-        shell: bash
+      ############################
 
-      # Build executables
-      - name: Build CLI
-        run: |
-          if [ "$RUNNER_OS" = "Windows" ]; then
-            call venv\Scripts\activate && pyinstaller ^
-              --onefile client_cli/main.py ^
-              --name mardi-doip-cli ^
-              --console ^
-              --hidden-import=anyio ^
-              --hidden-import=sniffio ^
-              --hidden-import=h11 ^
-              --clean ^
-              --log-level=WARN
-            certutil -hashfile dist\mardi-doip-cli.exe SHA256 > dist\checksum.txt
-          else
-            source venv/bin/activate && pyinstaller \
-              --onefile client_cli/main.py \
-              --name mardi-doip-cli \
-              --console \
-              --hidden-import=anyio \
-              --hidden-import=sniffio \
-              --hidden-import=h11 \
-              --clean \
-              --log-level=WARN
-            shasum -a 256 dist/mardi-doip-cli > dist/checksum.txt
-          fi
+      - name: Run tests (Linux/Mac)
+        if: matrix.os != 'windows-latest'
         shell: bash
+        run: |
+          source venv/bin/activate
+          pytest -vv
 
-      # Upload platform-specific build artifact
-      - name: Upload executable
+      - name: Run tests (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: cmd
+        run: |
+          venv\Scripts\activate
+          pytest -vv
+
+      ############################
+      # Build Executable
+      ############################
+
+      - name: Build CLI (Linux/Mac)
+        if: matrix.os != 'windows-latest'
+        shell: bash
+        run: |
+          source venv/bin/activate
+          pyinstaller --onefile client_cli/main.py \
+            --name mardi-doip-cli \
+            --console \
+            --hidden-import=anyio \
+            --hidden-import=sniffio \
+            --hidden-import=h11 \
+            --clean \
+            --log-level=WARN
+          shasum -a 256 dist/mardi-doip-cli > dist/checksum.txt
+
+      - name: Build CLI (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: cmd
+        run: |
+          venv\Scripts\activate
+          pyinstaller --onefile client_cli\main.py ^
+            --name mardi-doip-cli ^
+            --console ^
+            --hidden-import=anyio ^
+            --hidden-import=sniffio ^
+            --hidden-import=h11 ^
+            --clean ^
+            --log-level=WARN
+          certutil -hashfile dist\mardi-doip-cli.exe SHA256 > dist\checksum.txt
+
+      ############################
+      # Upload Executable
+      ############################
+
+      - name: Upload CLI Artifact
         uses: actions/upload-artifact@v4
         with:
           name: mardi-doip-cli-${{ matrix.os }}-latest
