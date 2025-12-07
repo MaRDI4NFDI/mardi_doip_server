@@ -111,11 +111,12 @@ jobs:
             -w /src \
             quay.io/pypa/manylinux2014_x86_64 \
             bash -c "
-              /opt/python/cp312-cp312/bin/python -m venv venv &&
-              source venv/bin/activate &&
-              pip install --upgrade pip wheel setuptools &&
-              pip install pyinstaller &&
-              pip install -r requirements.txt &&
+              yum install -y python3 python3-devel && \
+              python3 -m venv venv && \
+              source venv/bin/activate && \
+              pip install --upgrade pip wheel setuptools && \
+              pip install pyinstaller && \
+              pip install -r requirements.txt && \
               pyinstaller --onefile client_cli/main.py \
                 --name mardi-doip-cli \
                 --console \
@@ -123,9 +124,9 @@ jobs:
                 --log-level=WARN \
                 --hidden-import=anyio \
                 --hidden-import=sniffio \
-                --hidden-import=h11
+                --hidden-import=h11 \
+              && sha256sum dist/mardi-doip-cli > dist/checksum.txt
             "
-          sha256sum dist/mardi-doip-cli > dist/checksum.txt
 
       ###################################################################
       # UPLOAD
