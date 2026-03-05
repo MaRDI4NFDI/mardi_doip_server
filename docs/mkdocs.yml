@@ -4,8 +4,21 @@ site_url: https://mardi4nfdi.github.io/mardi_doip_server/
 use_directory_urls: true
 docs_dir: content
 site_dir: site
+
 theme:
   name: shadcn
+
+  markdown_extensions:
+    - admonition
+    - tables
+    - toc:
+        permalink: true
+    - pymdownx.superfences
+    - pymdownx.highlight:
+        anchor_linenums: true
+    - pymdownx.details
+    - pymdownx.inlinehilite
+
 nav:
   - Home: index.md
   - Server: server.md

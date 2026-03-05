@@ -3,6 +3,7 @@ fastapi
 httpx
 mkdocs
 mkdocs-shadcn
+pymdown-extensions
 pytest
 pytest-asyncio
 pytest-mock
