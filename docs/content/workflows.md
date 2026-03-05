@@ -15,59 +15,47 @@ The User must prepare their local operating system (Windows, Linux, or
 macOS) by installing the core components necessary to run the
 Conda-based Snakemake workflow. This setup is required once per machine.
 
-### Step 1: Prepare the Windows Environment
+=== "Windows"
 
-The User needs four essential pieces of software installed:
+    The Windows user needs four essential pieces of software installed:
 
-1.  **Conda/Mamba:** Install **Anaconda** or **Miniconda** (preferred
-    for a smaller footprint).
+    1. **Conda/Mamba:** Install **Anaconda** or **Miniconda** (preferred for a smaller footprint).
+    2. **Python:** Ensure Python is installed (usually comes with Conda).
+    3. **Snakemake:** Install the Snakemake engine:
 
-2.  **Python:** Ensure Python is installed (usually comes with Conda).
+        ```bash
+        conda install -c conda-forge snakemake
+        ```
 
-3.  **Snakemake:** Install the Snakemake engine:
+    4. **FDO Client:** Install your custom command-line client for resolving PIDs and running the workflow.
 
-    ``` bash
-    conda install -c conda-forge snakemake
-    ```
+=== "Linux"
 
-4.  **FDO Client:** Install your custom command-line client for
-    resolving PIDs and running the workflow.
+    The Linux user needs four essential pieces of software installed:
 
-### Step 2: Prepare the Linux Environment
+    1. **Conda/Mamba:** Install **Anaconda** or **Miniconda** (preferred for a smaller footprint).
+    2. **Python:** Ensure Python is installed (usually comes with Conda).
+    3. **Snakemake:** Install the Snakemake engine:
 
-The User needs four essential pieces of software installed:
+        ```bash
+        conda install -c conda-forge snakemake
+        ```
 
-1.  **Conda/Mamba:** Install **Anaconda** or **Miniconda** (preferred
-    for a smaller footprint).
+    4. **FDO Client:** Install your custom command-line client for resolving PIDs and running the workflow.
 
-2.  **Python:** Ensure Python is installed (usually comes with Conda).
+=== "macOS"
 
-3.  **Snakemake:** Install the Snakemake engine:
+    The User needs four essential pieces of software installed:
 
-    ``` bash
-    conda install -c conda-forge snakemake
-    ```
+    1. **Conda/Mamba:** Install **Anaconda** or **Miniconda** (preferred for a smaller footprint).
+    2. **Python:** Ensure Python is installed (usually comes with Conda).
+    3. **Snakemake:** Install the Snakemake engine:
 
-4.  **FDO Client:** Install your custom command-line client for
-    resolving PIDs and running the workflow.
+        ```bash
+        conda install -c conda-forge snakemake
+        ```
 
-### Step 3: Prepare the macOS Environment
-
-The User needs four essential pieces of software installed:
-
-1.  **Conda/Mamba:** Install **Anaconda** or **Miniconda** (preferred
-    for a smaller footprint).
-
-2.  **Python:** Ensure Python is installed (usually comes with Conda).
-
-3.  **Snakemake:** Install the Snakemake engine:
-
-    ``` bash
-    conda install -c conda-forge snakemake
-    ```
-
-4.  **FDO Client:** Install your custom command-line client for
-    resolving PIDs and running the workflow.
+    4. **FDO Client:** Install your custom command-line client for resolving PIDs and running the workflow.
 
 ------------------------------------------------------------------------
 

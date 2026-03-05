@@ -8,16 +8,18 @@ site_dir: site
 theme:
   name: shadcn
 
-  markdown_extensions:
-    - admonition
-    - tables
-    - toc:
-        permalink: true
-    - pymdownx.superfences
-    - pymdownx.highlight:
-        anchor_linenums: true
-    - pymdownx.details
-    - pymdownx.inlinehilite
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.details
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: false
 
 nav:
   - Home: index.md
