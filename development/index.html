@@ -553,23 +553,23 @@
     </div>
   </div>
   <div class="typography w-full flex-1 *:data-[slot=alert]:first:mt-0">
-    <h2 id="local-environment">Local environment</h2>
+    <h2 id="local-environment">Local environment<a class="headerlink" href="#local-environment" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Create a venv: <code>python -m venv .venv &amp;&amp; source .venv/bin/activate</code>.</li>
 <li>Install deps: <code>pip install -r requirements.txt</code> (add <code>-e .</code> during active dev).</li>
 </ul>
-<h2 id="running-tests-quality-checks">Running tests &amp; quality checks</h2>
+<h2 id="running-tests-quality-checks">Running tests &amp; quality checks<a class="headerlink" href="#running-tests-quality-checks" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Unit tests: <code>pytest --maxfail=1 --disable-warnings -q</code></li>
 <li>Style (if available): <code>ruff check src tests</code> and <code>black src tests</code></li>
 </ul>
-<h2 id="docs-workflow">Docs workflow</h2>
+<h2 id="docs-workflow">Docs workflow<a class="headerlink" href="#docs-workflow" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Edit pages in <code>docs/content/</code> and update navigation in <code>docs/mkdocs.yml</code>.</li>
 <li>Preview locally: <code>cd docs &amp;&amp; mkdocs serve --config-file mkdocs.yml</code></li>
 <li>Build static site (used for GitHub Pages): <code>cd docs &amp;&amp; ./build_docs.sh</code></li>
 </ul>
-<h2 id="project-layout">Project layout</h2>
+<h2 id="project-layout">Project layout<a class="headerlink" href="#project-layout" title="Permanent link">&para;</a></h2>
 <p>The repo keeps runtime code under <code>doip_server/</code>, <code>doip_client/</code>, and <code>client_cli/</code>, with supporting scripts in <code>scripts/</code> and tests in <code>tests/</code>. See <code>project_structure.md</code> for a directory tour.</p>
   </div>
 </article>

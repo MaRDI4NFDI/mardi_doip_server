@@ -535,75 +535,61 @@ environment management system to ensure reproducibility across
 <strong>Windows</strong>, <strong>Linux</strong>, and <strong>macOS</strong> environments without needing
 Docker or operating system compatibility layers.</p>
 <hr />
-<h2 id="1-target-system-preparation-user-role">1. Target System Preparation (User Role)</h2>
+<h2 id="1-target-system-preparation-user-role">1. Target System Preparation (User Role)<a class="headerlink" href="#1-target-system-preparation-user-role" title="Permanent link">&para;</a></h2>
 <p>The User must prepare their local operating system (Windows, Linux, or
 macOS) by installing the core components necessary to run the
 Conda-based Snakemake workflow. This setup is required once per machine.</p>
-<h3 id="step-1-prepare-the-windows-environment">Step 1: Prepare the Windows Environment</h3>
-<p>The User needs four essential pieces of software installed:</p>
+<div class="tabbed-set" data-tabs="1:3"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><label for="__tabbed_1_1">Windows</label><div class="tabbed-content">
+<p>The Windows user needs four essential pieces of software installed:</p>
 <ol>
-<li>
-<p><strong>Conda/Mamba:</strong> Install <strong>Anaconda</strong> or <strong>Miniconda</strong> (preferred
-    for a smaller footprint).</p>
-</li>
-<li>
-<p><strong>Python:</strong> Ensure Python is installed (usually comes with Conda).</p>
-</li>
+<li><strong>Conda/Mamba:</strong> Install <strong>Anaconda</strong> or <strong>Miniconda</strong> (preferred for a smaller footprint).</li>
+<li><strong>Python:</strong> Ensure Python is installed (usually comes with Conda).</li>
 <li>
 <p><strong>Snakemake:</strong> Install the Snakemake engine:</p>
-<p><code>bash
-conda install -c conda-forge snakemake</code></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>conda<span class="w"> </span>install<span class="w"> </span>-c<span class="w"> </span>conda-forge<span class="w"> </span>snakemake
+</code></pre></div>
 </li>
 <li>
-<p><strong>FDO Client:</strong> Install your custom command-line client for
-    resolving PIDs and running the workflow.</p>
+<p><strong>FDO Client:</strong> Install your custom command-line client for resolving PIDs and running the workflow.</p>
 </li>
 </ol>
-<h3 id="step-2-prepare-the-linux-environment">Step 2: Prepare the Linux Environment</h3>
-<p>The User needs four essential pieces of software installed:</p>
+</div>
+<input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><label for="__tabbed_1_2">Linux</label><div class="tabbed-content">
+<p>The Linux user needs four essential pieces of software installed:</p>
 <ol>
-<li>
-<p><strong>Conda/Mamba:</strong> Install <strong>Anaconda</strong> or <strong>Miniconda</strong> (preferred
-    for a smaller footprint).</p>
-</li>
-<li>
-<p><strong>Python:</strong> Ensure Python is installed (usually comes with Conda).</p>
-</li>
+<li><strong>Conda/Mamba:</strong> Install <strong>Anaconda</strong> or <strong>Miniconda</strong> (preferred for a smaller footprint).</li>
+<li><strong>Python:</strong> Ensure Python is installed (usually comes with Conda).</li>
 <li>
 <p><strong>Snakemake:</strong> Install the Snakemake engine:</p>
-<p><code>bash
-conda install -c conda-forge snakemake</code></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>conda<span class="w"> </span>install<span class="w"> </span>-c<span class="w"> </span>conda-forge<span class="w"> </span>snakemake
+</code></pre></div>
 </li>
 <li>
-<p><strong>FDO Client:</strong> Install your custom command-line client for
-    resolving PIDs and running the workflow.</p>
+<p><strong>FDO Client:</strong> Install your custom command-line client for resolving PIDs and running the workflow.</p>
 </li>
 </ol>
-<h3 id="step-3-prepare-the-macos-environment">Step 3: Prepare the macOS Environment</h3>
+</div>
+<input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><label for="__tabbed_1_3">macOS</label><div class="tabbed-content">
 <p>The User needs four essential pieces of software installed:</p>
 <ol>
-<li>
-<p><strong>Conda/Mamba:</strong> Install <strong>Anaconda</strong> or <strong>Miniconda</strong> (preferred
-    for a smaller footprint).</p>
-</li>
-<li>
-<p><strong>Python:</strong> Ensure Python is installed (usually comes with Conda).</p>
-</li>
+<li><strong>Conda/Mamba:</strong> Install <strong>Anaconda</strong> or <strong>Miniconda</strong> (preferred for a smaller footprint).</li>
+<li><strong>Python:</strong> Ensure Python is installed (usually comes with Conda).</li>
 <li>
 <p><strong>Snakemake:</strong> Install the Snakemake engine:</p>
-<p><code>bash
-conda install -c conda-forge snakemake</code></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>conda<span class="w"> </span>install<span class="w"> </span>-c<span class="w"> </span>conda-forge<span class="w"> </span>snakemake
+</code></pre></div>
 </li>
 <li>
-<p><strong>FDO Client:</strong> Install your custom command-line client for
-    resolving PIDs and running the workflow.</p>
+<p><strong>FDO Client:</strong> Install your custom command-line client for resolving PIDs and running the workflow.</p>
 </li>
 </ol>
+</div>
+</div>
 <hr />
-<h2 id="2-workflow-creation-and-fdo-registration-creator-role">2. Workflow Creation and FDO Registration (Creator Role)</h2>
+<h2 id="2-workflow-creation-and-fdo-registration-creator-role">2. Workflow Creation and FDO Registration (Creator Role)<a class="headerlink" href="#2-workflow-creation-and-fdo-registration-creator-role" title="Permanent link">&para;</a></h2>
 <p>The Creator develops a workflow designed for maximum portability and
 registers the complete package as a persistent FDO artifact.</p>
-<h3 id="21-develop-the-snakemake-pipeline">2.1 Develop the Snakemake Pipeline</h3>
+<h3 id="21-develop-the-snakemake-pipeline">2.1 Develop the Snakemake Pipeline<a class="headerlink" href="#21-develop-the-snakemake-pipeline" title="Permanent link">&para;</a></h3>
 <p>The workflow must explicitly use the Snakemake <strong>Conda integration</strong> to
 ensure cross-platform reproducibility.</p>
 <ol>
@@ -622,22 +608,22 @@ ensure cross-platform reproducibility.</p>
 </li>
 </ol>
 <p>Example Snakefile snippet:</p>
-<pre><code class="language-python">rule fastqc_report:
-    input:
-        &quot;data/{sample}.fastq&quot;
-    output:
-        &quot;results/{sample}_fastqc.html&quot;
-    conda:
-        &quot;envs/fastqc.yaml&quot;
-    shell:
-        &quot;fastqc {input} -o {output}&quot;
-</code></pre>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">rule</span> <span class="n">fastqc_report</span><span class="p">:</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="nb">input</span><span class="p">:</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>        <span class="s2">&quot;data/</span><span class="si">{sample}</span><span class="s2">.fastq&quot;</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="n">output</span><span class="p">:</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>        <span class="s2">&quot;results/</span><span class="si">{sample}</span><span class="s2">_fastqc.html&quot;</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    <span class="n">conda</span><span class="p">:</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>        <span class="s2">&quot;envs/fastqc.yaml&quot;</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    <span class="n">shell</span><span class="p">:</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>        <span class="s2">&quot;fastqc </span><span class="si">{input}</span><span class="s2"> -o </span><span class="si">{output}</span><span class="s2">&quot;</span>
+</code></pre></div>
 <ol>
 <li><strong>Test for Portability:</strong> Test the workflow on Windows, Linux, and
     macOS using the <code>--use-conda</code> flag to confirm environments build
     correctly and execution is identical across systems.</li>
 </ol>
-<h3 id="22-package-and-register-the-fdo">2.2 Package and Register the FDO</h3>
+<h3 id="22-package-and-register-the-fdo">2.2 Package and Register the FDO<a class="headerlink" href="#22-package-and-register-the-fdo" title="Permanent link">&para;</a></h3>
 <p>The validated workflow files are packaged as a Research Object Crate
 (RO-Crate) and registered in the DoIP/FDO system.</p>
 <ol>
@@ -658,18 +644,18 @@ ensure cross-platform reproducibility.</p>
     Registry</strong>.</li>
 </ol>
 <hr />
-<h2 id="3-workflow-execution-user-role">3. Workflow Execution (User Role)</h2>
+<h2 id="3-workflow-execution-user-role">3. Workflow Execution (User Role)<a class="headerlink" href="#3-workflow-execution-user-role" title="Permanent link">&para;</a></h2>
 <p>The User executes the verified workflow on their local machine using the
 PID and local Conda installation.</p>
-<h3 id="31-execute-the-fdo-client">3.1 Execute the FDO Client</h3>
+<h3 id="31-execute-the-fdo-client">3.1 Execute the FDO Client<a class="headerlink" href="#31-execute-the-fdo-client" title="Permanent link">&para;</a></h3>
 <p>The FDO client automates the download, verification, and Snakemake
 execution steps.</p>
 <ol>
 <li>
 <p><strong>Initiate Run:</strong> Execute the workflow using its PID and specify the
     local input directory.</p>
-<p><code>bash
-fdo-run-client 20.500.12345/workflow_A01 --input "C:\User\Data\RawSequences" --cores 4</code></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>fdo-run-client<span class="w"> </span><span class="m">20</span>.500.12345/workflow_A01<span class="w"> </span>--input<span class="w"> </span><span class="s2">&quot;C:\User\Data\RawSequences&quot;</span><span class="w"> </span>--cores<span class="w"> </span><span class="m">4</span>
+</code></pre></div>
 </li>
 <li>
 <p><strong>Client Verification Logic:</strong></p>
@@ -688,11 +674,11 @@ fdo-run-client 20.500.12345/workflow_A01 --input "C:\User\Data\RawSequences" --c
 <li>
 <p><strong>Snakemake Execution:</strong> The client launches the Snakemake run
     command:</p>
-<p><code>bash
-snakemake -s /path/to/Snakefile --cores 4 --use-conda --config input_path="/path/to/input/data"</code></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>snakemake<span class="w"> </span>-s<span class="w"> </span>/path/to/Snakefile<span class="w"> </span>--cores<span class="w"> </span><span class="m">4</span><span class="w"> </span>--use-conda<span class="w"> </span>--config<span class="w"> </span><span class="nv">input_path</span><span class="o">=</span><span class="s2">&quot;/path/to/input/data&quot;</span>
+</code></pre></div>
 </li>
 </ol>
-<h3 id="32-guaranteed-reproducibility-across-os">3.2 Guaranteed Reproducibility Across OS</h3>
+<h3 id="32-guaranteed-reproducibility-across-os">3.2 Guaranteed Reproducibility Across OS<a class="headerlink" href="#32-guaranteed-reproducibility-across-os" title="Permanent link">&para;</a></h3>
 <p>Because the <code>--use-conda</code> flag is used:</p>
 <ul>
 <li><strong>Snakemake</strong> reads the <code>environment.yaml</code> files from the downloaded
@@ -703,7 +689,7 @@ snakemake -s /path/to/Snakefile --cores 4 --use-conda --config input_path="/path
     without requiring Docker or virtualization.</li>
 </ul>
 <hr />
-<h2 id="example">Example</h2>
+<h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
 <p>See <a href="../workflow_example/">this example</a>.</p>
   </div>
 </article>
@@ -826,26 +812,6 @@ snakemake -s /path/to/Snakefile --cores 4 --use-conda --config input_path="/path
             data-active="false" data-depth="2">
             1. Target System Preparation (User Role)
         </a>
-        
-        
-        <a href="#step-1-prepare-the-windows-environment"
-            class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3">
-            Step 1: Prepare the Windows Environment
-        </a>
-        
-        <a href="#step-2-prepare-the-linux-environment"
-            class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3">
-            Step 2: Prepare the Linux Environment
-        </a>
-        
-        <a href="#step-3-prepare-the-macos-environment"
-            class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3">
-            Step 3: Prepare the macOS Environment
-        </a>
-        
         
 
         

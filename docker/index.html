@@ -554,38 +554,38 @@
   </div>
   <div class="typography w-full flex-1 *:data-[slot=alert]:first:mt-0">
     <p>Build and run the DOIP server in a container.</p>
-<h2 id="build">Build</h2>
-<p>From the project root:</p>
-<pre><code class="language-bash">docker build -f docker/Dockerfile -t mardi-doip-server .
-</code></pre>
-<p>By default the image generates a self-signed cert (CN=localhost) during build. To skip generation, set:</p>
-<pre><code class="language-bash">docker build -f docker/Dockerfile --build-arg GENERATE_SELF_SIGNED=false -t mardi-doip-server .
-</code></pre>
-<h2 id="run">Run</h2>
-<p>Expose the default DOIP port (plaintext) and the compatibility listener:</p>
-<pre><code class="language-bash">docker run --rm -p 3567:3567 -p 3568:3568 mardi-doip-server
-</code></pre>
-<p>Inject configuration by mounting <code>config.yaml</code> or providing environment variables. Example with env overrides and certificates:</p>
-<pre><code class="language-bash">docker run --rm \
-  -p 3567:3567 -p 3568:3568 \
-  -e FDO_API=&quot;https://fdo.example.org/fdo/&quot; \
-  -e LAKEFS_URL=&quot;https://lakefs.internal&quot; \
-  -e LAKEFS_USER=admin -e LAKEFS_PASSWORD=secret \
-  -v $(pwd)/certs:/app/certs \
-  -v $(pwd)/config.yaml:/app/config.yaml:ro \
-  mardi-doip-server
-</code></pre>
-<h3 id="logging">Logging</h3>
-<p>If you are experiencing lost logger messages, try </p>
-<pre><code class="language-bash">docker logs &lt;container&gt; 
-</code></pre>
-<h3 id="tls">TLS</h3>
+<h2 id="build">Build<a class="headerlink" href="#build" title="Permanent link">&para;</a></h2>
+<p>From the project root:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>docker<span class="w"> </span>build<span class="w"> </span>-f<span class="w"> </span>docker/Dockerfile<span class="w"> </span>-t<span class="w"> </span>mardi-doip-server<span class="w"> </span>.
+</code></pre></div>
+By default the image generates a self-signed cert (CN=localhost) during build. To skip generation, set:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>docker<span class="w"> </span>build<span class="w"> </span>-f<span class="w"> </span>docker/Dockerfile<span class="w"> </span>--build-arg<span class="w"> </span><span class="nv">GENERATE_SELF_SIGNED</span><span class="o">=</span><span class="nb">false</span><span class="w"> </span>-t<span class="w"> </span>mardi-doip-server<span class="w"> </span>.
+</code></pre></div></p>
+<h2 id="run">Run<a class="headerlink" href="#run" title="Permanent link">&para;</a></h2>
+<p>Expose the default DOIP port (plaintext) and the compatibility listener:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>-p<span class="w"> </span><span class="m">3567</span>:3567<span class="w"> </span>-p<span class="w"> </span><span class="m">3568</span>:3568<span class="w"> </span>mardi-doip-server
+</code></pre></div></p>
+<p>Inject configuration by mounting <code>config.yaml</code> or providing environment variables. Example with env overrides and certificates:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span>-p<span class="w"> </span><span class="m">3567</span>:3567<span class="w"> </span>-p<span class="w"> </span><span class="m">3568</span>:3568<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span>-e<span class="w"> </span><span class="nv">FDO_API</span><span class="o">=</span><span class="s2">&quot;https://fdo.example.org/fdo/&quot;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span>-e<span class="w"> </span><span class="nv">LAKEFS_URL</span><span class="o">=</span><span class="s2">&quot;https://lakefs.internal&quot;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">  </span>-e<span class="w"> </span><span class="nv">LAKEFS_USER</span><span class="o">=</span>admin<span class="w"> </span>-e<span class="w"> </span><span class="nv">LAKEFS_PASSWORD</span><span class="o">=</span>secret<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">  </span>-v<span class="w"> </span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span>/certs:/app/certs<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">  </span>-v<span class="w"> </span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span>/config.yaml:/app/config.yaml:ro<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="w">  </span>mardi-doip-server
+</code></pre></div></p>
+<h3 id="logging">Logging<a class="headerlink" href="#logging" title="Permanent link">&para;</a></h3>
+<p>If you are experiencing lost logger messages, try 
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>docker<span class="w"> </span>logs<span class="w"> </span>&lt;container&gt;<span class="w"> </span>
+</code></pre></div></p>
+<h3 id="tls">TLS<a class="headerlink" href="#tls" title="Permanent link">&para;</a></h3>
 <p>The server auto-enables TLS when both <code>certs/server.crt</code> and <code>certs/server.key</code> are present.</p>
-<p>With Docker, mount your certificate directory into <code>/app/certs</code> so the container can detect and load them:</p>
-<pre><code class="language-bash">docker run --rm -p 3567:3567 -p 3568:3568 \
-  -v $(pwd)/certs:/app/certs \
-  mardi-doip-server
-</code></pre>
+<p>With Docker, mount your certificate directory into <code>/app/certs</code> so the container can detect and load them:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>-p<span class="w"> </span><span class="m">3567</span>:3567<span class="w"> </span>-p<span class="w"> </span><span class="m">3568</span>:3568<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span>-v<span class="w"> </span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span>/certs:/app/certs<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span>mardi-doip-server
+</code></pre></div></p>
 <p>Inside the container, the entrypoint checks for <code>/app/certs/server.crt</code> and <code>/app/certs/server.key</code> and, if found, starts TLS listeners on 3567/3568. Without the mount, the server stays in plaintext mode.</p>
 <p>The container entrypoint runs <code>python -m doip_server.main</code>.</p>
   </div>

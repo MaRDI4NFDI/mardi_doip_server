@@ -553,7 +553,7 @@
     </div>
   </div>
   <div class="typography w-full flex-1 *:data-[slot=alert]:first:mt-0">
-    <h2 id="overview">Overview</h2>
+    <h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
 <p>Asyncio-based TCP server implementing strict DOIP v2.0 framing. Supported operations:
 - Hello (<code>0x01</code>)
 - Retrieve (<code>0x02</code>)
@@ -563,16 +563,16 @@
 - Binary DOIP: default <code>3567</code> (set with <code>--port</code>).
 - Compatibility JSON-segment listener: <code>port + 1</code> (default <code>3568</code>) for doipy-style clients.
 If <code>certs/server.crt</code> and <code>certs/server.key</code> exist, both listeners start with TLS; otherwise they stay plaintext.</p>
-<h2 id="entrypoint">Entrypoint</h2>
+<h2 id="entrypoint">Entrypoint<a class="headerlink" href="#entrypoint" title="Permanent link">&para;</a></h2>
 <p>Module <code>doip_server.main</code> exposes the CLI and event loop bootstrap.</p>
-<p>Start the server (plaintext):</p>
-<pre><code class="language-bash">PYTHONPATH=. python -m doip_server.main --port 3567
-</code></pre>
+<p>Start the server (plaintext):
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nv">PYTHONPATH</span><span class="o">=</span>.<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>doip_server.main<span class="w"> </span>--port<span class="w"> </span><span class="m">3567</span>
+</code></pre></div></p>
 <p>CLI flags:
 - <code>--port</code>: TCP port for the binary listener.
 - <code>--fdo-api</code>: Override the FDO façade base URL for the current run.</p>
 <p>Configuration order of precedence: <code>config.yaml</code> → environment variables (<code>FDO_API</code>, <code>LAKEFS_*</code>, <code>OLLAMA_API_KEY</code>) → CLI flags. See <strong>Configuration</strong> for details.</p>
-<h2 id="handlers">Handlers</h2>
+<h2 id="handlers">Handlers<a class="headerlink" href="#handlers" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>handle_hello</code></li>
 <li><strong>Motivation</strong>: Allow clients to verify connectivity and discover supported operations without performing data transfers.</li>
@@ -587,13 +587,13 @@ If <code>certs/server.crt</code> and <code>certs/server.key</code> exist, both l
 <li><strong>Motivation</strong>: Advertise supported operations for discovery.</li>
 <li><strong>Use case</strong>: The client calls <code>list_ops</code> to prime its allowed call set.</li>
 </ul>
-<h2 id="protocol">Protocol</h2>
+<h2 id="protocol">Protocol<a class="headerlink" href="#protocol" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Header: <code>&gt;BBBBHI</code> (version, msg type, operation, flags, object ID length, payload length).</li>
 <li>Blocks: metadata, component, workflow.</li>
 </ul>
 <p>See <code>doip_server/protocol.py</code> for framing details.</p>
-<h2 id="compatibility-listener">Compatibility listener</h2>
+<h2 id="compatibility-listener">Compatibility listener<a class="headerlink" href="#compatibility-listener" title="Permanent link">&para;</a></h2>
 <p>The companion listener on <code>port + 1</code> accepts doipy-style length-prefixed JSON segments, converts them to DOIP requests, and streams back segments. The first segment is a JSON status block followed by optional component payloads.</p>
   </div>
 </article>

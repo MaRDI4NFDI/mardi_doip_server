@@ -529,29 +529,29 @@
   </div>
   <div class="typography w-full flex-1 *:data-[slot=alert]:first:mt-0">
     <p>Strict DOIP v2.0 implementation for FAIR Digital Objects (FDOs), backed by lakeFS storage and an FDO façade. This site covers how to run the server, call it from Python or the CLI, configure TLS, and build the Docker image.</p>
-<h2 id="why-doip-and-fdo">Why DOIP and FDO?</h2>
+<h2 id="why-doip-and-fdo">Why DOIP and FDO?<a class="headerlink" href="#why-doip-and-fdo" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>FAIR Digital Objects (FDOs)</strong> provide persistent identifiers plus structured metadata and component links, improving interoperability and long-term access.</li>
 <li><strong>Digital Object Interface Protocol (DOIP)</strong> standardizes how to fetch and operate on those objects over the network using binary envelopes and operation codes.</li>
 <li>This project supplies both sides—server and client—so MaRDI services can publish and consume FDO content (bitstreams, derived components, workflow results) consistently.</li>
 </ul>
-<h2 id="capabilities-at-a-glance">Capabilities at a glance</h2>
+<h2 id="capabilities-at-a-glance">Capabilities at a glance<a class="headerlink" href="#capabilities-at-a-glance" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Binary DOIP listener on TCP (<code>3567</code> by default) with automatic TLS when <code>certs/server.crt</code> and <code>certs/server.key</code> exist.</li>
 <li>Compatibility JSON-segment listener on <code>port + 1</code> (<code>3568</code> by default) for doipy-style clients.</li>
 <li>Operations: <code>hello</code>, <code>retrieve</code>, <code>invoke</code>, plus a <code>list_ops</code> helper.</li>
 <li>lakeFS-backed component retrieval and workflow-driven derived components.</li>
 </ul>
-<h2 id="quick-start">Quick start</h2>
-<p>1) Start the server (plaintext example):</p>
-<pre><code class="language-bash">PYTHONPATH=. python -m doip_server.main --port 3567
-</code></pre>
-<p>2) Retrieve an object with the CLI:</p>
-<pre><code class="language-bash">PYTHONPATH=. python -m client_cli.main \
-  --host 127.0.0.1 --port 3567 --no-tls \
-  --action retrieve --object-id Q6190920 --output .
-</code></pre>
-<p>The CLI issues <code>hello</code> then <code>retrieve</code>, prints returned metadata, and saves the first component using the server-provided filename when available.</p>
+<h2 id="quick-start">Quick start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
+<p>1) Start the server (plaintext example):
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nv">PYTHONPATH</span><span class="o">=</span>.<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>doip_server.main<span class="w"> </span>--port<span class="w"> </span><span class="m">3567</span>
+</code></pre></div>
+2) Retrieve an object with the CLI:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nv">PYTHONPATH</span><span class="o">=</span>.<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>client_cli.main<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span>--host<span class="w"> </span><span class="m">127</span>.0.0.1<span class="w"> </span>--port<span class="w"> </span><span class="m">3567</span><span class="w"> </span>--no-tls<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span>--action<span class="w"> </span>retrieve<span class="w"> </span>--object-id<span class="w"> </span>Q6190920<span class="w"> </span>--output<span class="w"> </span>.
+</code></pre></div>
+The CLI issues <code>hello</code> then <code>retrieve</code>, prints returned metadata, and saves the first component using the server-provided filename when available.</p>
 <p>See <strong>Configuration</strong> to point the server at your lakeFS and FDO endpoints, and <strong>Docker</strong> for containerized runs.</p>
   </div>
 </article>

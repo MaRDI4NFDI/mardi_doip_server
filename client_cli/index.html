@@ -554,9 +554,9 @@
   </div>
   <div class="typography w-full flex-1 *:data-[slot=alert]:first:mt-0">
     <p>The <code>client_cli</code> module provides a minimal command-line interface around the DOIP client.</p>
-<h2 id="running">Running</h2>
-<pre><code class="language-bash">PYTHONPATH=. python -m client_cli.main --object-id Q123 --action retrieve 
-</code></pre>
+<h2 id="running">Running<a class="headerlink" href="#running" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nv">PYTHONPATH</span><span class="o">=</span>.<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>client_cli.main<span class="w"> </span>--object-id<span class="w"> </span>Q123<span class="w"> </span>--action<span class="w"> </span>retrieve<span class="w"> </span>
+</code></pre></div>
 <p>Options:
 - <code>--host</code>: DOIP server host (default <code>doip.staging.mardi4nfdi.org</code>)
 - <code>--port</code>: DOIP server port (default <code>3567</code>)
@@ -569,19 +569,19 @@
 - <code>--params</code>: Workflow parameters as JSON string (invoke action)
 - <code>--output</code>: Path or directory to save the first retrieved component (retrieve action)
   - When saving to a directory, the original filename provided by the server is preserved when present.</p>
-<h3 id="actions">Actions</h3>
+<h3 id="actions">Actions<a class="headerlink" href="#actions" title="Permanent link">&para;</a></h3>
 <ul>
 <li><code>demo</code>: Runs <code>hello</code> then <code>retrieve</code>.</li>
 <li><code>hello</code>: Runs only the hello operation.</li>
 <li><code>retrieve</code>: Runs retrieve for the given object (and optional component).</li>
 <li><code>invoke</code>: Runs a workflow for the given object with optional params.</li>
 </ul>
-<h3 id="example-download-a-pdf">Example: Download a PDF</h3>
-<pre><code class="language-bash">PYTHONPATH=. python -m client_cli.main --action retrieve --object-id Q6190920 --component fulltext --output .
-</code></pre>
-<h3 id="example-download-a-ro-crate">Example: Download a RO-CRATE</h3>
-<pre><code class="language-bash">python -m client_cli.main --host localhost --no-tls --action retrieve --object-id Q6032968 --component rocrate --output crate.zip
-</code></pre>
+<h3 id="example-download-a-pdf">Example: Download a PDF<a class="headerlink" href="#example-download-a-pdf" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nv">PYTHONPATH</span><span class="o">=</span>.<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>client_cli.main<span class="w"> </span>--action<span class="w"> </span>retrieve<span class="w"> </span>--object-id<span class="w"> </span>Q6190920<span class="w"> </span>--component<span class="w"> </span>fulltext<span class="w"> </span>--output<span class="w"> </span>.
+</code></pre></div>
+<h3 id="example-download-a-ro-crate">Example: Download a RO-CRATE<a class="headerlink" href="#example-download-a-ro-crate" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>python<span class="w"> </span>-m<span class="w"> </span>client_cli.main<span class="w"> </span>--host<span class="w"> </span>localhost<span class="w"> </span>--no-tls<span class="w"> </span>--action<span class="w"> </span>retrieve<span class="w"> </span>--object-id<span class="w"> </span>Q6032968<span class="w"> </span>--component<span class="w"> </span>rocrate<span class="w"> </span>--output<span class="w"> </span>crate.zip
+</code></pre></div>
   </div>
 </article>
                                 <div class="mx-auto flex flex-wrap h-16 w-full max-w-2xl items-center gap-2 px-4 md:px-0">

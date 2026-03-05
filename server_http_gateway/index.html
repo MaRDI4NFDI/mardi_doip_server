@@ -554,7 +554,7 @@
   </div>
   <div class="typography w-full flex-1 *:data-[slot=alert]:first:mt-0">
     <p>This component provides a thin HTTP layer that forwards browser-friendly download requests to the internal DOIP server. It is served by FastAPI in <code>doip_server/http_gateway.py</code> and is intended for environments where a simple REST-style endpoint is preferred over the native DOIP protocol.</p>
-<h2 id="endpoint">Endpoint</h2>
+<h2 id="endpoint">Endpoint<a class="headerlink" href="#endpoint" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>GET /doip/retrieve/{object_id}/{component_id}</code></li>
 <li>Streams the first matching component block for the given object/component pair.</li>
@@ -562,11 +562,11 @@
 <li>Adds <code>Content-Disposition: attachment; filename="&lt;component_id_basename&gt;"</code> so browsers download instead of render.</li>
 <li>Returns <code>404</code> if no component blocks are present; <code>502</code> for backend failures.</li>
 </ul>
-<h3 id="example">Example</h3>
-<pre><code class="language-bash">curl -OJ http://localhost/doip/retrieve/Q6033164/fulltext
-curl -OJ http://localhost/doip/retrieve/Q6033164/rocrate
-</code></pre>
-<h2 id="backend-connection">Backend connection</h2>
+<h3 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>curl<span class="w"> </span>-OJ<span class="w"> </span>http://localhost/doip/retrieve/Q6033164/fulltext
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>curl<span class="w"> </span>-OJ<span class="w"> </span>http://localhost/doip/retrieve/Q6033164/rocrate
+</code></pre></div>
+<h2 id="backend-connection">Backend connection<a class="headerlink" href="#backend-connection" title="Permanent link">&para;</a></h2>
 <p>The gateway talks to the DOIP binary server via <code>StrictDOIPClient</code>. Host/port are resolved in this order:</p>
 <ul>
 <li><code>DOIP_BACKEND_HOST</code> / <code>DOIP_BACKEND_PORT</code>: explicit backend target (use when gateway and server are in different pods/services).</li>
@@ -578,12 +578,12 @@ curl -OJ http://localhost/doip/retrieve/Q6033164/rocrate
 <li><code>DOIP_VERIFY_TLS</code> (default <code>false</code>): set to <code>true</code> to enable certificate verification when TLS is active.</li>
 <li>TLS is automatically enabled when <code>certs/server.crt</code> exists alongside the gateway image; override by removing the cert or setting <code>DOIP_USE_TLS=false</code>.</li>
 </ul>
-<h2 id="static-assets">Static assets</h2>
+<h2 id="static-assets">Static assets<a class="headerlink" href="#static-assets" title="Permanent link">&para;</a></h2>
 <p>The root path <code>/</code> serves the legacy landing page and associated assets from <code>/app/landing</code> using FastAPI's <code>StaticFiles</code> mount. This keeps the former download UI available without the DOIP protocol in the browser.</p>
-<h2 id="running-locally">Running locally</h2>
+<h2 id="running-locally">Running locally<a class="headerlink" href="#running-locally" title="Permanent link">&para;</a></h2>
 <p>The Docker entrypoint starts the gateway with Uvicorn (alongside the main server):</p>
-<pre><code class="language-bash">uvicorn doip_server.http_gateway:app --host 0.0.0.0 --port 80
-</code></pre>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>uvicorn<span class="w"> </span>doip_server.http_gateway:app<span class="w"> </span>--host<span class="w"> </span><span class="m">0</span>.0.0.0<span class="w"> </span>--port<span class="w"> </span><span class="m">80</span>
+</code></pre></div>
 <p>For development you can run the same command from the repository root (inside an activated virtualenv) and then issue the <code>curl</code> example above.</p>
   </div>
 </article>
