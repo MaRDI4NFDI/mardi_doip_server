@@ -19,43 +19,87 @@ Conda-based Snakemake workflow. This setup is required once per machine.
 
     The Windows user needs four essential pieces of software installed:
 
-    1. **Conda/Mamba:** Install **Anaconda** or **Miniconda** (preferred for a smaller footprint).
-    2. **Python:** Ensure Python is installed (usually comes with Conda).
+    1. **Conda/Mamba:** Install **Miniconda** (recommended) or Anaconda:
+        - Download from [docs.conda.io](https://docs.conda.io/en/latest/miniconda.html)
+        - Run the `.exe` installer and select "Add to PATH" during installation
+        - Verify: Open PowerShell or CMD and run `conda --version`
+
+    2. **Python:** Comes bundled with Conda (Python 3.9+ recommended).
+        - Verify: `python --version`
+
     3. **Snakemake:** Install the Snakemake engine:
 
-        ```bash
-        conda install -c conda-forge snakemake
+        ```powershell
+        conda install -c conda-forge -c bioconda snakemake
         ```
 
-    4. **FDO Client:** Install your custom command-line client for resolving PIDs and running the workflow.
+    4. **FDO Client:** Install your custom command-line client:
+        - Download the latest `fdo-client-windows-x64.exe` CLI from [https://github.com/MaRDI4NFDI/mardi_doip_server]
+        - Rename to `fdo-run-client.exe` and move to a directory in your PATH (e.g., `C:\Tools\`)
+        - Verify: `fdo-run-client --version`
 
 === "Linux"
 
     The Linux user needs four essential pieces of software installed:
 
-    1. **Conda/Mamba:** Install **Anaconda** or **Miniconda** (preferred for a smaller footprint).
-    2. **Python:** Ensure Python is installed (usually comes with Conda).
+    1. **Conda/Mamba:** Install **Miniconda** (recommended) or Anaconda:
+        ```bash
+        wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+        bash Miniconda3-latest-Linux-x86_64.sh
+        # Follow prompts, then reload shell: source ~/.bashrc
+        ```
+        - Verify: `conda --version`
+
+    2. **Python:** Comes bundled with Conda (Python 3.9+ recommended).
+        - Verify: `python --version`
+
     3. **Snakemake:** Install the Snakemake engine:
 
         ```bash
-        conda install -c conda-forge snakemake
+        conda install -c conda-forge -c bioconda snakemake
         ```
 
-    4. **FDO Client:** Install your custom command-line client for resolving PIDs and running the workflow.
+    4. **FDO Client:** Install your custom command-line client:
+        ```bash
+        # Download from your internal repository
+        wget https://your-repo.internal/fdo-client-linux-x64 -O fdo-run-client
+        chmod +x fdo-run-client
+        sudo mv fdo-run-client /usr/local/bin/
+        ```
+        - Verify: `fdo-run-client --version`
 
 === "macOS"
 
-    The User needs four essential pieces of software installed:
+    The macOS user needs four essential pieces of software installed:
 
-    1. **Conda/Mamba:** Install **Anaconda** or **Miniconda** (preferred for a smaller footprint).
-    2. **Python:** Ensure Python is installed (usually comes with Conda).
+    1. **Conda/Mamba:** Install **Miniconda** (recommended) or Anaconda:
+        - For Intel Macs: Download `Miniconda3-latest-MacOSX-x86_64.sh`
+        - For Apple Silicon (M1/M2/M3): Download `Miniconda3-latest-MacOSX-arm64.sh`
+        - Run: `bash Miniconda3-latest-MacOSX-*.sh` and follow prompts
+        - Reload shell: `source ~/.zshrc` (or `~/.bash_profile` for older macOS)
+        - Verify: `conda --version`
+
+    2. **Python:** Comes bundled with Conda (Python 3.9+ recommended).
+        - Verify: `python --version`
+
     3. **Snakemake:** Install the Snakemake engine:
 
         ```bash
-        conda install -c conda-forge snakemake
+        conda install -c conda-forge -c bioconda snakemake
         ```
 
-    4. **FDO Client:** Install your custom command-line client for resolving PIDs and running the workflow.
+    4. **FDO Client:** Install your custom command-line client:
+        ```bash
+        # For Intel Macs
+        curl -L https://your-repo.internal/fdo-client-macos-x64 -o fdo-run-client
+        
+        # For Apple Silicon (M1/M2/M3)
+        curl -L https://your-repo.internal/fdo-client-macos-arm64 -o fdo-run-client
+        
+        chmod +x fdo-run-client
+        sudo mv fdo-run-client /usr/local/bin/
+        ```
+        - Verify: `fdo-run-client --version`
 
 ------------------------------------------------------------------------
 
