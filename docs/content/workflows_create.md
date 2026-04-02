@@ -1,6 +1,10 @@
 # Creating a Workflow FDO
 
-The Creator develops a workflow designed for maximum portability and registers the complete package as a persistent FDO artifact.
+The Creator develops a workflow designed for maximum portability and registers the complete package as a persistent FDO artifact. This involves three main steps:
+
+1. **Develop** a Snakemake pipeline with version-locked Conda environments for each rule
+2. **Package** the workflow and its metadata as a Workflow RO-Crate archive
+3. **Register** the archive in the MaRDI knowledge graph so it can be resolved and executed via its identifier
 
 ## 1. Develop the Snakemake Pipeline
 
@@ -32,13 +36,7 @@ The workflow must explicitly use the Snakemake **Conda integration** to ensure c
 
 ## 2. Package and Register the FDO
 
-The validated workflow files are packaged as a **[Workflow RO-Crate](https://w3id.org/workflowhub/workflow-ro-crate/)** and registered in the DoIP/FDO system. The Workflow RO-Crate profile is an EOSC/ELIXIR standard for packaging executable workflows with enriched metadata, ensuring the package is interpretable by tools and communities beyond MaRDI without requiring registration in any external registry.
-
-Use **[ro-crate-py](https://github.com/ResearchObject/ro-crate-py)** to generate the RO-Crate programmatically:
-
-```bash
-pip install rocrate
-```
+The validated workflow files are packaged as a **[Workflow RO-Crate](https://w3id.org/workflowhub/workflow-ro-crate/)** and registered in the MaRDI knowledge graph. The Workflow RO-Crate profile is an EOSC/ELIXIR standard for packaging executable workflows with enriched metadata, ensuring the package is interpretable by tools and communities beyond MaRDI without requiring registration in any external registry.
 
 ### 2.1 Assemble Workflow Artifacts
 
@@ -65,13 +63,15 @@ rocrate write-zip workflow_A01.crate.zip
 
 Richer metadata — such as creator ORCID, Snakemake version, or parameter descriptions — can be added by editing the generated `ro-crate-metadata.json` directly before packaging.
 
-### 2.3 Calculate Checksum and Register
+### 2.3 Register in the MaRDI Knowledge Graph
 
-1. **Calculate Checksum:** Generate a SHA-256 hash of the final RO-Crate archive.
-2. **Store and Mint PID:**
-    - Upload the RO-Crate to durable storage.
-    - The automated registration service calls the **DoIP server** to mint a new **PID** whose resolution record stores the storage URL and checksum.
-3. **Register FDO:** Submit the complete FDO metadata (PID, creator, description, parameters, checksum, Snakemake version, dependency list) to the **FDO Registry**.
+A workflow FDO has two parts: the **RO-Crate archive and any associated datasets** are stored in MaRDI storage, while the **FDO metadata** — the item that makes the workflow findable and resolvable — lives in the **MaRDI knowledge graph**, which serves as a registry for datasets and research artifacts from the broader community. Registration involves two manual steps:
+
+1. **Upload the RO-Crate** (and any associated datasets) to MaRDI storage and note the storage URL and the SHA-256 checksum of the archive.
+2. **Create a knowledge graph item** for the workflow, recording the metadata (creator, description, parameters, Snakemake version, dependency list, storage URL, checksum). Once the item exists, the MaRDI DOIP server can resolve and serve the workflow by its knowledge graph identifier.
+
+!!! note
+    Automated PID minting is not yet implemented. Registration is currently a manual process.
 
 ---
 

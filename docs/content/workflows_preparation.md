@@ -46,7 +46,7 @@ The following one-time setup is required per machine before running any Conda-ba
 
     4. **FDO Client:** Install your custom command-line client:
         ```bash
-        wget https://your-repo.internal/fdo-client-linux-x64 -O fdo-run-client
+        wget https://github.com/MaRDI4NFDI/mardi_doip_server/releases/latest/download/fdo-client-linux-x64 -O fdo-run-client
         chmod +x fdo-run-client
         sudo mv fdo-run-client /usr/local/bin/
         ```
@@ -75,10 +75,10 @@ The following one-time setup is required per machine before running any Conda-ba
     4. **FDO Client:** Install your custom command-line client:
         ```bash
         # For Intel Macs
-        curl -L https://your-repo.internal/fdo-client-macos-x64 -o fdo-run-client
+        curl -L https://github.com/MaRDI4NFDI/mardi_doip_server/releases/latest/download/fdo-client-macos-x64 -o fdo-run-client
 
         # For Apple Silicon (M1/M2/M3)
-        curl -L https://your-repo.internal/fdo-client-macos-arm64 -o fdo-run-client
+        curl -L https://github.com/MaRDI4NFDI/mardi_doip_server/releases/latest/download/fdo-client-macos-arm64 -o fdo-run-client
 
         chmod +x fdo-run-client
         sudo mv fdo-run-client /usr/local/bin/

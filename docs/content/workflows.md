@@ -1,6 +1,6 @@
 # Reproducible Workflows with Snakemake & FDO (Conda-Based)
 
-This section describes how to use Snakemake workflows as Fair Digital Objects (FDOs) managed by a DoIP server. The process is split into two main roles:
+This section describes how to use Snakemake workflows as Fair Digital Objects (FDOs) managed by the MaRDI DOIP server. The process is split into two main roles:
 
 - **[System Preparation](workflows_preparation.md)** — one-time setup of Mamba/Conda, Snakemake, and the FDO client on Windows, Linux, or macOS
 - **[Creating a Workflow FDO](workflows_create.md)** — developing, packaging, and registering a workflow as an FDO (Creator role)
