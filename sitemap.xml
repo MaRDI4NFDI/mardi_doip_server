@@ -44,4 +44,20 @@
          <loc>https://mardi4nfdi.github.io/mardi_doip_server/workflows/</loc>
          <lastmod>2026-04-02</lastmod>
     </url>
+    <url>
+         <loc>https://mardi4nfdi.github.io/mardi_doip_server/workflows_create/</loc>
+         <lastmod>2026-04-02</lastmod>
+    </url>
+    <url>
+         <loc>https://mardi4nfdi.github.io/mardi_doip_server/workflows_execute/</loc>
+         <lastmod>2026-04-02</lastmod>
+    </url>
+    <url>
+         <loc>https://mardi4nfdi.github.io/mardi_doip_server/workflows_preparation/</loc>
+         <lastmod>2026-04-02</lastmod>
+    </url>
+    <url>
+         <loc>https://mardi4nfdi.github.io/mardi_doip_server/workflows_testing/</loc>
+         <lastmod>2026-04-02</lastmod>
+    </url>
 </urlset>
