@@ -8,6 +8,20 @@ This section describes how to use Snakemake workflows as Fair Digital Objects (F
 
 See also: [workflow example](workflow_example.md).
 
+## How It Works
+
+The MaRDI knowledge graph already models the relationships between research artifacts — publications, methods, datasets, and workflows — as connected items. Making a workflow FAIR within this infrastructure means ensuring that the actual files are stored and linked to those existing items, so the MaRDI DOIP server can resolve and serve them.
+
+The process for a Creator comes down to three steps:
+
+1. **Create a workflow item** in the MaRDI knowledge graph to obtain a stable QID
+2. **Package** the workflow and its dependencies as a [Workflow RO-Crate](workflows_create.md) — a self-contained, executable archive
+3. **Upload** the RO-Crate to MaRDI storage under the workflow's QID
+
+Once uploaded, the MaRDI FDO server automatically detects the stored file and exposes it in the FDO manifest. The MaRDI DOIP server can then resolve and serve the workflow by its QID without any further registration steps.
+
+Anyone can then retrieve the workflow, its metadata, and the associated datasets through the MaRDI DOIP server using standard identifiers — and re-execute it reproducibly on any platform.
+
 ## Considerations
 
 ### Conda

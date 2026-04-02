@@ -65,13 +65,14 @@ Richer metadata — such as creator ORCID, Snakemake version, or parameter descr
 
 ### 2.3 Register in the MaRDI Knowledge Graph
 
-A workflow FDO has two parts: the **RO-Crate archive and any associated datasets** are stored in MaRDI storage, while the **FDO metadata** — the item that makes the workflow findable and resolvable — lives in the **MaRDI knowledge graph**, which serves as a registry for datasets and research artifacts from the broader community. Registration involves two manual steps:
+A workflow FDO has two parts: the **RO-Crate archive** is stored in MaRDI storage, while the **FDO metadata** — the item that makes the workflow findable and resolvable — lives in the **MaRDI knowledge graph**, which serves as a registry for datasets and research artifacts from the broader community.
 
-1. **Upload the RO-Crate** (and any associated datasets) to MaRDI storage and note the storage URL and the SHA-256 checksum of the archive.
-2. **Create a knowledge graph item** for the workflow, recording the metadata (creator, description, parameters, Snakemake version, dependency list, storage URL, checksum). Once the item exists, the MaRDI DOIP server can resolve and serve the workflow by its knowledge graph identifier.
+Registration involves two steps:
 
-!!! note
-    Automated PID minting is not yet implemented. Registration is currently a manual process.
+1. **Create a knowledge graph item** for the workflow (if one does not already exist), recording its metadata (creator, description, parameters, Snakemake version). This gives the workflow a stable QID.
+2. **Upload the RO-Crate** to MaRDI storage under the workflow's QID with component ID `rocrate`.
+
+Once uploaded, the MaRDI FDO server automatically detects the file and lists it in the FDO manifest under `fdo:hasComponent`. The MaRDI DOIP server can then resolve and serve the workflow by its QID without any further steps.
 
 ---
 
