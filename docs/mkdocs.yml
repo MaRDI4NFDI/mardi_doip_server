@@ -31,4 +31,10 @@ nav:
   - Configuration: configuration.md
   - Development: development.md
   - Project Layout: project_structure.md
-  - Workflows: workflows.md
+  - Workflows:
+      - Overview: workflows.md
+      - System Preparation: workflows_preparation.md
+      - Creating a Workflow FDO: workflows_create.md
+      - Workflow Testing: workflows_testing.md
+      - Executing a Workflow: workflows_execute.md
+      - Example: workflow_example.md
