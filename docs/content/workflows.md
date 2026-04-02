@@ -7,7 +7,7 @@ environment management system to ensure reproducibility across
 **Windows**, **Linux**, and **macOS** environments without needing
 Docker or operating system compatibility layers.
 
-------------------------------------------------------------------------
+---
 
 ## 1. Target System Preparation (User Role)
 
@@ -19,18 +19,18 @@ Conda-based Snakemake workflow. This setup is required once per machine.
 
     The Windows user needs four essential pieces of software installed:
 
-    1. **Conda/Mamba:** Install **Miniconda** (recommended) or Anaconda:
-        - Download from [docs.conda.io](https://docs.conda.io/en/latest/miniconda.html)
+    1. **Mamba/Conda:** Install **Miniforge** (recommended):
+        - Download from [conda-forge.github.io/miniforge](https://conda-forge.github.io/miniforge)
         - Run the `.exe` installer and select "Add to PATH" during installation
-        - Verify: Open PowerShell or CMD and run `conda --version`
+        - Verify: Open PowerShell or CMD and run `mamba --version`
 
-    2. **Python:** Comes bundled with Conda (Python 3.9+ recommended).
+    2. **Python:** Comes bundled with Miniforge (Python 3.9+ recommended).
         - Verify: `python --version`
 
     3. **Snakemake:** Install the Snakemake engine:
 
         ```powershell
-        conda install -c conda-forge -c bioconda snakemake
+        mamba install -c conda-forge -c bioconda snakemake
         ```
 
     4. **FDO Client:** Install your custom command-line client:
@@ -42,26 +42,25 @@ Conda-based Snakemake workflow. This setup is required once per machine.
 
     The Linux user needs four essential pieces of software installed:
 
-    1. **Conda/Mamba:** Install **Miniconda** (recommended) or Anaconda:
+    1. **Mamba/Conda:** Install **Miniforge** (recommended):
         ```bash
-        wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
-        bash Miniconda3-latest-Linux-x86_64.sh
+        wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
+        bash Miniforge3-Linux-x86_64.sh
         # Follow prompts, then reload shell: source ~/.bashrc
         ```
-        - Verify: `conda --version`
+        - Verify: `mamba --version`
 
-    2. **Python:** Comes bundled with Conda (Python 3.9+ recommended).
+    2. **Python:** Comes bundled with Miniforge (Python 3.9+ recommended).
         - Verify: `python --version`
 
     3. **Snakemake:** Install the Snakemake engine:
 
         ```bash
-        conda install -c conda-forge -c bioconda snakemake
+        mamba install -c conda-forge -c bioconda snakemake
         ```
 
     4. **FDO Client:** Install your custom command-line client:
         ```bash
-        # Download from your internal repository
         wget https://your-repo.internal/fdo-client-linux-x64 -O fdo-run-client
         chmod +x fdo-run-client
         sudo mv fdo-run-client /usr/local/bin/
@@ -72,36 +71,37 @@ Conda-based Snakemake workflow. This setup is required once per machine.
 
     The macOS user needs four essential pieces of software installed:
 
-    1. **Conda/Mamba:** Install **Miniconda** (recommended) or Anaconda:
-        - For Intel Macs: Download `Miniconda3-latest-MacOSX-x86_64.sh`
-        - For Apple Silicon (M1/M2/M3): Download `Miniconda3-latest-MacOSX-arm64.sh`
-        - Run: `bash Miniconda3-latest-MacOSX-*.sh` and follow prompts
+    1. **Mamba/Conda:** Install **Miniforge** (recommended):
+        - For Intel Macs: Download `Miniforge3-MacOSX-x86_64.sh`
+        - For Apple Silicon (M1/M2/M3): Download `Miniforge3-MacOSX-arm64.sh`
+        - Both available at [conda-forge.github.io/miniforge](https://conda-forge.github.io/miniforge)
+        - Run: `bash Miniforge3-MacOSX-*.sh` and follow prompts
         - Reload shell: `source ~/.zshrc` (or `~/.bash_profile` for older macOS)
-        - Verify: `conda --version`
+        - Verify: `mamba --version`
 
-    2. **Python:** Comes bundled with Conda (Python 3.9+ recommended).
+    2. **Python:** Comes bundled with Miniforge (Python 3.9+ recommended).
         - Verify: `python --version`
 
     3. **Snakemake:** Install the Snakemake engine:
 
         ```bash
-        conda install -c conda-forge -c bioconda snakemake
+        mamba install -c conda-forge -c bioconda snakemake
         ```
 
     4. **FDO Client:** Install your custom command-line client:
         ```bash
         # For Intel Macs
         curl -L https://your-repo.internal/fdo-client-macos-x64 -o fdo-run-client
-        
+
         # For Apple Silicon (M1/M2/M3)
         curl -L https://your-repo.internal/fdo-client-macos-arm64 -o fdo-run-client
-        
+
         chmod +x fdo-run-client
         sudo mv fdo-run-client /usr/local/bin/
         ```
         - Verify: `fdo-run-client --version`
 
-------------------------------------------------------------------------
+---
 
 ## 2. Workflow Creation and FDO Registration (Creator Role)
 
@@ -125,7 +125,7 @@ ensure cross-platform reproducibility.
 
 Example Snakefile snippet:
 
-``` python
+```python
 rule fastqc_report:
     input:
         "data/{sample}.fastq"
@@ -160,7 +160,7 @@ The validated workflow files are packaged as a Research Object Crate
     description, parameters, checksum, dependency list) to the **FDO
     Registry**.
 
-------------------------------------------------------------------------
+---
 
 ## 3. Workflow Execution (User Role)
 
@@ -175,7 +175,7 @@ execution steps.
 1.  **Initiate Run:** Execute the workflow using its PID and specify the
     local input directory.
 
-    ``` bash
+    ```bash
     fdo-run-client 20.500.12345/workflow_A01 --input "C:\User\Data\RawSequences" --cores 4
     ```
 
@@ -195,8 +195,8 @@ execution steps.
 3.  **Snakemake Execution:** The client launches the Snakemake run
     command:
 
-    ``` bash
-    snakemake -s /path/to/Snakefile --cores 4 --use-conda --config input_path="/path/to/input/data"
+    ```bash
+    snakemake -s /path/to/Snakefile --cores 4 --use-conda --conda-frontend mamba --config input_path="/path/to/input/data"
     ```
 
 ### 3.2 Guaranteed Reproducibility Across OS
@@ -205,13 +205,25 @@ Because the `--use-conda` flag is used:
 
 -   **Snakemake** reads the `environment.yaml` files from the downloaded
     RO-Crate.
--   **Conda** creates isolated environments with exact dependency
+-   **Mamba** creates isolated environments with exact dependency
     versions compiled for the user's OS.
 -   The workflow runs identically across Windows, Linux, and macOS
     without requiring Docker or virtualization.
 
-------------------------------------------------------------------------
+---
 
 ## Example
 
 See [this example](workflow_example.md).
+
+---
+
+## Appendix: Conda Distributions Compared
+
+**Conda** is the underlying package manager and environment system; the others are distributions that bundle it. **Anaconda** is the original full distribution---it ships with hundreds of pre-installed scientific packages but is large (~3 GB), slow to install, and its default channel carries a commercial licensing restriction for organisations above a certain size. **Miniconda** is Anaconda's minimal counterpart---just Conda and Python, no pre-installed packages---which is lighter but still defaults to the `defaults` channel and inherits the same licensing ambiguity. **Miniforge** is the recommended choice here: it is equally minimal but defaults to the community-maintained **conda-forge** channel, ships with **Mamba** (a significantly faster dependency resolver) out of the box, and carries no licensing restrictions. For scientific workflows on conda-forge, Miniforge is the cleanest starting point on all three platforms.
+
+| Distribution | Size | Default Channel | Includes Mamba | License |
+|---|---|---|---|---|
+| **Miniforge** ✓ | Minimal | conda-forge | Yes | No restrictions |
+| Miniconda | Minimal | defaults | No | Anaconda ToS |
+| Anaconda | ~3 GB | defaults | No | Commercial restrictions |
