@@ -1,10 +1,10 @@
 import asyncio
 from functools import lru_cache
-from typing import Dict, List, Tuple
+from typing import AsyncGenerator, Dict, List, Tuple
 
 import boto3
 import httpx
-from botocore.client import Config
+from botocore.client import Config, BaseClient
 
 from .logging_config import log
 from doip_shared.sharding import get_component_path, shard_qid
@@ -41,9 +41,15 @@ def _repo() -> str:
 
     Returns:
         str: Repo name.
+
+    Raises:
+        ValueError: if lakeFS repository is not configured.
     """
     lakefs_cfg = _CFG.get("lakefs", {}) if isinstance(_CFG, dict) else {}
-    return lakefs_cfg.get("repo")
+    repo = lakefs_cfg.get("repo")
+    if not repo:
+        raise ValueError("lakeFS repository is not configured.")
+    return repo
 
 
 def _branch() -> str:
@@ -96,7 +102,7 @@ async def ensure_lakefs_available() -> bool:
 
 
 @lru_cache(maxsize=1)
-def _client():
+def _client() -> BaseClient:
     """Create a cached boto3 client configured for lakeFS.
 
     Returns:
@@ -209,7 +215,7 @@ async def put_component_bytes(
         str: Stored S3 key (branch + sharded path).
     """
     qid = _extract_qid(object_id)
-    ext = _extension_from_media_type(media_type, extension)
+    ext = _extension_from_media_type(media_type, extension, component_id)
     key = build_object_key(qid, component_id, ext)
     await asyncio.to_thread(
         _client().put_object,
@@ -251,7 +257,7 @@ async def list_components(object_id: str) -> List[str]:
     return result
 
 
-async def _async_paginate(paginator, **kwargs):
+async def _async_paginate(paginator, **kwargs) -> AsyncGenerator[Dict, None]:
     """Iterate over paginator pages in a thread to avoid blocking the loop.
 
     Args:

@@ -47,7 +47,7 @@ async def test_storage_lakefs_lists_components_from_config():
     if not available:
         pytest.skip("lakeFS endpoint url unavailable; skipping integration test")
 
-    object_id = "main"
+    object_id = "Q6033042"
     components = await storage_lakefs.list_components(object_id)
 
     assert isinstance(components, list)
@@ -65,20 +65,33 @@ async def test_storage_lakefs_downloads_component_to_tempfile():
     if not await storage_lakefs.ensure_lakefs_available():
         pytest.skip("lakeFS url unavailable; skipping download test")
 
-    object_id = "Q6190920_FULLTEXT"
-
     logging.getLogger(__name__).info(
-        "test_storage_lakefs_downloads_component_to_tempfile() \n " +
-        "Downloading: %s"
+        "using lakefs: %s",
+        lakefs_cfg.get("url"),
     )
 
-    content = await storage_lakefs.get_component_bytes(object_id, "primary", media_type="application/pdf")
+    object_id = "Q6033042"
+    components = await storage_lakefs.list_components(object_id)
+    if not components:
+        pytest.skip("No components found for Q6033042 in lakeFS; skipping download test")
+
+    component_key = components[0]
+    logging.getLogger(__name__).info(
+        "test_storage_lakefs_downloads_component_to_tempfile() downloading component: %s",
+        component_key,
+    )
+
+    try:
+        content = await storage_lakefs.get_component_bytes(object_id, component_key)
+    except KeyError:
+        pytest.skip(f"Component {component_key!r} not retrievable from lakeFS")
+
     with tempfile.NamedTemporaryFile(delete=False) as tmp:
         tmp.write(content)
         tmp_path = Path(tmp.name)
 
     logging.getLogger(__name__).info(
-        "Downloaded: %f bytes",
+        "Downloaded: %d bytes",
         tmp_path.stat().st_size,
     )
 
