@@ -17,6 +17,7 @@ _TYPE_SUFFIX_MAP = {
     "image/jpeg": ".jpg",
     "image/svg+xml": ".svg",
     "application/json": ".json",
+    "text/csv": ".csv",
 }
 
 
@@ -113,16 +114,22 @@ def _client():
         ),
     )
 
-def _extension_from_media_type(media_type: str | None, explicit_extension: str | None) -> str:
+def _extension_from_media_type(media_type: str | None, explicit_extension: str | None, component_id: str = "") -> str:
     """Return a normalized extension (with leading dot) for a media type or explicit extension.
+    If component_id already has a suffix, return empty string to avoid double extensions.
 
     Args:
         media_type: MIME type string.
         explicit_extension: Optional extension provided by caller.
+        component_id: Component identifier to check for existing suffix.
 
     Returns:
-        str: Extension including a leading dot or empty string when unknown.
+        str: Extension including a leading dot or empty string when unknown or if component_id has suffix.
     """
+    # If component_id already has a suffix, don't add another extension
+    if component_id and "." in component_id.split("/")[-1]:
+        return ""
+    
     if explicit_extension:
         ext = explicit_extension if explicit_extension.startswith(".") else f".{explicit_extension}"
         return ext
@@ -170,7 +177,7 @@ async def get_component_bytes(
         KeyError: If the component is not found in storage.
     """
     qid = _extract_qid(object_id)
-    ext = _extension_from_media_type(media_type, extension)
+    ext = _extension_from_media_type(media_type, extension, component_id)
     key = build_object_key(qid, component_id, ext)
 
     log.info("Retrieving lakeFS object key=%s", key)
