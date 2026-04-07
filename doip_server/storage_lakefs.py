@@ -252,8 +252,9 @@ async def list_components(object_id: str) -> List[str]:
     async for page in _async_paginate(paginator, Bucket=_repo(), Prefix=prefix):
         for obj in page.get("Contents", []):
             key = obj["Key"]
-            if key.startswith(prefix):
-                result.append(key[len(prefix) :])
+            suffix = key[len(prefix):]
+            if key.startswith(prefix) and suffix:
+                result.append(suffix)
     return result
 
 

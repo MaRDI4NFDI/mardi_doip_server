@@ -47,7 +47,7 @@ async def test_storage_lakefs_lists_components_from_config():
     if not available:
         pytest.skip("lakeFS endpoint url unavailable; skipping integration test")
 
-    object_id = "Q6033042"
+    object_id = "Q6830878"
     components = await storage_lakefs.list_components(object_id)
 
     assert isinstance(components, list)
@@ -70,10 +70,10 @@ async def test_storage_lakefs_downloads_component_to_tempfile():
         lakefs_cfg.get("url"),
     )
 
-    object_id = "Q6033042"
+    object_id = "Q6830878"
     components = await storage_lakefs.list_components(object_id)
     if not components:
-        pytest.skip("No components found for Q6033042 in lakeFS; skipping download test")
+        pytest.skip("No components found for Q6830878 in lakeFS; skipping download test")
 
     component_key = components[0]
     logging.getLogger(__name__).info(
