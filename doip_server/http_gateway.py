@@ -173,7 +173,7 @@ async def purge_object(object_id: str):
 
 
 @app.get("/doip/retrieve/{object_id}/{component_id}")
-async def download_component(object_id: str, component_id: str, force_reload: bool = Query(False)):
+async def download_component(object_id: str, component_id: str, force_reload: str | None = Query(None)):
     """Stream a DOIP component to the caller as an HTTP download.
 
     Args:
@@ -187,10 +187,10 @@ async def download_component(object_id: str, component_id: str, force_reload: bo
         HTTPException: When the component is missing or backend errors occur.
     """
 
-    log.info("HTTP download requested", extra={"object_id": object_id, "component_id": component_id, "force_reload": force_reload})
+    log.info("HTTP download requested", extra={"object_id": object_id, "component_id": component_id, "force_reload": force_reload is not None})
 
     client = _client()
-    if force_reload:
+    if force_reload is not None:
         try:
             await asyncio.to_thread(client.purge, object_id)
         except Exception as exc:
