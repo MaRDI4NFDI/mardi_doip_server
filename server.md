@@ -6,6 +6,7 @@ Asyncio-based TCP server implementing strict DOIP v2.0 framing. Supported operat
 - Retrieve (`0x02`)
 - Invoke (`0x05`)
 - List operations helper (`list_ops`)
+- Purge (`0x07`)
 
 Two listeners start together:
 - Binary DOIP: default `3567` (set with `--port`).
@@ -39,6 +40,9 @@ Configuration order of precedence: `config.yaml` → environment variables (`FDO
 - `handle_list_ops`
   - **Motivation**: Advertise supported operations for discovery.
   - **Use case**: The client calls `list_ops` to prime its allowed call set.
+- `handle_purge`
+  - **Motivation**: Allow clients to force a fresh manifest fetch without restarting the server.
+  - **Use case**: An operator calls `purge` for a specific PID after updating its FDO metadata, ensuring the next retrieve reflects the latest state.
 
 ## Protocol
 - Header: `>BBBBHI` (version, msg type, operation, flags, object ID length, payload length).

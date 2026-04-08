@@ -642,7 +642,8 @@
 - Hello (<code>0x01</code>)
 - Retrieve (<code>0x02</code>)
 - Invoke (<code>0x05</code>)
-- List operations helper (<code>list_ops</code>)</p>
+- List operations helper (<code>list_ops</code>)
+- Purge (<code>0x07</code>)</p>
 <p>Two listeners start together:
 - Binary DOIP: default <code>3567</code> (set with <code>--port</code>).
 - Compatibility JSON-segment listener: <code>port + 1</code> (default <code>3568</code>) for doipy-style clients.
@@ -670,6 +671,9 @@ If <code>certs/server.crt</code> and <code>certs/server.key</code> exist, both l
 <li><code>handle_list_ops</code></li>
 <li><strong>Motivation</strong>: Advertise supported operations for discovery.</li>
 <li><strong>Use case</strong>: The client calls <code>list_ops</code> to prime its allowed call set.</li>
+<li><code>handle_purge</code></li>
+<li><strong>Motivation</strong>: Allow clients to force a fresh manifest fetch without restarting the server.</li>
+<li><strong>Use case</strong>: An operator calls <code>purge</code> for a specific PID after updating its FDO metadata, ensuring the next retrieve reflects the latest state.</li>
 </ul>
 <h2 id="protocol">Protocol<a class="headerlink" href="#protocol" title="Permanent link">&para;</a></h2>
 <ul>
