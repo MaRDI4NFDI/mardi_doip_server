@@ -208,6 +208,28 @@ async def handle_invoke(msg: DOIPMessage, registry: object_registry.ObjectRegist
     )
 
 
+async def handle_purge(msg: DOIPMessage, registry: object_registry.ObjectRegistry) -> DOIPMessage:
+    """Purge the cached manifest for a PID, forcing a fresh fetch on next access.
+
+    Args:
+        msg: Incoming DOIP purge request.
+        registry: Object registry whose cache entry will be evicted.
+
+    Returns:
+        DOIPMessage: Response confirming the purge.
+    """
+    pid = msg.object_id
+    await registry.purge(pid)
+    return DOIPMessage(
+        version=protocol.DOIP_VERSION,
+        msg_type=protocol.MSG_TYPE_RESPONSE,
+        operation=protocol.OP_PURGE,
+        flags=0,
+        object_id=pid,
+        metadata_blocks=[{"status": "purged", "pid": pid.upper()}],
+    )
+
+
 async def handle_list_ops(msg: DOIPMessage, registry: object_registry.ObjectRegistry) -> DOIPMessage:
     """Return the list of supported operations.
 

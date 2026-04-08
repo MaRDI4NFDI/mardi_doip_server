@@ -39,6 +39,17 @@ class ObjectRegistry:
 
         return data
 
+    async def purge(self, pid: str) -> None:
+        """Remove a PID from the manifest cache, forcing a fresh fetch on next access.
+
+        Args:
+            pid: PID/QID to evict from the cache.
+        """
+        pid = pid.upper()
+        async with self._lock:
+            self._manifest_cache.pop(pid, None)
+        log.info(f"Cache purged for {pid}.")
+
     async def get_component(self, object_id: str, component_id: str) -> tuple[bytes, str]:
         """Resolve a component via manifest and load its bytes from storage.
 

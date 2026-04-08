@@ -7,7 +7,7 @@ import struct
 import ssl
 from pathlib import Path
 
-from doip_shared.constants import OP_HELLO, OP_INVOKE, OP_LIST_OPS, OP_RETRIEVE
+from doip_shared.constants import OP_HELLO, OP_INVOKE, OP_LIST_OPS, OP_PURGE, OP_RETRIEVE
 
 from . import protocol, tls, utils
 from .logging_config import log
@@ -113,6 +113,23 @@ class StrictDOIPClient:
         """Convenience wrapper for retrieving a specific component."""
         return self.retrieve(qid, component_id)
 
+
+    def purge(self, object_id: str) -> dict:
+        """Purge the server-side manifest cache for a given object ID.
+
+        Args:
+            object_id: PID/QID whose cache entry should be evicted.
+
+        Returns:
+            Metadata dictionary from the server confirming the purge.
+        """
+        request = DoipRequest(
+            header=Header(DOIP_VERSION, MSG_TYPE_REQUEST, OP_PURGE, 0, 0, 0),
+            object_id=object_id,
+            metadata_blocks=[{"operation": "purge"}],
+        )
+        response = self.send_message(request)
+        return response.metadata_blocks[0] if response.metadata_blocks else {}
 
     def invoke(self, object_id: str, workflow: str, params: dict | None = None) -> DoipResponse:
         """Invoke a workflow on the server for a given object ID.

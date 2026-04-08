@@ -77,7 +77,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--component", default=None, help="Component ID for selective retrieve; if absent, list components")
     parser.add_argument(
         "--action",
-        choices=["demo", "hello", "list_ops", "retrieve", "invoke"],
+        choices=["demo", "hello", "list_ops", "retrieve", "invoke", "purge"],
         help="Action to execute",
     )
     # component removed: server no longer supports component selection
@@ -152,6 +152,11 @@ def main(argv: list[str] | None = None) -> int:
                 p = {}
             r = client.invoke(args.object_id, args.workflow, params=p)
             print(json.dumps(r.metadata_blocks, indent=2))
+            return 0
+
+        if args.action == "purge":
+            r = client.purge(args.object_id)
+            print(json.dumps(r, indent=2))
             return 0
 
         if args.action == "demo":

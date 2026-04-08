@@ -17,6 +17,7 @@ from doip_shared.constants import (
     OP_LIST_OPS,
     OP_RETRIEVE,
     OP_DESCRIBE,
+    OP_PURGE,
 )
 
 HEADER_STRUCT = struct.Struct(">BBBBHI")

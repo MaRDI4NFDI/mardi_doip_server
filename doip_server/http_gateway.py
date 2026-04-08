@@ -14,7 +14,7 @@ import ssl
 from pathlib import Path
 from urllib.parse import urlparse
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -152,8 +152,28 @@ async def on_startup():
         extra={"host": DEFAULT_DOIP_HOST, "port": DEFAULT_DOIP_PORT}
     )
 
+@app.post("/doip/purge/{object_id}")
+async def purge_object(object_id: str):
+    """Purge the server-side manifest cache for an object.
+
+    Args:
+        object_id: PID/QID whose cached manifest should be evicted.
+
+    Returns:
+        dict: Confirmation payload from the DOIP server.
+    """
+    log.info("Cache purge requested", extra={"object_id": object_id})
+    client = _client()
+    try:
+        result = await asyncio.to_thread(client.purge, object_id)
+    except Exception as exc:
+        log.exception("Purge failed", extra={"object_id": object_id})
+        raise HTTPException(status_code=502, detail=f"Purge error: {exc}")
+    return result
+
+
 @app.get("/doip/retrieve/{object_id}/{component_id}")
-async def download_component(object_id: str, component_id: str):
+async def download_component(object_id: str, component_id: str, force_reload: bool = Query(False)):
     """Stream a DOIP component to the caller as an HTTP download.
 
     Args:
@@ -167,9 +187,14 @@ async def download_component(object_id: str, component_id: str):
         HTTPException: When the component is missing or backend errors occur.
     """
 
-    log.info("HTTP download requested", extra={"object_id": object_id, "component_id": component_id})
+    log.info("HTTP download requested", extra={"object_id": object_id, "component_id": component_id, "force_reload": force_reload})
 
     client = _client()
+    if force_reload:
+        try:
+            await asyncio.to_thread(client.purge, object_id)
+        except Exception as exc:
+            log.warning("Purge before reload failed, proceeding anyway", extra={"object_id": object_id}, exc_info=exc)
     try:
         response = await asyncio.to_thread(client.retrieve, object_id, component_id)
     except ssl.SSLError as exc:
