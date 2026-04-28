@@ -11,10 +11,12 @@ Options:
 - `--host`: DOIP server host (default `doip.staging.mardi4nfdi.org`)
 - `--port`: DOIP server port (default `3567`)
 - `--no-tls`: Disable TLS wrapping (useful for local plaintext servers)
-- `--insecure`: Disable TLS certificate/hostname verification
+- `--secure`: Enable TLS certificate/hostname verification
 - `--object-id`: Object identifier to retrieve (default `Q123`)
-- `--action`: One of `demo`, `hello`, `retrieve`, `invoke`, `purge` (default `demo`)
+- `--action`: One of `demo`, `hello`, `retrieve`, `update`, `invoke`, `purge` (default `demo`)
 - `--component`: Component ID to retrieve (retrieve/demo actions)
+- `--input`: File path to upload for `update`
+- `--media-type`: Explicit media type for `update`; defaults to `application/octet-stream`
 - `--workflow`: Workflow name (invoke action, default `equation_extraction`)
 - `--params`: Workflow parameters as JSON string (invoke action)
 - `--output`: Path or directory to save the first retrieved component (retrieve action)
@@ -24,12 +26,13 @@ Options:
 - `demo`: Runs `hello` then `retrieve`.
 - `hello`: Runs only the hello operation.
 - `retrieve`: Runs retrieve for the given object (and optional component).
+- `update`: Uploads one component to an existing object and creates a lakeFS commit.
 - `invoke`: Runs a workflow for the given object with optional params.
 - `purge`: Evicts the cached manifest for `--object-id` from the server's in-memory cache.
 
 ### Example: Download a PDF
 ```bash
-PYTHONPATH=. python -m client_cli.main --action retrieve --object-id Q6190920 --component fulltext --output .
+PYTHONPATH=. python -m client_cli.main --action retrieve --object-id Q6190920 --component fulltext.pdf --output .
 ```
 
 ### Example: Download a RO-CRATE
@@ -37,4 +40,10 @@ PYTHONPATH=. python -m client_cli.main --action retrieve --object-id Q6190920 --
 python -m client_cli.main --host localhost --no-tls --action retrieve --object-id Q6032968 --component rocrate --output crate.zip
 ```
 
+### Example: Update One Component
+```bash
+PYTHONPATH=. python -m client_cli.main --host 127.0.0.1 --no-tls --action update --object-id Q6190920 --component fulltext.pdf --input pdf.pdf --media-type application/pdf
+```
 
+`update` is component-scoped. It updates or adds the specified component and leaves all other components unchanged.
+Component IDs are exact storage names. If you upload `fulltext`, retrieve `fulltext`. If you upload `fulltext.pdf`, retrieve `fulltext.pdf`.
