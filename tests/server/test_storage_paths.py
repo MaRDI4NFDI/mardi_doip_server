@@ -47,6 +47,41 @@ def test_build_component_object_path_uses_sharded_path():
 
 
 @pytest.mark.asyncio
+async def test_put_component_bytes_uses_lakefs_sdk_upload(monkeypatch):
+    calls = {}
+
+    async def fake_to_thread(func, *args, **kwargs):
+        return func(*args, **kwargs)
+
+    class FakeObject:
+        def upload(self, data, mode="wb", content_type=None):
+            calls["upload"] = {
+                "data": data,
+                "mode": mode,
+                "content_type": content_type,
+            }
+
+    class FakeBranch:
+        def object(self, path):
+            calls["path"] = path
+            return FakeObject()
+
+    monkeypatch.setattr(storage_lakefs, "_lakefs_branch", lambda branch=None: FakeBranch())
+    monkeypatch.setattr(storage_lakefs.asyncio, "to_thread", fake_to_thread)
+    storage_lakefs.configure({"lakefs": {"repo": "repo-name", "branch": "main"}})
+
+    key = await storage_lakefs.put_component_bytes("Q4", "fulltext.pdf", b"data", media_type="application/pdf")
+
+    assert calls["path"] == "00/00/04/Q4/components/fulltext.pdf"
+    assert calls["upload"] == {
+        "data": b"data",
+        "mode": "wb",
+        "content_type": "application/pdf",
+    }
+    assert key == "main/00/00/04/Q4/components/fulltext.pdf"
+
+
+@pytest.mark.asyncio
 async def test_commit_changes_uses_lakefs_sdk_branch(monkeypatch):
     calls = {}
 

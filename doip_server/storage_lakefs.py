@@ -172,7 +172,7 @@ async def put_component_bytes(
     data: bytes,
     media_type: str = "application/octet-stream",
 ) -> str:
-    """Store component bytes to lakeFS/S3 and return the object key.
+    """Store component bytes to lakeFS and return the object key.
 
     Args:
         object_id: Object identifier/QID.
@@ -181,17 +181,20 @@ async def put_component_bytes(
         media_type: MIME type stored as object metadata.
 
     Returns:
-        str: Stored S3 key (branch + sharded path).
+        str: Stored lakeFS key (branch + sharded path).
     """
     qid = _extract_qid(object_id)
+    object_path = build_object_path(qid, component_id)
     key = build_object_key(qid, component_id)
-    await asyncio.to_thread(
-        _client().put_object,
-        Bucket=_repo(),
-        Key=key,
-        Body=data,
-        ContentType=media_type,
-    )
+
+    def _upload() -> None:
+        _lakefs_branch().object(object_path).upload(
+            data,
+            mode="wb",
+            content_type=media_type,
+        )
+
+    await asyncio.to_thread(_upload)
     return key
 
 

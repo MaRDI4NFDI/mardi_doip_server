@@ -1,4 +1,6 @@
+import asyncio
 import logging
+import os
 import tempfile
 from pathlib import Path
 
@@ -97,3 +99,61 @@ async def test_storage_lakefs_downloads_component_to_tempfile():
 
     assert tmp_path.stat().st_size == len(content)
     tmp_path.unlink(missing_ok=True)
+
+
+@pytest.mark.asyncio
+@pytest.mark.lakefs_write
+async def test_storage_lakefs_can_put_object_to_sandbox():
+    """Manually verify write access to the sandbox repo and commit the uploaded object."""
+    print("running test_storage_lakefs_can_put_object_to_sandbox")
+    if os.getenv("RUN_LAKEFS_WRITE_TESTS") != "1":
+        pytest.skip("manual lakeFS write test disabled; set RUN_LAKEFS_WRITE_TESTS=1 to enable")
+
+    cfg = _load_config_or_skip()
+    lakefs_cfg = cfg.get("lakefs") or {}
+    if not isinstance(lakefs_cfg, dict) or not lakefs_cfg.get("url"):
+        pytest.skip("lakeFS endpoint url not configured in config.yaml")
+    if not lakefs_cfg.get("user") or not lakefs_cfg.get("password"):
+        pytest.skip("lakeFS credentials not configured in config.yaml")
+
+    sandbox_cfg = {
+        **cfg,
+        "lakefs": {
+            **lakefs_cfg,
+            "repo": "sandbox",
+            "branch": "main",
+        },
+    }
+    print(
+        "Using lakeFS sandbox credentials "
+        f"url={sandbox_cfg['lakefs'].get('url')} "
+        f"repo={sandbox_cfg['lakefs'].get('repo')} "
+        f"branch={sandbox_cfg['lakefs'].get('branch')} "
+        f"user={sandbox_cfg['lakefs'].get('user')} "
+        f"password={sandbox_cfg['lakefs'].get('password')}"
+    )
+    storage_lakefs.configure(sandbox_cfg)
+
+    if not await storage_lakefs.ensure_lakefs_available():
+        pytest.skip("lakeFS endpoint unavailable; skipping write test")
+
+    payload = b"lakefs-write-test"
+    key = "test-upload.txt"
+
+    print(f"Attempting sandbox write to lakeFS key: {key}")
+
+    obj = storage_lakefs._lakefs_branch("main").object(key)
+    await asyncio.to_thread(
+        obj.upload,
+        payload,
+        mode="wb",
+    )
+    response = await asyncio.to_thread(obj.stat)
+    commit = await storage_lakefs.commit_changes(
+        message=f"Manual sandbox write test for {key}",
+        metadata={"test": "test_storage_lakefs_can_put_object_to_sandbox", "path": key},
+        branch="main",
+    )
+    print(f"Committed sandbox write with commit_id={commit['commit_id']}")
+
+    assert response.size_bytes == len(payload)
