@@ -5,7 +5,7 @@ from doip_server import storage_lakefs
 
 def test_build_object_key_sharded_with_branch(monkeypatch):
     storage_lakefs.configure({"lakefs": {"branch": "dev"}})
-    key = storage_lakefs.build_object_key("Q12345", "primary", ".pdf")
+    key = storage_lakefs.build_object_key("Q12345", "primary.pdf")
     assert key == "dev/01/23/45/Q12345/components/primary.pdf"
 
 
@@ -34,7 +34,7 @@ async def test_get_component_bytes_uses_sharded_path(monkeypatch):
     monkeypatch.setattr(storage_lakefs.asyncio, "to_thread", fake_to_thread)
     storage_lakefs.configure({"lakefs": {"repo": "repo-name", "branch": "main"}})
 
-    data = await storage_lakefs.get_component_bytes("Q4", "fulltext", media_type="application/pdf")
+    data = await storage_lakefs.get_component_bytes("Q4", "fulltext.pdf")
 
     assert data == b"data"
     assert calls["bucket"] == "repo-name"
@@ -42,7 +42,7 @@ async def test_get_component_bytes_uses_sharded_path(monkeypatch):
 
 
 def test_build_component_object_path_uses_sharded_path():
-    path = storage_lakefs.build_component_object_path("Q4", "fulltext", media_type="application/pdf")
+    path = storage_lakefs.build_component_object_path("Q4", "fulltext.pdf")
     assert path == "00/00/04/Q4/components/fulltext.pdf"
 
 

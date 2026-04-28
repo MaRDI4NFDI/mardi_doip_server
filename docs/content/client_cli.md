@@ -16,7 +16,7 @@ Options:
 - `--action`: One of `demo`, `hello`, `retrieve`, `update`, `invoke`, `purge` (default `demo`)
 - `--component`: Component ID to retrieve (retrieve/demo actions)
 - `--input`: File path to upload for `update`
-- `--media-type`: Explicit media type for `update`; otherwise inferred from `--input`
+- `--media-type`: Explicit media type for `update`; defaults to `application/octet-stream`
 - `--workflow`: Workflow name (invoke action, default `equation_extraction`)
 - `--params`: Workflow parameters as JSON string (invoke action)
 - `--output`: Path or directory to save the first retrieved component (retrieve action)
@@ -32,7 +32,7 @@ Options:
 
 ### Example: Download a PDF
 ```bash
-PYTHONPATH=. python -m client_cli.main --action retrieve --object-id Q6190920 --component fulltext --output .
+PYTHONPATH=. python -m client_cli.main --action retrieve --object-id Q6190920 --component fulltext.pdf --output .
 ```
 
 ### Example: Download a RO-CRATE
@@ -42,8 +42,8 @@ python -m client_cli.main --host localhost --no-tls --action retrieve --object-i
 
 ### Example: Update One Component
 ```bash
-PYTHONPATH=. python -m client_cli.main --host 127.0.0.1 --no-tls --action update --object-id Q6190920 --component fulltext --input pdf.pdf --media-type application/pdf
+PYTHONPATH=. python -m client_cli.main --host 127.0.0.1 --no-tls --action update --object-id Q6190920 --component fulltext.pdf --input pdf.pdf --media-type application/pdf
 ```
 
 `update` is component-scoped. It updates or adds the specified component and leaves all other components unchanged.
-
+Component IDs are exact storage names. If you upload `fulltext`, retrieve `fulltext`. If you upload `fulltext.pdf`, retrieve `fulltext.pdf`.

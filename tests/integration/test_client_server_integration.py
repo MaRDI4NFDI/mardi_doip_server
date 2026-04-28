@@ -27,11 +27,7 @@ class StubRegistry:
     async def get_component(self, object_id, component_id):
         for component in self.components:
             if component.get("componentId") == component_id:
-                content = await storage_lakefs.get_component_bytes(
-                    object_id,
-                    component_id,
-                    media_type=component.get("mediaType"),
-                )
+                content = await storage_lakefs.get_component_bytes(object_id, component_id)
                 return content, component.get("mediaType", "application/octet-stream")
         raise KeyError(component_id)
 
@@ -81,7 +77,7 @@ async def test_client_server_integration_hello_and_retrieve(monkeypatch):
 async def test_client_server_integration_update_and_retrieve_component(monkeypatch):
     stored = {}
 
-    async def fake_put_component_bytes(object_id, component_id, data, media_type="application/octet-stream", extension=None):
+    async def fake_put_component_bytes(object_id, component_id, data, media_type="application/octet-stream"):
         stored[(object_id, component_id)] = (data, media_type)
         return "main/00/01/23/Q123/components/primary.pdf"
 
@@ -91,7 +87,7 @@ async def test_client_server_integration_update_and_retrieve_component(monkeypat
     async def fake_reset_uncommitted_object(object_path, branch=None):
         raise AssertionError("reset should not be called in successful update test")
 
-    async def fake_get_component_bytes(object_id, component_id, media_type=None, extension=None):
+    async def fake_get_component_bytes(object_id, component_id):
         return stored[(object_id, component_id)][0]
 
     monkeypatch.setattr(storage_lakefs, "put_component_bytes", fake_put_component_bytes)

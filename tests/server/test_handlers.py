@@ -62,7 +62,7 @@ async def test_handle_hello_returns_capabilities():
 
 @pytest.mark.asyncio
 async def test_retrieve_metadata_for_qid(monkeypatch):
-    registry = StubRegistry({})
+    registry = StubRegistry([])
     request = protocol.DOIPMessage(
         version=protocol.DOIP_VERSION,
         msg_type=protocol.MSG_TYPE_REQUEST,
@@ -86,7 +86,7 @@ async def test_retrieve_fdo_metadata(monkeypatch):
         return {"foo": "bar"}
 
     # Registry returns JSON-LD FDO metadata
-    registry = StubRegistry({})
+    registry = StubRegistry([])
     registry.fetch_fdo_object = fake_fetch_fdo
 
     request = protocol.DOIPMessage(
@@ -111,13 +111,13 @@ async def test_retrieve_fdo_metadata(monkeypatch):
 @pytest.mark.asyncio
 async def test_retrieve_specific_component(monkeypatch):
     async def fake_ensure(): return True
-    async def fake_get_bytes(qid, comp, media_type=None, extension=None): return b"hello"
+    async def fake_get_bytes(qid, comp): return b"hello"
     async def fake_fetch_fdo(pid):
         # include component in kernel so handler knows it exists
         return {
             "kernel": {
                 "fdo:hasComponent": [
-                    {"componentId": "primary", "mediaType": "application/pdf"}
+                    {"componentId": "primary.pdf", "mediaType": "application/pdf"}
                 ]
             }
         }
@@ -125,7 +125,7 @@ async def test_retrieve_specific_component(monkeypatch):
     monkeypatch.setattr(handlers.storage_lakefs, "ensure_lakefs_available", fake_ensure)
     monkeypatch.setattr(handlers.storage_lakefs, "get_component_bytes", fake_get_bytes)
 
-    registry = StubRegistry({})
+    registry = StubRegistry([])
     registry.fetch_fdo_object = fake_fetch_fdo
 
     request = protocol.DOIPMessage(
@@ -134,7 +134,7 @@ async def test_retrieve_specific_component(monkeypatch):
         operation=protocol.OP_RETRIEVE,
         flags=0,
         object_id="Q123",
-        metadata_blocks=[{"element": "primary"}],
+        metadata_blocks=[{"element": "primary.pdf"}],
     )
 
     response = await handlers.handle_retrieve(request, registry)
@@ -145,7 +145,7 @@ async def test_retrieve_specific_component(monkeypatch):
 
     assert len(response.component_blocks) == 1
     comp = response.component_blocks[0]
-    assert comp.component_id == "primary"
+    assert comp.component_id == "primary.pdf"
     assert comp.content == b"hello"
     assert comp.media_type == "application/pdf"
 
@@ -157,7 +157,7 @@ async def test_retrieve_component_defaults_when_manifest_missing(monkeypatch):
     async def fake_ensure():
         return True
 
-    async def fake_get_bytes(qid, comp, media_type=None, extension=None):
+    async def fake_get_bytes(qid, comp):
         return b"content"
 
     async def fake_fetch_fdo(pid):
@@ -173,7 +173,7 @@ async def test_retrieve_component_defaults_when_manifest_missing(monkeypatch):
     monkeypatch.setattr(handlers.storage_lakefs, "ensure_lakefs_available", fake_ensure)
     monkeypatch.setattr(handlers.storage_lakefs, "get_component_bytes", fake_get_bytes)
 
-    registry = StubRegistry({})
+    registry = StubRegistry([])
     registry.fetch_fdo_object = fake_fetch_fdo
 
     request = protocol.DOIPMessage(
@@ -205,7 +205,7 @@ async def test_handle_update_stores_component_and_commits(monkeypatch):
     async def fake_fetch_fdo(pid):
         return {"@id": pid}
 
-    async def fake_put_component_bytes(object_id, component_id, data, media_type="application/octet-stream", extension=None):
+    async def fake_put_component_bytes(object_id, component_id, data, media_type="application/octet-stream"):
         calls["put"] = {
             "object_id": object_id,
             "component_id": component_id,
@@ -226,7 +226,7 @@ async def test_handle_update_stores_component_and_commits(monkeypatch):
     async def fake_reset_uncommitted_object(object_path, branch=None):
         calls["reset"] = {"object_path": object_path, "branch": branch}
 
-    registry = StubRegistry({})
+    registry = StubRegistry([])
     registry.fetch_fdo_object = fake_fetch_fdo
 
     monkeypatch.setattr(handlers.storage_lakefs, "put_component_bytes", fake_put_component_bytes)
@@ -239,10 +239,10 @@ async def test_handle_update_stores_component_and_commits(monkeypatch):
         operation=protocol.OP_UPDATE,
         flags=0,
         object_id="Q1",
-        metadata_blocks=[{"operation": "update", "element": "primary"}],
+        metadata_blocks=[{"operation": "update", "element": "primary.pdf"}],
         component_blocks=[
             protocol.ComponentBlock(
-                component_id="primary",
+                component_id="primary.pdf",
                 content=b"pdf-data",
                 media_type="application/pdf",
             )
@@ -252,7 +252,7 @@ async def test_handle_update_stores_component_and_commits(monkeypatch):
     response = await handlers.handle_update(request, registry)
 
     assert calls["put"]["object_id"] == "Q1"
-    assert calls["put"]["component_id"] == "primary"
+    assert calls["put"]["component_id"] == "primary.pdf"
     assert calls["put"]["data"] == b"pdf-data"
     assert "commit" in calls
     assert "reset" not in calls
@@ -263,7 +263,7 @@ async def test_handle_update_stores_component_and_commits(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_handle_update_rejects_multiple_components():
-    registry = StubRegistry({})
+    registry = StubRegistry([])
     request = protocol.DOIPMessage(
         version=protocol.DOIP_VERSION,
         msg_type=protocol.MSG_TYPE_REQUEST,
@@ -286,7 +286,7 @@ async def test_handle_update_rejects_mismatched_component_id(monkeypatch):
     async def fake_fetch_fdo(pid):
         return {"@id": pid}
 
-    registry = StubRegistry({})
+    registry = StubRegistry([])
     registry.fetch_fdo_object = fake_fetch_fdo
 
     request = protocol.DOIPMessage(
@@ -310,9 +310,9 @@ async def test_handle_update_resets_uncommitted_object_on_commit_failure(monkeyp
     async def fake_fetch_fdo(pid):
         return {"@id": pid}
 
-    async def fake_put_component_bytes(object_id, component_id, data, media_type="application/octet-stream", extension=None):
+    async def fake_put_component_bytes(object_id, component_id, data, media_type="application/octet-stream"):
         calls["put"] = True
-        return "main/00/00/01/Q1/components/primary.pdf"
+        return "main/00/00/01/Q1/components/primary"
 
     async def fake_commit_changes(message, metadata=None, branch=None, allow_empty=True):
         raise RuntimeError("commit failed")
@@ -320,7 +320,7 @@ async def test_handle_update_resets_uncommitted_object_on_commit_failure(monkeyp
     async def fake_reset_uncommitted_object(object_path, branch=None):
         calls["reset"] = {"object_path": object_path, "branch": branch}
 
-    registry = StubRegistry({})
+    registry = StubRegistry([])
     registry.fetch_fdo_object = fake_fetch_fdo
 
     monkeypatch.setattr(handlers.storage_lakefs, "put_component_bytes", fake_put_component_bytes)
@@ -341,7 +341,7 @@ async def test_handle_update_resets_uncommitted_object_on_commit_failure(monkeyp
         await handlers.handle_update(request, registry)
 
     assert calls["put"] is True
-    assert calls["reset"]["object_path"] == "00/00/01/Q1/components/primary.bin"
+    assert calls["reset"]["object_path"] == "00/00/01/Q1/components/primary"
 
 
 @pytest.mark.asyncio
@@ -381,7 +381,7 @@ async def test_handle_invoke_returns_workflow_results(monkeypatch):
         return workflow_result
 
     monkeypatch.setattr(handlers.workflows, "run_equation_extraction_workflow", fake_workflow)
-    async def fake_get_component_bytes(object_id, component_id="primary", media_type=None, extension=None):
+    async def fake_get_component_bytes(object_id, component_id="primary"):
         """Return stubbed workflow-derived component bytes.
 
         Args:
@@ -432,7 +432,7 @@ async def test_handle_retrieve_uses_registry_and_storage(monkeypatch):
     registry = StubRegistry()
 
     # verify storage backend is NOT called for metadata PIDs
-    async def fake_get_bytes(qid, comp, media_type=None, extension=None):
+    async def fake_get_bytes(qid, comp):
         assert False, "Should not fetch bitstream bytes for non-bitstream PID"
 
     async def fake_ensure():

@@ -72,15 +72,12 @@ class ObjectRegistry:
             raise KeyError(f"component-not-found:{component_id}")
 
         media_type = _component_media_type(component)
-        extension = _component_extension(component, media_type)
 
         if not await storage_lakefs.ensure_lakefs_available():
             raise ConnectionError()
 
         try:
-            content = await storage_lakefs.get_component_bytes(
-                object_id, component_id, media_type=media_type, extension=extension
-            )
+            content = await storage_lakefs.get_component_bytes(object_id, component_id)
         except KeyError as exc:
             raise KeyError(f"component-not-found:{component_id}") from exc
         except Exception as exc:  # noqa: BLE001
@@ -144,23 +141,3 @@ def _component_media_type(component: Dict) -> str:
     """Return the media type for a component dictionary."""
     media_type = component.get("mediaType") or component.get("mimeType") or "application/octet-stream"
     return media_type
-
-
-def _component_extension(component: Dict, media_type: str) -> str | None:
-    """Infer file extension from component location or media type.
-
-    Args:
-        component: Component dictionary from the manifest.
-        media_type: Resolved media type string.
-
-    Returns:
-        str | None: Extension without leading dot when derivable, else None.
-    """
-    location = component.get("location")
-    if isinstance(location, str) and "." in location:
-        return location.rsplit(".", 1)[-1]
-    if media_type.startswith("application/pdf"):
-        return "pdf"
-    if media_type == "application/json":
-        return "json"
-    return None

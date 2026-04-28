@@ -18,7 +18,7 @@ hello = client.hello()
 ops = client.list_ops()
 metadata = client.retrieve("Q123").metadata_blocks
 pdf = client.retrieve("Q123", component="doip:bitstream/Q123/main-pdf")
-update = client.update_component("Q123", "fulltext", b"new-pdf-bytes", media_type="application/pdf")
+update = client.update_component("Q123", "fulltext.pdf", b"new-pdf-bytes", media_type="application/pdf")
 
 # Invoke a workflow with parameters
 result = client.invoke("Q123", workflow="equation_extraction", params={"pages": [1, 2, 3]})
@@ -34,6 +34,7 @@ The client uses blocking sockets; wrap calls in your own timeout logic if needed
 - For metadata-only requests, send no `component` and inspect `response.metadata_blocks`.
 - For binaries, pass the component ID; the client returns `ComponentBlock` objects containing `component_id`, `media_type`, and `content` bytes.
 - For updates, send exactly one component block. Other existing components remain unchanged.
+- Component IDs are exact names. The server does not add or infer extensions for storage paths.
 
 ## Compatibility listener support
 The Python client speaks strict DOIP. To talk to the compatibility JSON-segment listener (`port + 1`), use the **Client CLI** which wraps the same client but performs JSON bridging for you.

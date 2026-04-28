@@ -11,16 +11,6 @@ from doip_shared.sharding import get_component_path, shard_qid
 
 _CFG: Dict = {}
 
-_TYPE_SUFFIX_MAP = {
-    "application/pdf": ".pdf",
-    "image/png": ".png",
-    "image/jpeg": ".jpg",
-    "image/svg+xml": ".svg",
-    "application/json": ".json",
-    "text/csv": ".csv",
-}
-
-
 def configure(cfg: Dict) -> None:
     """Configure lakeFS storage module with application settings.
 
@@ -125,80 +115,39 @@ def _client() -> BaseClient:
         ),
     )
 
-def _extension_from_media_type(media_type: str | None, explicit_extension: str | None, component_id: str = "") -> str:
-    """Return a normalized extension (with leading dot) for a media type or explicit extension.
-    If component_id already has a suffix, return empty string to avoid double extensions.
-
-    Args:
-        media_type: MIME type string.
-        explicit_extension: Optional extension provided by caller.
-        component_id: Component identifier to check for existing suffix.
-
-    Returns:
-        str: Extension including a leading dot or empty string when unknown or if component_id has suffix.
-    """
-    # If component_id already has a suffix, don't add another extension
-    if component_id and "." in component_id.split("/")[-1]:
-        return ""
-    
-    if explicit_extension:
-        ext = explicit_extension if explicit_extension.startswith(".") else f".{explicit_extension}"
-        return ext
-    if media_type and media_type in _TYPE_SUFFIX_MAP:
-        return _TYPE_SUFFIX_MAP[media_type]
-    return ".bin"
-
-
-def build_object_key(qid: str, component_id: str, extension: str, branch: str | None = None) -> str:
+def build_object_key(qid: str, component_id: str, branch: str | None = None) -> str:
     """Return the full lakeFS key (including branch) for a component.
 
     Args:
         qid: QID of the object.
         component_id: Component identifier.
-        extension: File extension with or without leading dot.
         branch: Optional branch override; defaults to configured branch.
 
     Returns:
         str: LakeFS object key suitable for S3 operations.
     """
-    ext = extension.lstrip(".")
     branch_name = branch or _branch()
-    path = build_object_path(qid, component_id, ext)
+    path = build_object_path(qid, component_id)
     return f"{branch_name}/{path}"
 
 
-def build_object_path(qid: str, component_id: str, extension: str) -> str:
+def build_object_path(qid: str, component_id: str) -> str:
     """Return the branch-relative lakeFS path for a component."""
-    ext = extension.lstrip(".")
-    return get_component_path(qid, component_id, ext)
+    return get_component_path(qid, component_id, "")
 
 
-def build_component_object_path(
-    object_id: str,
-    component_id: str,
-    media_type: str | None = None,
-    extension: str | None = None,
-) -> str:
+def build_component_object_path(object_id: str, component_id: str) -> str:
     """Return the branch-relative lakeFS path for a specific component."""
     qid = _extract_qid(object_id)
-    ext = _extension_from_media_type(media_type, extension, component_id)
-    return build_object_path(qid, component_id, ext)
+    return build_object_path(qid, component_id)
 
 
-async def get_component_bytes(
-    object_id: str,
-    component_id: str,
-    media_type: str | None = None,
-    extension: str | None = None,
-) -> bytes:
+async def get_component_bytes(object_id: str, component_id: str) -> bytes:
     """Fetch component content bytes from lakeFS/S3 using sharded paths.
 
     Args:
         object_id: Object identifier/QID.
         component_id: Component identifier (e.g. "fulltext").
-        media_type: Optional media type used to derive file extension.
-        extension: Optional file extension override.
-
     Returns:
         bytes: Component content.
 
@@ -206,8 +155,7 @@ async def get_component_bytes(
         KeyError: If the component is not found in storage.
     """
     qid = _extract_qid(object_id)
-    ext = _extension_from_media_type(media_type, extension, component_id)
-    key = build_object_key(qid, component_id, ext)
+    key = build_object_key(qid, component_id)
 
     log.info("Retrieving lakeFS object key=%s", key)
 
@@ -223,7 +171,6 @@ async def put_component_bytes(
     component_id: str,
     data: bytes,
     media_type: str = "application/octet-stream",
-    extension: str | None = None,
 ) -> str:
     """Store component bytes to lakeFS/S3 and return the object key.
 
@@ -231,15 +178,13 @@ async def put_component_bytes(
         object_id: Object identifier/QID.
         component_id: Component identifier to store.
         data: Content bytes to upload.
-        media_type: MIME type for the object (used for extension).
-        extension: Optional file extension override.
+        media_type: MIME type stored as object metadata.
 
     Returns:
         str: Stored S3 key (branch + sharded path).
     """
     qid = _extract_qid(object_id)
-    ext = _extension_from_media_type(media_type, extension, component_id)
-    key = build_object_key(qid, component_id, ext)
+    key = build_object_key(qid, component_id)
     await asyncio.to_thread(
         _client().put_object,
         Bucket=_repo(),

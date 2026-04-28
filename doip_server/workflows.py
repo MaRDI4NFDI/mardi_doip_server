@@ -15,7 +15,8 @@ async def run_equation_extraction_workflow(qid: str, params: Dict) -> Dict:
     Returns:
         Dict: Metadata describing derived components and created items.
     """
-    pdf_bytes = await storage_lakefs.get_component_bytes(qid, "primary", media_type="application/pdf")
+    component_id = params.get("componentId") or "primary.pdf"
+    pdf_bytes = await storage_lakefs.get_component_bytes(qid, component_id)
 
     equations: List[Dict] = _mock_extract_equations(pdf_bytes)
     equations_json = json.dumps(equations).encode("utf-8")
@@ -26,7 +27,6 @@ async def run_equation_extraction_workflow(qid: str, params: Dict) -> Dict:
         derived_component_id,
         equations_json,
         media_type="application/json",
-        extension="json",
     )
 
     new_item_id = await mediawiki_client.create_equation_item(

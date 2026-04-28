@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import json
 import logging
-import mimetypes
 import os, sys
 
 from argparse import (
@@ -95,7 +94,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--media-type",
         default=None,
-        help="Media type for update uploads. If omitted, inferred from --input when possible.",
+        help="Media type for update uploads. If omitted, application/octet-stream is used.",
     )
     parser.add_argument(
         "--workflow",
@@ -176,7 +175,7 @@ def main(argv: list[str] | None = None) -> int:
             with open(args.input, "rb") as f:
                 content = f.read()
 
-            media_type = args.media_type or mimetypes.guess_type(args.input)[0] or "application/octet-stream"
+            media_type = args.media_type or "application/octet-stream"
             r = client.update_component(
                 args.object_id,
                 args.component,

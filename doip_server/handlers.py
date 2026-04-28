@@ -174,11 +174,7 @@ async def handle_update(msg: DOIPMessage, registry: object_registry.ObjectRegist
         raise protocol.ProtocolError("update metadata element must match component block id")
 
     media_type = component.media_type or "application/octet-stream"
-    object_path = storage_lakefs.build_component_object_path(
-        object_id,
-        component.component_id,
-        media_type=media_type,
-    )
+    object_path = storage_lakefs.build_component_object_path(object_id, component.component_id)
 
     try:
         await storage_lakefs.put_component_bytes(
@@ -250,7 +246,6 @@ async def handle_invoke(msg: DOIPMessage, registry: object_registry.ObjectRegist
         content = await storage_lakefs.get_component_bytes(
             qid,
             comp_id,
-            media_type=comp.get("mediaType"),
         )
         derived_blocks.append(
             ComponentBlock(
