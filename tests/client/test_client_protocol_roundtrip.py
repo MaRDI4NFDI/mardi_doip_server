@@ -8,7 +8,7 @@ from doip_client.protocol import (
     decode_doip_blocks,
     decode_header,
 )
-from doip_shared.constants import DOIP_VERSION, MSG_TYPE_RESPONSE, OP_RETRIEVE
+from doip_shared.constants import DOIP_VERSION, MSG_TYPE_RESPONSE, OP_RETRIEVE, OP_UPDATE
 
 
 def test_decode_header_and_blocks_roundtrip():
@@ -59,3 +59,17 @@ def test_decode_header_and_blocks_roundtrip():
     assert comp.component_id == "foo"
     assert comp.media_type == "text/plain"
     assert comp.content == b"hello"
+
+
+def test_decode_header_roundtrip_update_opcode():
+    header_bytes = HEADER_STRUCT.pack(
+        DOIP_VERSION,
+        MSG_TYPE_RESPONSE,
+        OP_UPDATE,
+        0,
+        0,
+        0,
+    )
+
+    hdr = decode_header(header_bytes)
+    assert hdr.op_code == OP_UPDATE

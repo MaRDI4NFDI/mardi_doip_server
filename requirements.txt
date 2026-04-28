@@ -1,6 +1,7 @@
 boto3
 fastapi
 httpx
+lakefs
 mkdocs
 mkdocs-shadcn
 pymdown-extensions

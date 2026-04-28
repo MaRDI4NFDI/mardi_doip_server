@@ -149,6 +149,38 @@ async def test_dispatch_routes_retrieve(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_dispatch_routes_update(monkeypatch):
+    called = {}
+
+    async def fake_handle_update(msg, registry):
+        called["op"] = msg.operation
+        return protocol.DOIPMessage(
+            version=protocol.DOIP_VERSION,
+            msg_type=protocol.MSG_TYPE_RESPONSE,
+            operation=protocol.OP_UPDATE,
+            flags=0,
+            object_id=msg.object_id,
+        )
+
+    monkeypatch.setattr(handlers, "handle_update", fake_handle_update)
+
+    msg = protocol.DOIPMessage(
+        version=protocol.DOIP_VERSION,
+        msg_type=protocol.MSG_TYPE_REQUEST,
+        operation=protocol.OP_UPDATE,
+        flags=0,
+        object_id="Q1",
+        metadata_blocks=[{"operation": "update"}],
+    )
+
+    response = await main.dispatch(msg, DummyRegistry())
+
+    assert called["op"] == protocol.OP_UPDATE
+    assert response.msg_type == protocol.MSG_TYPE_RESPONSE
+    assert response.operation == protocol.OP_UPDATE
+
+
+@pytest.mark.asyncio
 async def test_dispatch_rejects_unknown_operation():
     """Ensure dispatch rejects unsupported operation codes.
 

@@ -7,7 +7,7 @@ import struct
 import ssl
 from pathlib import Path
 
-from doip_shared.constants import OP_HELLO, OP_INVOKE, OP_LIST_OPS, OP_PURGE, OP_RETRIEVE
+from doip_shared.constants import OP_HELLO, OP_INVOKE, OP_LIST_OPS, OP_PURGE, OP_RETRIEVE, OP_UPDATE
 
 from . import protocol, tls, utils
 from .logging_config import log
@@ -130,6 +130,28 @@ class StrictDOIPClient:
         )
         response = self.send_message(request)
         return response.metadata_blocks[0] if response.metadata_blocks else {}
+
+    def update_component(
+        self,
+        object_id: str,
+        component_id: str,
+        content: bytes,
+        media_type: str = "application/octet-stream",
+    ) -> DoipResponse:
+        """Update one component on an existing object."""
+        request = DoipRequest(
+            header=Header(DOIP_VERSION, MSG_TYPE_REQUEST, OP_UPDATE, 0, 0, 0),
+            object_id=object_id,
+            metadata_blocks=[{"operation": "update", "element": component_id}],
+            component_blocks=[
+                ComponentBlock(
+                    component_id=component_id,
+                    content=content,
+                    media_type=media_type,
+                )
+            ],
+        )
+        return self.send_message(request)
 
     def invoke(self, object_id: str, workflow: str, params: dict | None = None) -> DoipResponse:
         """Invoke a workflow on the server for a given object ID.

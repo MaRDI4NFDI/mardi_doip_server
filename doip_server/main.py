@@ -214,6 +214,8 @@ async def dispatch(msg: protocol.DOIPMessage, registry: object_registry.ObjectRe
             return await handlers.handle_hello(msg, registry)
         if msg.operation == protocol.OP_RETRIEVE or op_name == "retrieve":
             return await handlers.handle_retrieve(msg, registry)
+        if msg.operation == protocol.OP_UPDATE or op_name == "update":
+            return await handlers.handle_update(msg, registry)
         if msg.operation == protocol.OP_INVOKE or op_name == "invoke":
             return await handlers.handle_invoke(msg, registry)
         if msg.operation == protocol.OP_LIST_OPS or op_name in ("list_ops", "list_operations"):

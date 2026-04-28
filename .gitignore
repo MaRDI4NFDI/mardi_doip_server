@@ -5,3 +5,7 @@ certs/server.crt
 certs/server.key
 /config.yaml
 .venv
+/build/
+/dist/
+/.codex
+/.claude/settings.local.json

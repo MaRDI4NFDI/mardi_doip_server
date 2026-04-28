@@ -12,11 +12,31 @@ logger = logging.getLogger(__name__)
 
 
 class StubRegistry:
+    def __init__(self):
+        self.components = []
+
     async def fetch_fdo_object(self, pid):
-        return {"@id": pid}
+        return {
+            "@id": pid,
+            "kernel": {"fdo:hasComponent": list(self.components)},
+        }
 
     async def fetch_bitstream_bytes(self, pid):
         return b"hello-bytes"
+
+    async def get_component(self, object_id, component_id):
+        for component in self.components:
+            if component.get("componentId") == component_id:
+                content = await storage_lakefs.get_component_bytes(
+                    object_id,
+                    component_id,
+                    media_type=component.get("mediaType"),
+                )
+                return content, component.get("mediaType", "application/octet-stream")
+        raise KeyError(component_id)
+
+    async def purge(self, pid):
+        return None
 
 
 @pytest.mark.asyncio
@@ -48,6 +68,67 @@ async def test_client_server_integration_hello_and_retrieve(monkeypatch):
         assert resp_meta.header.op_code == protocol.OP_RETRIEVE
         assert resp_meta.metadata_blocks
         assert not resp_meta.component_blocks
+
+    finally:
+        server.close()
+        await server.wait_closed()
+        server_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await server_task
+
+
+@pytest.mark.asyncio
+async def test_client_server_integration_update_and_retrieve_component(monkeypatch):
+    stored = {}
+
+    async def fake_put_component_bytes(object_id, component_id, data, media_type="application/octet-stream", extension=None):
+        stored[(object_id, component_id)] = (data, media_type)
+        return "main/00/01/23/Q123/components/primary.pdf"
+
+    async def fake_commit_changes(message, metadata=None, branch=None, allow_empty=True):
+        return {"repo": "repo", "branch": "main", "commit_id": "commit-123"}
+
+    async def fake_reset_uncommitted_object(object_path, branch=None):
+        raise AssertionError("reset should not be called in successful update test")
+
+    async def fake_get_component_bytes(object_id, component_id, media_type=None, extension=None):
+        return stored[(object_id, component_id)][0]
+
+    monkeypatch.setattr(storage_lakefs, "put_component_bytes", fake_put_component_bytes)
+    monkeypatch.setattr(storage_lakefs, "commit_changes", fake_commit_changes)
+    monkeypatch.setattr(storage_lakefs, "reset_uncommitted_object", fake_reset_uncommitted_object)
+    monkeypatch.setattr(storage_lakefs, "get_component_bytes", fake_get_component_bytes)
+
+    registry = StubRegistry()
+
+    server = await asyncio.start_server(
+        partial(main.handle_connection, registry), host="127.0.0.1", port=0
+    )
+    if not server.sockets:
+        pytest.skip("no sockets")
+
+    port = server.sockets[0].getsockname()[1]
+    server_task = asyncio.create_task(server.serve_forever())
+
+    try:
+        client = StrictDOIPClient(host="127.0.0.1", port=port, use_tls=False, verify_tls=False)
+
+        update = await asyncio.to_thread(
+            client.update_component,
+            "Q123",
+            "primary",
+            b"updated-pdf",
+            "application/pdf",
+        )
+        assert update.header.op_code == protocol.OP_UPDATE
+        assert update.metadata_blocks[0]["status"] == "committed"
+
+        registry.components = [{"componentId": "primary", "mediaType": "application/pdf"}]
+
+        retrieved = await asyncio.to_thread(client.retrieve_component, "Q123", "primary")
+        assert retrieved.header.op_code == protocol.OP_RETRIEVE
+        assert retrieved.component_blocks[0].content == b"updated-pdf"
+        assert retrieved.component_blocks[0].media_type == "application/pdf"
 
     finally:
         server.close()

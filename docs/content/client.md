@@ -6,6 +6,7 @@
 - `hello()`: Health check and capability discovery.
 - `list_ops()`: Fetch the `availableOperations` map.
 - `retrieve(object_id, component=None)`: Return metadata blocks or a specific component.
+- `update_component(object_id, component_id, content, media_type=...)`: Update one component on an existing object and trigger a lakeFS commit.
 - `invoke(object_id, workflow, params=None)`: Trigger a workflow; receives workflow metadata and derived components.
 
 ## Usage
@@ -17,6 +18,7 @@ hello = client.hello()
 ops = client.list_ops()
 metadata = client.retrieve("Q123").metadata_blocks
 pdf = client.retrieve("Q123", component="doip:bitstream/Q123/main-pdf")
+update = client.update_component("Q123", "fulltext", b"new-pdf-bytes", media_type="application/pdf")
 
 # Invoke a workflow with parameters
 result = client.invoke("Q123", workflow="equation_extraction", params={"pages": [1, 2, 3]})
@@ -25,15 +27,13 @@ result = client.invoke("Q123", workflow="equation_extraction", params={"pages": 
 ### TLS & verification
 Pass `use_tls=True` to wrap the socket. If you use self-signed certs during development, combine `use_tls=True` with `verify=False` to skip hostname verification.
 
-### Timeouts & clean up
-The client uses blocking sockets; wrap calls in your own timeout logic if needed. Always close the client when finished:
-```python
-client.close()
-```
+### Timeouts
+The client uses blocking sockets; wrap calls in your own timeout logic if needed.
 
 ## Component handling
 - For metadata-only requests, send no `component` and inspect `response.metadata_blocks`.
 - For binaries, pass the component ID; the client returns `ComponentBlock` objects containing `component_id`, `media_type`, and `content` bytes.
+- For updates, send exactly one component block. Other existing components remain unchanged.
 
 ## Compatibility listener support
 The Python client speaks strict DOIP. To talk to the compatibility JSON-segment listener (`port + 1`), use the **Client CLI** which wraps the same client but performs JSON bridging for you.

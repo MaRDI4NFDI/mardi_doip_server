@@ -35,6 +35,7 @@ async def handle_hello(msg: DOIPMessage, registry: object_registry.ObjectRegistr
         "availableOperations": {
             "hello": protocol.OP_HELLO,
             "retrieve": protocol.OP_RETRIEVE,
+            "update": protocol.OP_UPDATE,
             "describe": protocol.OP_DESCRIBE, # not standard
             "invoke": protocol.OP_INVOKE, # not standard
         },
@@ -155,6 +156,76 @@ async def handle_retrieve(msg: DOIPMessage, registry: object_registry.ObjectRegi
     )
 
 
+async def handle_update(msg: DOIPMessage, registry: object_registry.ObjectRegistry) -> DOIPMessage:
+    """Store one component for an existing object and create a lakeFS commit."""
+    object_id = msg.object_id.upper()
+    metadata = msg.metadata_blocks[0] if msg.metadata_blocks else {}
+    element = metadata.get("element")
+
+    await registry.fetch_fdo_object(object_id)
+
+    if len(msg.component_blocks) != 1:
+        raise protocol.ProtocolError("update requires exactly one component block")
+
+    component = msg.component_blocks[0]
+    if not component.component_id:
+        raise protocol.ProtocolError("update component_id is required")
+    if element and element != component.component_id:
+        raise protocol.ProtocolError("update metadata element must match component block id")
+
+    media_type = component.media_type or "application/octet-stream"
+    object_path = storage_lakefs.build_component_object_path(
+        object_id,
+        component.component_id,
+        media_type=media_type,
+    )
+
+    try:
+        await storage_lakefs.put_component_bytes(
+            object_id,
+            component.component_id,
+            component.content,
+            media_type=media_type,
+        )
+        commit = await storage_lakefs.commit_changes(
+            message=f"Update {object_id} component {component.component_id}",
+            metadata={
+                "operation": "update",
+                "object_id": object_id,
+                "component_id": component.component_id,
+                "media_type": media_type,
+            },
+        )
+    except Exception:
+        try:
+            await storage_lakefs.reset_uncommitted_object(object_path)
+        except Exception:
+            log.exception("Failed to reset uncommitted lakeFS object for %s", object_path)
+        raise
+
+    await registry.purge(object_id)
+
+    return DOIPMessage(
+        version=protocol.DOIP_VERSION,
+        msg_type=protocol.MSG_TYPE_RESPONSE,
+        operation=protocol.OP_UPDATE,
+        flags=0,
+        object_id=object_id,
+        metadata_blocks=[
+            {
+                "operation": "update",
+                "status": "committed",
+                "objectId": object_id,
+                "componentId": component.component_id,
+                "mediaType": media_type,
+                "size": len(component.content),
+                "branch": commit["branch"],
+                "commitId": commit["commit_id"],
+            }
+        ],
+    )
+
+
 async def handle_invoke(msg: DOIPMessage, registry: object_registry.ObjectRegistry) -> DOIPMessage:
     """Handle DOIP invoke requests by executing supported workflows.
 
@@ -246,6 +317,7 @@ async def handle_list_ops(msg: DOIPMessage, registry: object_registry.ObjectRegi
         "availableOperations": {
             "hello": protocol.OP_HELLO,
             "retrieve": protocol.OP_RETRIEVE,
+            "update": protocol.OP_UPDATE,
             "invoke": protocol.OP_INVOKE,
         },
     }

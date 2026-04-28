@@ -199,6 +199,152 @@ async def test_retrieve_component_defaults_when_manifest_missing(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_handle_update_stores_component_and_commits(monkeypatch):
+    calls = {}
+
+    async def fake_fetch_fdo(pid):
+        return {"@id": pid}
+
+    async def fake_put_component_bytes(object_id, component_id, data, media_type="application/octet-stream", extension=None):
+        calls["put"] = {
+            "object_id": object_id,
+            "component_id": component_id,
+            "data": data,
+            "media_type": media_type,
+        }
+        return "main/00/00/01/Q1/components/primary.pdf"
+
+    async def fake_commit_changes(message, metadata=None, branch=None, allow_empty=True):
+        calls["commit"] = {
+            "message": message,
+            "metadata": metadata,
+            "branch": branch,
+            "allow_empty": allow_empty,
+        }
+        return {"branch": "main", "commit_id": "abc123", "repo": "repo"}
+
+    async def fake_reset_uncommitted_object(object_path, branch=None):
+        calls["reset"] = {"object_path": object_path, "branch": branch}
+
+    registry = StubRegistry({})
+    registry.fetch_fdo_object = fake_fetch_fdo
+
+    monkeypatch.setattr(handlers.storage_lakefs, "put_component_bytes", fake_put_component_bytes)
+    monkeypatch.setattr(handlers.storage_lakefs, "commit_changes", fake_commit_changes)
+    monkeypatch.setattr(handlers.storage_lakefs, "reset_uncommitted_object", fake_reset_uncommitted_object)
+
+    request = protocol.DOIPMessage(
+        version=protocol.DOIP_VERSION,
+        msg_type=protocol.MSG_TYPE_REQUEST,
+        operation=protocol.OP_UPDATE,
+        flags=0,
+        object_id="Q1",
+        metadata_blocks=[{"operation": "update", "element": "primary"}],
+        component_blocks=[
+            protocol.ComponentBlock(
+                component_id="primary",
+                content=b"pdf-data",
+                media_type="application/pdf",
+            )
+        ],
+    )
+
+    response = await handlers.handle_update(request, registry)
+
+    assert calls["put"]["object_id"] == "Q1"
+    assert calls["put"]["component_id"] == "primary"
+    assert calls["put"]["data"] == b"pdf-data"
+    assert "commit" in calls
+    assert "reset" not in calls
+    assert response.operation == protocol.OP_UPDATE
+    assert response.metadata_blocks[0]["status"] == "committed"
+    assert response.metadata_blocks[0]["commitId"] == "abc123"
+
+
+@pytest.mark.asyncio
+async def test_handle_update_rejects_multiple_components():
+    registry = StubRegistry({})
+    request = protocol.DOIPMessage(
+        version=protocol.DOIP_VERSION,
+        msg_type=protocol.MSG_TYPE_REQUEST,
+        operation=protocol.OP_UPDATE,
+        flags=0,
+        object_id="Q1",
+        metadata_blocks=[{"operation": "update", "element": "primary"}],
+        component_blocks=[
+            protocol.ComponentBlock(component_id="primary", content=b"one"),
+            protocol.ComponentBlock(component_id="secondary", content=b"two"),
+        ],
+    )
+
+    with pytest.raises(protocol.ProtocolError):
+        await handlers.handle_update(request, registry)
+
+
+@pytest.mark.asyncio
+async def test_handle_update_rejects_mismatched_component_id(monkeypatch):
+    async def fake_fetch_fdo(pid):
+        return {"@id": pid}
+
+    registry = StubRegistry({})
+    registry.fetch_fdo_object = fake_fetch_fdo
+
+    request = protocol.DOIPMessage(
+        version=protocol.DOIP_VERSION,
+        msg_type=protocol.MSG_TYPE_REQUEST,
+        operation=protocol.OP_UPDATE,
+        flags=0,
+        object_id="Q1",
+        metadata_blocks=[{"operation": "update", "element": "primary"}],
+        component_blocks=[protocol.ComponentBlock(component_id="secondary", content=b"data")],
+    )
+
+    with pytest.raises(protocol.ProtocolError):
+        await handlers.handle_update(request, registry)
+
+
+@pytest.mark.asyncio
+async def test_handle_update_resets_uncommitted_object_on_commit_failure(monkeypatch):
+    calls = {}
+
+    async def fake_fetch_fdo(pid):
+        return {"@id": pid}
+
+    async def fake_put_component_bytes(object_id, component_id, data, media_type="application/octet-stream", extension=None):
+        calls["put"] = True
+        return "main/00/00/01/Q1/components/primary.pdf"
+
+    async def fake_commit_changes(message, metadata=None, branch=None, allow_empty=True):
+        raise RuntimeError("commit failed")
+
+    async def fake_reset_uncommitted_object(object_path, branch=None):
+        calls["reset"] = {"object_path": object_path, "branch": branch}
+
+    registry = StubRegistry({})
+    registry.fetch_fdo_object = fake_fetch_fdo
+
+    monkeypatch.setattr(handlers.storage_lakefs, "put_component_bytes", fake_put_component_bytes)
+    monkeypatch.setattr(handlers.storage_lakefs, "commit_changes", fake_commit_changes)
+    monkeypatch.setattr(handlers.storage_lakefs, "reset_uncommitted_object", fake_reset_uncommitted_object)
+
+    request = protocol.DOIPMessage(
+        version=protocol.DOIP_VERSION,
+        msg_type=protocol.MSG_TYPE_REQUEST,
+        operation=protocol.OP_UPDATE,
+        flags=0,
+        object_id="Q1",
+        metadata_blocks=[{"operation": "update", "element": "primary"}],
+        component_blocks=[protocol.ComponentBlock(component_id="primary", content=b"data")],
+    )
+
+    with pytest.raises(RuntimeError):
+        await handlers.handle_update(request, registry)
+
+    assert calls["put"] is True
+    assert calls["reset"]["object_path"] == "00/00/01/Q1/components/primary.bin"
+
+
+@pytest.mark.asyncio
 async def test_handle_invoke_returns_workflow_results(monkeypatch):
     """Ensure invoke handler returns workflow metadata and derived components.
 
@@ -324,4 +470,3 @@ def _load_config_or_skip() -> dict:
     if not isinstance(cfg, dict):
         pytest.skip("config.yaml does not contain a mapping")
     return cfg
-

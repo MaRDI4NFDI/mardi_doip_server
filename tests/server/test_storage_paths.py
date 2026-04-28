@@ -13,6 +13,9 @@ def test_build_object_key_sharded_with_branch(monkeypatch):
 async def test_get_component_bytes_uses_sharded_path(monkeypatch):
     calls = {}
 
+    async def fake_to_thread(func, *args, **kwargs):
+        return func(*args, **kwargs)
+
     class FakeClient:
         def get_object(self, Bucket=None, Key=None):
             calls["bucket"] = Bucket
@@ -28,6 +31,7 @@ async def test_get_component_bytes_uses_sharded_path(monkeypatch):
             raise AssertionError("Paginator should not be called in this test")
 
     monkeypatch.setattr(storage_lakefs, "_client", lambda: FakeClient())
+    monkeypatch.setattr(storage_lakefs.asyncio, "to_thread", fake_to_thread)
     storage_lakefs.configure({"lakefs": {"repo": "repo-name", "branch": "main"}})
 
     data = await storage_lakefs.get_component_bytes("Q4", "fulltext", media_type="application/pdf")
@@ -35,3 +39,61 @@ async def test_get_component_bytes_uses_sharded_path(monkeypatch):
     assert data == b"data"
     assert calls["bucket"] == "repo-name"
     assert calls["key"] == "main/00/00/04/Q4/components/fulltext.pdf"
+
+
+def test_build_component_object_path_uses_sharded_path():
+    path = storage_lakefs.build_component_object_path("Q4", "fulltext", media_type="application/pdf")
+    assert path == "00/00/04/Q4/components/fulltext.pdf"
+
+
+@pytest.mark.asyncio
+async def test_commit_changes_uses_lakefs_sdk_branch(monkeypatch):
+    calls = {}
+
+    async def fake_to_thread(func, *args, **kwargs):
+        return func(*args, **kwargs)
+
+    class FakeRef:
+        id = "commit-123"
+
+    class FakeBranch:
+        def commit(self, message=None, metadata=None, allow_empty=None):
+            calls["commit"] = {
+                "message": message,
+                "metadata": metadata,
+                "allow_empty": allow_empty,
+            }
+            return FakeRef()
+
+    monkeypatch.setattr(storage_lakefs, "_lakefs_branch", lambda branch=None: FakeBranch())
+    monkeypatch.setattr(storage_lakefs.asyncio, "to_thread", fake_to_thread)
+    storage_lakefs.configure({"lakefs": {"repo": "repo-name", "branch": "main"}})
+
+    result = await storage_lakefs.commit_changes("test message", metadata={"op": "update"})
+
+    assert calls["commit"]["message"] == "test message"
+    assert calls["commit"]["metadata"] == {"op": "update"}
+    assert calls["commit"]["allow_empty"] is True
+    assert result == {"repo": "repo-name", "branch": "main", "commit_id": "commit-123"}
+
+
+@pytest.mark.asyncio
+async def test_reset_uncommitted_object_uses_lakefs_sdk_branch(monkeypatch):
+    calls = {}
+
+    async def fake_to_thread(func, *args, **kwargs):
+        return func(*args, **kwargs)
+
+    class FakeBranch:
+        def reset_changes(self, path_type=None, path=None):
+            calls["reset"] = {"path_type": path_type, "path": path}
+
+    monkeypatch.setattr(storage_lakefs, "_lakefs_branch", lambda branch=None: FakeBranch())
+    monkeypatch.setattr(storage_lakefs.asyncio, "to_thread", fake_to_thread)
+
+    await storage_lakefs.reset_uncommitted_object("00/00/04/Q4/components/fulltext.pdf")
+
+    assert calls["reset"] == {
+        "path_type": "object",
+        "path": "00/00/04/Q4/components/fulltext.pdf",
+    }

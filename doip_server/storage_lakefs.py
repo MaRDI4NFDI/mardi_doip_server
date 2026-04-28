@@ -34,6 +34,11 @@ def configure(cfg: Dict) -> None:
     except Exception:
         # If the client is not yet defined or cacheable, ignore.
         pass
+    try:
+        _lakefs_api_client.cache_clear()
+    except Exception:
+        # If the client is not yet defined or cacheable, ignore.
+        pass
 
 
 def _repo() -> str:
@@ -158,8 +163,26 @@ def build_object_key(qid: str, component_id: str, extension: str, branch: str | 
     """
     ext = extension.lstrip(".")
     branch_name = branch or _branch()
-    path = get_component_path(qid, component_id, ext)
+    path = build_object_path(qid, component_id, ext)
     return f"{branch_name}/{path}"
+
+
+def build_object_path(qid: str, component_id: str, extension: str) -> str:
+    """Return the branch-relative lakeFS path for a component."""
+    ext = extension.lstrip(".")
+    return get_component_path(qid, component_id, ext)
+
+
+def build_component_object_path(
+    object_id: str,
+    component_id: str,
+    media_type: str | None = None,
+    extension: str | None = None,
+) -> str:
+    """Return the branch-relative lakeFS path for a specific component."""
+    qid = _extract_qid(object_id)
+    ext = _extension_from_media_type(media_type, extension, component_id)
+    return build_object_path(qid, component_id, ext)
 
 
 async def get_component_bytes(
@@ -225,6 +248,61 @@ async def put_component_bytes(
         ContentType=media_type,
     )
     return key
+
+
+@lru_cache(maxsize=1)
+def _lakefs_api_client():
+    """Create a cached official lakeFS SDK client for branch operations."""
+    import lakefs
+
+    lakefs_cfg = _CFG.get("lakefs", {}) if isinstance(_CFG, dict) else {}
+    return lakefs.Client(
+        host=_endpoint_url(),
+        username=lakefs_cfg.get("user"),
+        password=lakefs_cfg.get("password"),
+    )
+
+
+def _lakefs_branch(branch: str | None = None):
+    """Return a lakeFS branch handle for commit/reset operations."""
+    import lakefs
+
+    return lakefs.repository(_repo(), client=_lakefs_api_client()).branch(branch or _branch())
+
+
+async def commit_changes(
+    message: str,
+    metadata: Dict[str, str] | None = None,
+    branch: str | None = None,
+    allow_empty: bool = True,
+) -> Dict[str, str]:
+    """Create a lakeFS commit on the target branch."""
+
+    def _commit() -> Dict[str, str]:
+        ref = _lakefs_branch(branch).commit(
+            message=message,
+            metadata=metadata or {},
+            allow_empty=allow_empty,
+        )
+        return {
+            "repo": _repo(),
+            "branch": branch or _branch(),
+            "commit_id": ref.id,
+        }
+
+    try:
+        return await asyncio.to_thread(_commit)
+    except Exception as exc:  # noqa: BLE001
+        raise RuntimeError(f"lakeFS commit failed on branch {branch or _branch()}") from exc
+
+
+async def reset_uncommitted_object(object_path: str, branch: str | None = None) -> None:
+    """Reset one uncommitted object path on the target branch."""
+
+    def _reset() -> None:
+        _lakefs_branch(branch).reset_changes(path_type="object", path=object_path)
+
+    await asyncio.to_thread(_reset)
 
 
 async def list_components(object_id: str) -> List[str]:

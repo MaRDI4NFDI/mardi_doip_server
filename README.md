@@ -75,6 +75,12 @@ Retrieve the fulltext pdf from a FDO publication:
 PYTHONPATH=. python -m client_cli.main --host 127.0.0.1 --no-tls --action retrieve --object-id Q6190920 --component fulltext --output pdf.pdf
 ```
 
+Update one component on an existing FDO and create a mandatory lakeFS commit:
+
+```bash
+PYTHONPATH=. python -m client_cli.main --host 127.0.0.1 --no-tls --action update --object-id Q6190920 --component fulltext --input pdf.pdf --media-type application/pdf
+```
+
 
 ### Use the DOIP client in Python:
 ```python
@@ -83,6 +89,7 @@ from doip_client import StrictDOIPClient
 client = StrictDOIPClient(host="127.0.0.1", port=3567, use_tls=False)
 hello = client.hello()
 metadata = client.retrieve("Q123").metadata_blocks
+update = client.update_component("Q123", "fulltext", b"pdf-bytes", media_type="application/pdf")
 ```
 
 ## TLS (optional):

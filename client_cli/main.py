@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import logging
+import mimetypes
 import os, sys
 
 from argparse import (
@@ -77,7 +78,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--component", default=None, help="Component ID for selective retrieve; if absent, list components")
     parser.add_argument(
         "--action",
-        choices=["demo", "hello", "list_ops", "retrieve", "invoke", "purge"],
+        choices=["demo", "hello", "list_ops", "retrieve", "update", "invoke", "purge"],
         help="Action to execute",
     )
     # component removed: server no longer supports component selection
@@ -85,6 +86,16 @@ def main(argv: list[str] | None = None) -> int:
         "--output",
         default=None,
         help="Path to save first component (retrieve only). If not specified, component is not saved.",
+    )
+    parser.add_argument(
+        "--input",
+        default=None,
+        help="Path to the file to upload for update.",
+    )
+    parser.add_argument(
+        "--media-type",
+        default=None,
+        help="Media type for update uploads. If omitted, inferred from --input when possible.",
     )
     parser.add_argument(
         "--workflow",
@@ -151,6 +162,27 @@ def main(argv: list[str] | None = None) -> int:
             except Exception:
                 p = {}
             r = client.invoke(args.object_id, args.workflow, params=p)
+            print(json.dumps(r.metadata_blocks, indent=2))
+            return 0
+
+        if args.action == "update":
+            if not args.component:
+                logging.getLogger().error("--component is required for update.")
+                return 1
+            if not args.input:
+                logging.getLogger().error("--input is required for update.")
+                return 1
+
+            with open(args.input, "rb") as f:
+                content = f.read()
+
+            media_type = args.media_type or mimetypes.guess_type(args.input)[0] or "application/octet-stream"
+            r = client.update_component(
+                args.object_id,
+                args.component,
+                content,
+                media_type=media_type,
+            )
             print(json.dumps(r.metadata_blocks, indent=2))
             return 0
 
