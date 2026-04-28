@@ -105,6 +105,8 @@ async def test_storage_lakefs_downloads_component_to_tempfile():
 @pytest.mark.lakefs_write
 async def test_storage_lakefs_can_put_object_to_sandbox():
     """Manually verify write access to the sandbox repo and commit the uploaded object."""
+    """ $env:RUN_LAKEFS_WRITE_TESTS="1"; pytest -s tests/server/test_storage_lakefs.py -q -k sandbox
+     """
     print("running test_storage_lakefs_can_put_object_to_sandbox")
     if os.getenv("RUN_LAKEFS_WRITE_TESTS") != "1":
         pytest.skip("manual lakeFS write test disabled; set RUN_LAKEFS_WRITE_TESTS=1 to enable")
