@@ -222,6 +222,8 @@ async def dispatch(msg: protocol.DOIPMessage, registry: object_registry.ObjectRe
             return await handlers.handle_list_ops(msg, registry)
         if msg.operation == protocol.OP_PURGE or op_name == "purge":
             return await handlers.handle_purge(msg, registry)
+    except protocol.ProtocolError:
+        raise
     except Exception as exc:
         raise protocol.ProtocolError(f"A problem occured in dispatch() for action {op_name}: {exc}")
 
