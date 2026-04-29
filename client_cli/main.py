@@ -6,7 +6,8 @@ from __future__ import annotations
 
 import json
 import logging
-import os, sys
+import os
+import sys
 
 from argparse import (
     ArgumentParser,
@@ -24,6 +25,11 @@ logging.basicConfig(
 )
 
 def print_mardi_logo():
+    """Print the MaRDI ASCII logo with ANSI coloring.
+
+    Returns:
+        None
+    """
     # Enable ANSI support on Windows (if needed)
     if os.name == "nt":
         import ctypes
@@ -48,7 +54,24 @@ class RawDescriptionDefaultsHelpFormatter(
     RawDescriptionHelpFormatter,
     ArgumentDefaultsHelpFormatter,
 ):
+    """Argument formatter combining defaults with raw description rendering."""
+
     pass
+
+
+def _resolve_cli_update_token(explicit_token: str | None) -> str | None:
+    """Resolve the update token from CLI input or the environment.
+
+    Args:
+        explicit_token: Token passed via the CLI.
+
+    Returns:
+        str | None: Resolved update token, or ``None`` when unavailable.
+    """
+    if explicit_token:
+        return explicit_token
+    env_token = os.getenv("DOIP_UPDATE_TOKEN")
+    return env_token or None
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -95,6 +118,11 @@ def main(argv: list[str] | None = None) -> int:
         "--media-type",
         default=None,
         help="Media type for update uploads. If omitted, application/octet-stream is used.",
+    )
+    parser.add_argument(
+        "--update-token",
+        default=None,
+        help="Shared secret for update uploads. Defaults to DOIP_UPDATE_TOKEN when omitted.",
     )
     parser.add_argument(
         "--workflow",
@@ -171,6 +199,12 @@ def main(argv: list[str] | None = None) -> int:
             if not args.input:
                 logging.getLogger().error("--input is required for update.")
                 return 1
+            update_token = _resolve_cli_update_token(args.update_token)
+            if not update_token:
+                logging.getLogger().error(
+                    "Update authorization requires --update-token or DOIP_UPDATE_TOKEN."
+                )
+                return 1
 
             with open(args.input, "rb") as f:
                 content = f.read()
@@ -181,6 +215,7 @@ def main(argv: list[str] | None = None) -> int:
                 args.component,
                 content,
                 media_type=media_type,
+                update_token=update_token,
             )
             print(json.dumps(r.metadata_blocks, indent=2))
             return 0

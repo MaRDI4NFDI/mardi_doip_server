@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import hmac
 import mimetypes
 import tempfile
 from pathlib import Path
@@ -157,10 +158,22 @@ async def handle_retrieve(msg: DOIPMessage, registry: object_registry.ObjectRegi
 
 
 async def handle_update(msg: DOIPMessage, registry: object_registry.ObjectRegistry) -> DOIPMessage:
-    """Store one component for an existing object and create a lakeFS commit."""
+    """Store one component for an existing object and create a lakeFS commit.
+
+    Args:
+        msg: Incoming DOIP update request.
+        registry: Object registry used to verify object existence and purge cache.
+
+    Returns:
+        DOIPMessage: Response confirming the committed update.
+
+    Raises:
+        protocol.ProtocolError: If authorization fails or the request is malformed.
+    """
     object_id = msg.object_id.upper()
     metadata = msg.metadata_blocks[0] if msg.metadata_blocks else {}
     element = metadata.get("element")
+    _validate_update_token(object_id, metadata)
 
     await registry.fetch_fdo_object(object_id)
 
@@ -220,6 +233,35 @@ async def handle_update(msg: DOIPMessage, registry: object_registry.ObjectRegist
             }
         ],
     )
+
+
+def _validate_update_token(object_id: str, metadata: dict) -> None:
+    """Validate the shared secret attached to an update request.
+
+    Args:
+        object_id: Target object identifier for logging context.
+        metadata: Update metadata block from the request.
+
+    Returns:
+        None
+
+    Raises:
+        protocol.ProtocolError: If the server is not configured for updates or
+            if the provided token is missing or invalid.
+    """
+    expected_token = storage_lakefs.get_update_token()
+    if not expected_token:
+        log.error("Rejected update for %s because no update token is configured", object_id)
+        raise protocol.ProtocolError("update authorization is not configured")
+
+    provided_token = metadata.get("token")
+    if not isinstance(provided_token, str) or not provided_token:
+        log.warning("Rejected update for %s because no update token was provided", object_id)
+        raise protocol.ProtocolError("update authorization failed")
+
+    if not hmac.compare_digest(provided_token, expected_token):
+        log.warning("Rejected update for %s because the update token was invalid", object_id)
+        raise protocol.ProtocolError("update authorization failed")
 
 
 async def handle_invoke(msg: DOIPMessage, registry: object_registry.ObjectRegistry) -> DOIPMessage:

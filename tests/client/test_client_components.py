@@ -30,6 +30,14 @@ def test_encode_component_body():
 
 
 def test_update_component_builds_update_request(monkeypatch):
+    """Ensure update requests include the explicit authorization token.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+
+    Returns:
+        None
+    """
     captured = {}
 
     def fake_send_message(self, request):
@@ -39,12 +47,37 @@ def test_update_component_builds_update_request(monkeypatch):
     monkeypatch.setattr(StrictDOIPClient, "send_message", fake_send_message)
 
     client = StrictDOIPClient(host="127.0.0.1", port=3567, use_tls=False)
-    client.update_component("Q123", "primary", b"hello", media_type="application/pdf")
+    client.update_component("Q123", "primary", b"hello", media_type="application/pdf", update_token="secret")
 
     request = captured["request"]
     assert request.header.op_code == OP_UPDATE
     assert request.object_id == "Q123"
-    assert request.metadata_blocks == [{"operation": "update", "element": "primary"}]
+    assert request.metadata_blocks == [{"operation": "update", "element": "primary", "token": "secret"}]
     assert len(request.component_blocks) == 1
     assert request.component_blocks[0].component_id == "primary"
     assert request.component_blocks[0].media_type == "application/pdf"
+
+
+def test_update_component_reads_token_from_environment(monkeypatch):
+    """Ensure update requests fall back to the environment for the token.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+
+    Returns:
+        None
+    """
+    captured = {}
+
+    def fake_send_message(self, request):
+        captured["request"] = request
+        return DoipResponse(header=request.header, metadata_blocks=[], component_blocks=[], workflow_blocks=[])
+
+    monkeypatch.setenv("DOIP_UPDATE_TOKEN", "env-secret")
+    monkeypatch.setattr(StrictDOIPClient, "send_message", fake_send_message)
+
+    client = StrictDOIPClient(host="127.0.0.1", port=3567, use_tls=False)
+    client.update_component("Q123", "primary", b"hello", media_type="application/pdf")
+
+    request = captured["request"]
+    assert request.metadata_blocks == [{"operation": "update", "element": "primary", "token": "env-secret"}]

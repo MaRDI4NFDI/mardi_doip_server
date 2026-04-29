@@ -14,7 +14,7 @@ The server builds its configuration by merging **`config.yaml` → environment v
 | `LAKEFS_URL` | lakeFS endpoint, with or without protocol prefix. Normalized to https when missing. |
 | `LAKEFS_REPO` | lakeFS repository name used for component lookup. |
 | `LAKEFS_USER` | lakeFS access key. |
-| `LAKEFS_PASSWORD` | lakeFS secret key. |
+| `LAKEFS_PASSWORD` | lakeFS secret key. This value is also used as the shared secret for DOIP `update` authorization. |
 | `OLLAMA_API_KEY` | API key passed to the Ollama client when invoking workflows. |
 
 When set, these variables override matching keys inside `config.yaml`.

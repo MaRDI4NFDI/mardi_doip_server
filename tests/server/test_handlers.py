@@ -200,6 +200,14 @@ async def test_retrieve_component_defaults_when_manifest_missing(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_handle_update_stores_component_and_commits(monkeypatch):
+    """Ensure authenticated updates write one component and commit it.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+
+    Returns:
+        None
+    """
     calls = {}
 
     async def fake_fetch_fdo(pid):
@@ -229,6 +237,7 @@ async def test_handle_update_stores_component_and_commits(monkeypatch):
     registry = StubRegistry([])
     registry.fetch_fdo_object = fake_fetch_fdo
 
+    monkeypatch.setattr(handlers.storage_lakefs, "get_update_token", lambda: "secret")
     monkeypatch.setattr(handlers.storage_lakefs, "put_component_bytes", fake_put_component_bytes)
     monkeypatch.setattr(handlers.storage_lakefs, "commit_changes", fake_commit_changes)
     monkeypatch.setattr(handlers.storage_lakefs, "reset_uncommitted_object", fake_reset_uncommitted_object)
@@ -239,7 +248,7 @@ async def test_handle_update_stores_component_and_commits(monkeypatch):
         operation=protocol.OP_UPDATE,
         flags=0,
         object_id="Q1",
-        metadata_blocks=[{"operation": "update", "element": "primary.pdf"}],
+        metadata_blocks=[{"operation": "update", "element": "primary.pdf", "token": "secret"}],
         component_blocks=[
             protocol.ComponentBlock(
                 component_id="primary.pdf",
@@ -262,15 +271,25 @@ async def test_handle_update_stores_component_and_commits(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_handle_update_rejects_multiple_components():
+async def test_handle_update_rejects_multiple_components(monkeypatch):
+    """Ensure update rejects requests carrying more than one component block.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+
+    Returns:
+        None
+    """
+    monkeypatch.setattr(handlers.storage_lakefs, "get_update_token", lambda: "secret")
     registry = StubRegistry([])
+    metadata = [{"operation": "update", "element": "primary", "token": "secret"}]
     request = protocol.DOIPMessage(
         version=protocol.DOIP_VERSION,
         msg_type=protocol.MSG_TYPE_REQUEST,
         operation=protocol.OP_UPDATE,
         flags=0,
         object_id="Q1",
-        metadata_blocks=[{"operation": "update", "element": "primary"}],
+        metadata_blocks=metadata,
         component_blocks=[
             protocol.ComponentBlock(component_id="primary", content=b"one"),
             protocol.ComponentBlock(component_id="secondary", content=b"two"),
@@ -283,11 +302,20 @@ async def test_handle_update_rejects_multiple_components():
 
 @pytest.mark.asyncio
 async def test_handle_update_rejects_mismatched_component_id(monkeypatch):
+    """Ensure update rejects mismatched metadata and component identifiers.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+
+    Returns:
+        None
+    """
     async def fake_fetch_fdo(pid):
         return {"@id": pid}
 
     registry = StubRegistry([])
     registry.fetch_fdo_object = fake_fetch_fdo
+    monkeypatch.setattr(handlers.storage_lakefs, "get_update_token", lambda: "secret")
 
     request = protocol.DOIPMessage(
         version=protocol.DOIP_VERSION,
@@ -295,7 +323,7 @@ async def test_handle_update_rejects_mismatched_component_id(monkeypatch):
         operation=protocol.OP_UPDATE,
         flags=0,
         object_id="Q1",
-        metadata_blocks=[{"operation": "update", "element": "primary"}],
+        metadata_blocks=[{"operation": "update", "element": "primary", "token": "secret"}],
         component_blocks=[protocol.ComponentBlock(component_id="secondary", content=b"data")],
     )
 
@@ -305,6 +333,14 @@ async def test_handle_update_rejects_mismatched_component_id(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_handle_update_resets_uncommitted_object_on_commit_failure(monkeypatch):
+    """Ensure update resets staged lakeFS changes when commit creation fails.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+
+    Returns:
+        None
+    """
     calls = {}
 
     async def fake_fetch_fdo(pid):
@@ -323,9 +359,54 @@ async def test_handle_update_resets_uncommitted_object_on_commit_failure(monkeyp
     registry = StubRegistry([])
     registry.fetch_fdo_object = fake_fetch_fdo
 
+    monkeypatch.setattr(handlers.storage_lakefs, "get_update_token", lambda: "secret")
     monkeypatch.setattr(handlers.storage_lakefs, "put_component_bytes", fake_put_component_bytes)
     monkeypatch.setattr(handlers.storage_lakefs, "commit_changes", fake_commit_changes)
     monkeypatch.setattr(handlers.storage_lakefs, "reset_uncommitted_object", fake_reset_uncommitted_object)
+
+    request = protocol.DOIPMessage(
+        version=protocol.DOIP_VERSION,
+        msg_type=protocol.MSG_TYPE_REQUEST,
+        operation=protocol.OP_UPDATE,
+        flags=0,
+        object_id="Q1",
+        metadata_blocks=[{"operation": "update", "element": "primary", "token": "secret"}],
+        component_blocks=[protocol.ComponentBlock(component_id="primary", content=b"data")],
+    )
+
+    with pytest.raises(RuntimeError):
+        await handlers.handle_update(request, registry)
+
+    assert calls["put"] is True
+    assert calls["reset"]["object_path"] == "00/00/01/Q1/components/primary"
+
+
+@pytest.mark.asyncio
+async def test_handle_update_rejects_missing_token_before_fetch(monkeypatch):
+    """Ensure update authorization happens before object lookup and storage writes.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+
+    Returns:
+        None
+    """
+    monkeypatch.setattr(handlers.storage_lakefs, "get_update_token", lambda: "secret")
+
+    registry = StubRegistry([])
+
+    async def fake_fetch_fdo(pid):
+        raise AssertionError("fetch_fdo_object should not be called without auth")
+
+    async def fake_put_component_bytes(*args, **kwargs):
+        raise AssertionError("put_component_bytes should not be called without auth")
+
+    async def fake_commit_changes(*args, **kwargs):
+        raise AssertionError("commit_changes should not be called without auth")
+
+    registry.fetch_fdo_object = fake_fetch_fdo
+    monkeypatch.setattr(handlers.storage_lakefs, "put_component_bytes", fake_put_component_bytes)
+    monkeypatch.setattr(handlers.storage_lakefs, "commit_changes", fake_commit_changes)
 
     request = protocol.DOIPMessage(
         version=protocol.DOIP_VERSION,
@@ -337,11 +418,82 @@ async def test_handle_update_resets_uncommitted_object_on_commit_failure(monkeyp
         component_blocks=[protocol.ComponentBlock(component_id="primary", content=b"data")],
     )
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(protocol.ProtocolError, match="update authorization failed"):
         await handlers.handle_update(request, registry)
 
-    assert calls["put"] is True
-    assert calls["reset"]["object_path"] == "00/00/01/Q1/components/primary"
+
+@pytest.mark.asyncio
+async def test_handle_update_rejects_invalid_token_before_storage(monkeypatch):
+    """Ensure update rejects incorrect shared secrets before any side effects.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+
+    Returns:
+        None
+    """
+    monkeypatch.setattr(handlers.storage_lakefs, "get_update_token", lambda: "secret")
+
+    registry = StubRegistry([])
+
+    async def fake_fetch_fdo(pid):
+        raise AssertionError("fetch_fdo_object should not be called with invalid auth")
+
+    async def fake_put_component_bytes(*args, **kwargs):
+        raise AssertionError("put_component_bytes should not be called with invalid auth")
+
+    async def fake_commit_changes(*args, **kwargs):
+        raise AssertionError("commit_changes should not be called with invalid auth")
+
+    registry.fetch_fdo_object = fake_fetch_fdo
+    monkeypatch.setattr(handlers.storage_lakefs, "put_component_bytes", fake_put_component_bytes)
+    monkeypatch.setattr(handlers.storage_lakefs, "commit_changes", fake_commit_changes)
+
+    request = protocol.DOIPMessage(
+        version=protocol.DOIP_VERSION,
+        msg_type=protocol.MSG_TYPE_REQUEST,
+        operation=protocol.OP_UPDATE,
+        flags=0,
+        object_id="Q1",
+        metadata_blocks=[{"operation": "update", "element": "primary", "token": "wrong"}],
+        component_blocks=[protocol.ComponentBlock(component_id="primary", content=b"data")],
+    )
+
+    with pytest.raises(protocol.ProtocolError, match="update authorization failed"):
+        await handlers.handle_update(request, registry)
+
+
+@pytest.mark.asyncio
+async def test_handle_update_rejects_when_server_token_is_unset(monkeypatch):
+    """Ensure update rejects requests when the server lacks a configured token.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+
+    Returns:
+        None
+    """
+    monkeypatch.setattr(handlers.storage_lakefs, "get_update_token", lambda: None)
+
+    registry = StubRegistry([])
+
+    async def fake_fetch_fdo(pid):
+        raise AssertionError("fetch_fdo_object should not run when auth is unconfigured")
+
+    registry.fetch_fdo_object = fake_fetch_fdo
+
+    request = protocol.DOIPMessage(
+        version=protocol.DOIP_VERSION,
+        msg_type=protocol.MSG_TYPE_REQUEST,
+        operation=protocol.OP_UPDATE,
+        flags=0,
+        object_id="Q1",
+        metadata_blocks=[{"operation": "update", "element": "primary", "token": "secret"}],
+        component_blocks=[protocol.ComponentBlock(component_id="primary", content=b"data")],
+    )
+
+    with pytest.raises(protocol.ProtocolError, match="update authorization is not configured"):
+        await handlers.handle_update(request, registry)
 
 
 @pytest.mark.asyncio

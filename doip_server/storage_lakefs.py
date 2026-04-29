@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 from functools import lru_cache
 from typing import AsyncGenerator, Dict, List, Tuple
@@ -55,6 +57,19 @@ def _branch() -> str:
     """
     lakefs_cfg = _CFG.get("lakefs", {}) if isinstance(_CFG, dict) else {}
     return lakefs_cfg.get("branch") or "main"
+
+
+def get_update_token() -> str | None:
+    """Return the shared secret used to authorize update requests.
+
+    For now, the update token is the configured lakeFS password.
+
+    Returns:
+        str | None: Configured shared secret, or ``None`` when unavailable.
+    """
+    lakefs_cfg = _CFG.get("lakefs", {}) if isinstance(_CFG, dict) else {}
+    token = lakefs_cfg.get("password")
+    return token if isinstance(token, str) and token else None
 
 
 def _endpoint_url() -> str | None:

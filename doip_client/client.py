@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import socket
 import struct
 import ssl
@@ -137,12 +138,29 @@ class StrictDOIPClient:
         component_id: str,
         content: bytes,
         media_type: str = "application/octet-stream",
+        update_token: str | None = None,
     ) -> DoipResponse:
-        """Update one component on an existing object."""
+        """Update one component on an existing object.
+
+        Args:
+            object_id: Target object identifier.
+            component_id: Component identifier to create or replace.
+            content: Component bytes to upload.
+            media_type: MIME type recorded for the uploaded component.
+            update_token: Optional shared secret for authorizing the update.
+
+        Returns:
+            DoipResponse: Parsed DOIP response envelope.
+        """
+        resolved_token = self._resolve_update_token(update_token)
+        metadata = {"operation": "update", "element": component_id}
+        if resolved_token:
+            metadata["token"] = resolved_token
+
         request = DoipRequest(
             header=Header(DOIP_VERSION, MSG_TYPE_REQUEST, OP_UPDATE, 0, 0, 0),
             object_id=object_id,
-            metadata_blocks=[{"operation": "update", "element": component_id}],
+            metadata_blocks=[metadata],
             component_blocks=[
                 ComponentBlock(
                     component_id=component_id,
@@ -152,6 +170,22 @@ class StrictDOIPClient:
             ],
         )
         return self.send_message(request)
+
+    @staticmethod
+    def _resolve_update_token(update_token: str | None) -> str | None:
+        """Resolve the update token from explicit input or the environment.
+
+        Args:
+            update_token: Explicit token supplied by the caller.
+
+        Returns:
+            str | None: Explicit token when provided, otherwise
+                ``DOIP_UPDATE_TOKEN`` from the environment.
+        """
+        if update_token:
+            return update_token
+        env_token = os.getenv("DOIP_UPDATE_TOKEN")
+        return env_token or None
 
     def invoke(self, object_id: str, workflow: str, params: dict | None = None) -> DoipResponse:
         """Invoke a workflow on the server for a given object ID.
