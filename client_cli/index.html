@@ -655,20 +655,23 @@
 <h2 id="running">Running<a class="headerlink" href="#running" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nv">PYTHONPATH</span><span class="o">=</span>.<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>client_cli.main<span class="w"> </span>--object-id<span class="w"> </span>Q123<span class="w"> </span>--action<span class="w"> </span>retrieve<span class="w"> </span>
 </code></pre></div>
-<p>Options:
-- <code>--host</code>: DOIP server host (default <code>doip.staging.mardi4nfdi.org</code>)
-- <code>--port</code>: DOIP server port (default <code>3567</code>)
-- <code>--no-tls</code>: Disable TLS wrapping (useful for local plaintext servers)
-- <code>--secure</code>: Enable TLS certificate/hostname verification
-- <code>--object-id</code>: Object identifier to retrieve (default <code>Q123</code>)
-- <code>--action</code>: One of <code>demo</code>, <code>hello</code>, <code>retrieve</code>, <code>update</code>, <code>invoke</code>, <code>purge</code> (default <code>demo</code>)
-- <code>--component</code>: Component ID to retrieve (retrieve/demo actions)
-- <code>--input</code>: File path to upload for <code>update</code>
-- <code>--media-type</code>: Explicit media type for <code>update</code>; defaults to <code>application/octet-stream</code>
-- <code>--workflow</code>: Workflow name (invoke action, default <code>equation_extraction</code>)
-- <code>--params</code>: Workflow parameters as JSON string (invoke action)
-- <code>--output</code>: Path or directory to save the first retrieved component (retrieve action)
-  - When saving to a directory, the original filename provided by the server is preserved when present.</p>
+<p>Options:</p>
+<ul>
+<li><code>--host</code>: DOIP server host (default <code>doip.staging.mardi4nfdi.org</code>)</li>
+<li><code>--port</code>: DOIP server port (default <code>3567</code>)</li>
+<li><code>--no-tls</code>: Disable TLS wrapping (useful for local plaintext servers)</li>
+<li><code>--secure</code>: Enable TLS certificate/hostname verification</li>
+<li><code>--object-id</code>: Object identifier to retrieve (default <code>Q123</code>)</li>
+<li><code>--action</code>: One of <code>demo</code>, <code>hello</code>, <code>retrieve</code>, <code>update</code>, <code>invoke</code>, <code>purge</code> (default <code>demo</code>)</li>
+<li><code>--component</code>: Component ID to retrieve (retrieve/demo actions)</li>
+<li><code>--input</code>: File path to upload for <code>update</code></li>
+<li><code>--media-type</code>: Explicit media type for <code>update</code>; defaults to <code>application/octet-stream</code></li>
+<li><code>--update-token</code>: Shared secret for <code>update</code>; defaults to <code>DOIP_UPDATE_TOKEN</code></li>
+<li><code>--workflow</code>: Workflow name (invoke action, default <code>equation_extraction</code>)</li>
+<li><code>--params</code>: Workflow parameters as JSON string (invoke action)</li>
+<li><code>--output</code>: Path or directory to save the first retrieved component (retrieve action)</li>
+</ul>
+<p>When saving to a directory, the original filename provided by the server is preserved when present.</p>
 <h3 id="actions">Actions<a class="headerlink" href="#actions" title="Permanent link">&para;</a></h3>
 <ul>
 <li><code>demo</code>: Runs <code>hello</code> then <code>retrieve</code>.</li>
@@ -678,6 +681,12 @@
 <li><code>invoke</code>: Runs a workflow for the given object with optional params.</li>
 <li><code>purge</code>: Evicts the cached manifest for <code>--object-id</code> from the server's in-memory cache.</li>
 </ul>
+<h3 id="update-authorization">Update authorization<a class="headerlink" href="#update-authorization" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>update</code> requests must include a shared secret.</li>
+<li>The CLI reads that secret from <code>--update-token</code> or <code>DOIP_UPDATE_TOKEN</code>.</li>
+<li>On the server, the expected token is currently the configured lakeFS password.</li>
+</ul>
 <h3 id="example-download-a-pdf">Example: Download a PDF<a class="headerlink" href="#example-download-a-pdf" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nv">PYTHONPATH</span><span class="o">=</span>.<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>client_cli.main<span class="w"> </span>--action<span class="w"> </span>retrieve<span class="w"> </span>--object-id<span class="w"> </span>Q6190920<span class="w"> </span>--component<span class="w"> </span>fulltext.pdf<span class="w"> </span>--output<span class="w"> </span>.
 </code></pre></div>
@@ -685,7 +694,7 @@
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>python<span class="w"> </span>-m<span class="w"> </span>client_cli.main<span class="w"> </span>--host<span class="w"> </span>localhost<span class="w"> </span>--no-tls<span class="w"> </span>--action<span class="w"> </span>retrieve<span class="w"> </span>--object-id<span class="w"> </span>Q6032968<span class="w"> </span>--component<span class="w"> </span>rocrate<span class="w"> </span>--output<span class="w"> </span>crate.zip
 </code></pre></div>
 <h3 id="example-update-one-component">Example: Update One Component<a class="headerlink" href="#example-update-one-component" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nv">PYTHONPATH</span><span class="o">=</span>.<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>client_cli.main<span class="w"> </span>--host<span class="w"> </span><span class="m">127</span>.0.0.1<span class="w"> </span>--no-tls<span class="w"> </span>--action<span class="w"> </span>update<span class="w"> </span>--object-id<span class="w"> </span>Q6190920<span class="w"> </span>--component<span class="w"> </span>fulltext.pdf<span class="w"> </span>--input<span class="w"> </span>pdf.pdf<span class="w"> </span>--media-type<span class="w"> </span>application/pdf
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nv">PYTHONPATH</span><span class="o">=</span>.<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>client_cli.main<span class="w"> </span>--host<span class="w"> </span><span class="m">127</span>.0.0.1<span class="w"> </span>--no-tls<span class="w"> </span>--action<span class="w"> </span>update<span class="w"> </span>--object-id<span class="w"> </span>Q6190920<span class="w"> </span>--component<span class="w"> </span>fulltext.pdf<span class="w"> </span>--input<span class="w"> </span>pdf.pdf<span class="w"> </span>--media-type<span class="w"> </span>application/pdf<span class="w"> </span>--update-token<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DOIP_UPDATE_TOKEN</span><span class="s2">&quot;</span>
 </code></pre></div>
 <p><code>update</code> is component-scoped. It updates or adds the specified component and leaves all other components unchanged.
 Component IDs are exact storage names. If you upload <code>fulltext</code>, retrieve <code>fulltext</code>. If you upload <code>fulltext.pdf</code>, retrieve <code>fulltext.pdf</code>.</p>
@@ -871,6 +880,14 @@ Component IDs are exact storage names. If you upload <code>fulltext</code>, retr
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
             data-active="false" data-depth="2" onClick="deferSetActiveTocLink('#actions');">
             Actions
+        </a>
+        
+
+        
+        <a href="#update-authorization"
+            class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
+            data-active="false" data-depth="2" onClick="deferSetActiveTocLink('#update-authorization');">
+            Update authorization
         </a>
         
 
