@@ -111,8 +111,31 @@ jobs:
           certutil -hashfile dist\mardi-doip-cli.exe SHA256 > dist\checksum.txt
         shell: pwsh
 
-      - name: Build binary (Unix)
-        if: runner.os != 'Windows'
+      # Build inside Debian Bullseye (GLIBC 2.31) for broad Linux compatibility.
+      # Binaries built on Ubuntu 22.04 (GLIBC 2.35) won't run on older distros.
+      - name: Build binary (Linux — Debian Bullseye container)
+        if: runner.os == 'Linux'
+        run: |
+          docker run --rm -v "$PWD:/workspace" -w /workspace \
+            python:3.12-slim-bullseye bash -c "
+              pip install --upgrade pip wheel setuptools pyinstaller --quiet && \
+              grep -v mkdocs requirements.txt > /tmp/req_cli.txt && \
+              pip install -r /tmp/req_cli.txt --quiet && \
+              pyinstaller \
+                --onefile client_cli/main.py \
+                --name mardi-doip-cli \
+                --console \
+                --hidden-import=anyio \
+                --hidden-import=sniffio \
+                --hidden-import=h11 \
+                --clean \
+                --log-level=WARN && \
+              sha256sum dist/mardi-doip-cli > dist/checksum.txt
+            "
+        shell: bash
+
+      - name: Build binary (macOS)
+        if: runner.os == 'macOS'
         run: |
           source venv/bin/activate
           pyinstaller \
