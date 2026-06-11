@@ -17,6 +17,7 @@ from urllib.parse import urlparse
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 
 from doip_client import StrictDOIPClient
 from doip_server.logging_config import log
@@ -237,6 +238,43 @@ async def download_component(object_id: str, component_id: str, force_reload: st
         media_type=media_type,
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+class _CreateBody(BaseModel):
+    label: str
+    description: str | None = None
+    claims: dict | None = None
+
+
+@app.post("/doip/create")
+async def create_object(body: _CreateBody):
+    """Create a new Wikibase item via the DOIP server.
+
+    Args:
+        body: JSON payload with ``label`` (required), optional ``description``
+            and ``claims``.
+
+    Returns:
+        dict: Metadata block from the DOIP server confirming creation and
+            containing the new item's QID.
+
+    Raises:
+        HTTPException: When the DOIP backend is unreachable or returns an error.
+    """
+    import json
+    json_string = json.dumps({
+        "label": body.label,
+        "description": body.description,
+        "claims": body.claims or {},
+    })
+    log.info("HTTP create requested", extra={"label": body.label})
+    client = _client()
+    try:
+        result = await asyncio.to_thread(client.create, json_string)
+    except Exception as exc:
+        log.exception("Create failed")
+        raise HTTPException(status_code=502, detail=f"Create error: {exc}")
+    return result.metadata_blocks[0] if result.metadata_blocks else {}
 
 
 # Serve the previous landing page and assets (background image, favicon) from /app/landing.

@@ -8,7 +8,7 @@ import struct
 import ssl
 from pathlib import Path
 
-from doip_shared.constants import OP_HELLO, OP_INVOKE, OP_LIST_OPS, OP_PURGE, OP_RETRIEVE, OP_UPDATE
+from doip_shared.constants import OP_CREATE, OP_HELLO, OP_INVOKE, OP_LIST_OPS, OP_PURGE, OP_RETRIEVE, OP_UPDATE
 
 from . import protocol, tls, utils
 from .logging_config import log
@@ -186,6 +186,23 @@ class StrictDOIPClient:
             return update_token
         env_token = os.getenv("DOIP_UPDATE_TOKEN")
         return env_token or None
+
+    def create(self, json_string: str) -> DoipResponse:
+        """Create a new Wikibase item via the DOIP server.
+
+        Args:
+            json_string: JSON string containing at minimum a ``label`` field,
+                optionally ``description`` and ``claims``.
+
+        Returns:
+            DoipResponse: Parsed DOIP response envelope with QID in metadata.
+        """
+        request = DoipRequest(
+            header=Header(DOIP_VERSION, MSG_TYPE_REQUEST, OP_CREATE, 0, 0, 0),
+            object_id="",
+            metadata_blocks=[{"operation": "create", "json": json_string}],
+        )
+        return self.send_message(request)
 
     def invoke(self, object_id: str, workflow: str, params: dict | None = None) -> DoipResponse:
         """Invoke a workflow on the server for a given object ID.
