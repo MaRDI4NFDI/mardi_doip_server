@@ -13,6 +13,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY doip_server ./doip_server
 COPY doip_shared ./doip_shared
 COPY doip_client ./doip_client
+COPY VERSION ./VERSION
 
 # Optionally generate a self-signed cert for local use; override GENERATE_SELF_SIGNED to skip.
 RUN if [ "$GENERATE_SELF_SIGNED" = "true" ]; then \
