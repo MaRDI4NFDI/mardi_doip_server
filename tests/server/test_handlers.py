@@ -612,31 +612,31 @@ async def test_handle_retrieve_uses_registry_and_storage(monkeypatch):
 
 
 
-@pytest.mark.asyncio
-async def test_handle_create_success(monkeypatch):
-    """Successful create returns 'created' status and the new QID."""
+class _FakeHttpClient:
+    """Stub httpx.AsyncClient that simulates a healthy importer returning Q999."""
 
-    async def fake_get(url, **kwargs):
-        class _Resp:
+    async def __aenter__(self): return self
+    async def __aexit__(self, *a): pass
+
+    async def get(self, url, **kw):
+        class _R:
             status_code = 200
             def raise_for_status(self): pass
-        return _Resp()
+        return _R()
 
-    async def fake_post(url, **kwargs):
-        class _Resp:
+    async def post(self, url, **kw):
+        class _R:
             status_code = 200
             def raise_for_status(self): pass
             def json(self): return {"qid": "Q999", "status": "success"}
-        return _Resp()
+        return _R()
 
-    class _FakeClient:
-        async def __aenter__(self): return self
-        async def __aexit__(self, *a): pass
-        async def get(self, url, **kw): return await fake_get(url, **kw)
-        async def post(self, url, **kw): return await fake_post(url, **kw)
 
-    import httpx
-    monkeypatch.setattr(handlers.httpx, "AsyncClient", lambda **kw: _FakeClient())
+@pytest.mark.asyncio
+async def test_handle_create_success(monkeypatch):
+    """Successful create returns 'created' status and the new QID."""
+    monkeypatch.setenv("LAKEFS_PASSWORD", "secret")
+    monkeypatch.setattr(handlers.httpx, "AsyncClient", lambda **kw: _FakeHttpClient())
 
     registry = StubRegistry([])
     request = protocol.DOIPMessage(
@@ -645,7 +645,7 @@ async def test_handle_create_success(monkeypatch):
         operation=protocol.OP_CREATE,
         flags=0,
         object_id="",
-        metadata_blocks=[{"operation": "create", "json": '{"label": "Test item"}'}],
+        metadata_blocks=[{"operation": "create", "token": "secret", "json": '{"label": "Test item"}'}],
     )
 
     response = await handlers.handle_create(request, registry)
@@ -658,34 +658,9 @@ async def test_handle_create_success(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_handle_create_missing_json_field(monkeypatch):
-    """Create request without a 'json' field raises ProtocolError."""
-    registry = StubRegistry([])
-    request = protocol.DOIPMessage(
-        version=protocol.DOIP_VERSION,
-        msg_type=protocol.MSG_TYPE_REQUEST,
-        operation=protocol.OP_CREATE,
-        flags=0,
-        object_id="",
-        metadata_blocks=[{"operation": "create"}],
-    )
-
-    with pytest.raises(protocol.ProtocolError, match="'json' field"):
-        await handlers.handle_create(request, registry)
-
-
-@pytest.mark.asyncio
-async def test_handle_create_unreachable_importer(monkeypatch):
-    """Create request raises ProtocolError when importer health check fails."""
-
-    class _FakeClient:
-        async def __aenter__(self): return self
-        async def __aexit__(self, *a): pass
-        async def get(self, url, **kw):
-            raise Exception("connection refused")
-
-    monkeypatch.setattr(handlers.httpx, "AsyncClient", lambda **kw: _FakeClient())
-
+async def test_handle_create_missing_token(monkeypatch):
+    """Create request without a token raises ProtocolError."""
+    monkeypatch.setenv("LAKEFS_PASSWORD", "secret")
     registry = StubRegistry([])
     request = protocol.DOIPMessage(
         version=protocol.DOIP_VERSION,
@@ -694,6 +669,90 @@ async def test_handle_create_unreachable_importer(monkeypatch):
         flags=0,
         object_id="",
         metadata_blocks=[{"operation": "create", "json": '{"label": "Test item"}'}],
+    )
+
+    with pytest.raises(protocol.ProtocolError, match="authorization failed"):
+        await handlers.handle_create(request, registry)
+
+
+@pytest.mark.asyncio
+async def test_handle_create_wrong_token(monkeypatch):
+    """Create request with wrong token raises ProtocolError."""
+    monkeypatch.setenv("LAKEFS_PASSWORD", "secret")
+    registry = StubRegistry([])
+    request = protocol.DOIPMessage(
+        version=protocol.DOIP_VERSION,
+        msg_type=protocol.MSG_TYPE_REQUEST,
+        operation=protocol.OP_CREATE,
+        flags=0,
+        object_id="",
+        metadata_blocks=[{"operation": "create", "token": "wrong", "json": '{"label": "Test item"}'}],
+    )
+
+    with pytest.raises(protocol.ProtocolError, match="authorization failed"):
+        await handlers.handle_create(request, registry)
+
+
+@pytest.mark.asyncio
+async def test_handle_create_missing_json_field(monkeypatch):
+    """Create request without a 'json' field raises ProtocolError."""
+    monkeypatch.setenv("LAKEFS_PASSWORD", "secret")
+    registry = StubRegistry([])
+    request = protocol.DOIPMessage(
+        version=protocol.DOIP_VERSION,
+        msg_type=protocol.MSG_TYPE_REQUEST,
+        operation=protocol.OP_CREATE,
+        flags=0,
+        object_id="",
+        metadata_blocks=[{"operation": "create", "token": "secret"}],
+    )
+
+    with pytest.raises(protocol.ProtocolError, match="'json' field"):
+        await handlers.handle_create(request, registry)
+
+
+@pytest.mark.asyncio
+async def test_handle_create_invalid_property_id(monkeypatch):
+    """Create request with a malformed property ID raises ProtocolError."""
+    monkeypatch.setenv("LAKEFS_PASSWORD", "secret")
+    registry = StubRegistry([])
+    request = protocol.DOIPMessage(
+        version=protocol.DOIP_VERSION,
+        msg_type=protocol.MSG_TYPE_REQUEST,
+        operation=protocol.OP_CREATE,
+        flags=0,
+        object_id="",
+        metadata_blocks=[{
+            "operation": "create",
+            "token": "secret",
+            "json": '{"label": "Test", "claims": {"wdt:P31": "Q5"}}',
+        }],
+    )
+
+    with pytest.raises(protocol.ProtocolError, match="invalid property ID"):
+        await handlers.handle_create(request, registry)
+
+
+@pytest.mark.asyncio
+async def test_handle_create_unreachable_importer(monkeypatch):
+    """Create request raises ProtocolError when importer health check fails."""
+    monkeypatch.setenv("LAKEFS_PASSWORD", "secret")
+
+    class _FailClient:
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): pass
+        async def get(self, url, **kw): raise Exception("connection refused")
+
+    monkeypatch.setattr(handlers.httpx, "AsyncClient", lambda **kw: _FailClient())
+
+    registry = StubRegistry([])
+    request = protocol.DOIPMessage(
+        version=protocol.DOIP_VERSION,
+        msg_type=protocol.MSG_TYPE_REQUEST,
+        operation=protocol.OP_CREATE,
+        flags=0,
+        object_id="",
+        metadata_blocks=[{"operation": "create", "token": "secret", "json": '{"label": "Test item"}'}],
     )
 
     with pytest.raises(protocol.ProtocolError, match="not reachable"):
