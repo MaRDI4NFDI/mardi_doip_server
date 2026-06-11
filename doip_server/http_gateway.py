@@ -244,6 +244,7 @@ class _CreateBody(BaseModel):
     label: str
     description: str | None = None
     claims: dict | None = None
+    token: str | None = None
 
 
 @app.post("/doip/create")
@@ -270,7 +271,7 @@ async def create_object(body: _CreateBody):
     log.info("HTTP create requested", extra={"label": body.label})
     client = _client()
     try:
-        result = await asyncio.to_thread(client.create, json_string)
+        result = await asyncio.to_thread(client.create, json_string, body.token)
     except Exception as exc:
         log.exception("Create failed")
         raise HTTPException(status_code=502, detail=f"Create error: {exc}")
