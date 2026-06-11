@@ -99,9 +99,16 @@ Component IDs are exact storage names. No file extension is added automatically.
 - A compatibility listener runs on port 3568 (same TLS setting) accepting doipy JSON-segmented requests and bridging to the DOIP handlers.
 
 
-# Latest Development CLI Build
+## CLI Releases
 
-
+[![GitHub Release](https://img.shields.io/github/v/release/MaRDI4NFDI/mardi_doip_server)](https://github.com/MaRDI4NFDI/mardi_doip_server/releases/latest)
 [![Build Status](https://github.com/MaRDI4NFDI/mardi_doip_server/actions/workflows/build-doip-cli-binary.yml/badge.svg)](https://github.com/MaRDI4NFDI/mardi_doip_server/actions/workflows/build-doip-cli-binary.yml)
 
-Download the latest CLI binaries (Windows/macOS/Linux) from the **Artifacts** section of the most recent successful run.
+Pre-built binaries for Windows, macOS, and Linux are available on the [releases page](https://github.com/MaRDI4NFDI/mardi_doip_server/releases). Download the binary for your platform and run it directly — no Python installation required.
+
+```bash
+# Example: create a new item
+mardi-doip-cli --host doip.portal.mardi4nfdi.org --action create \
+  --json '{"label":"Jane Doe","claims":{"P31":"Q57162","P1460":"Q5976445"}}' \
+  --token <LAKEFS_PASSWORD>
+```
