@@ -612,6 +612,94 @@ async def test_handle_retrieve_uses_registry_and_storage(monkeypatch):
 
 
 
+@pytest.mark.asyncio
+async def test_handle_create_success(monkeypatch):
+    """Successful create returns 'created' status and the new QID."""
+
+    async def fake_get(url, **kwargs):
+        class _Resp:
+            status_code = 200
+            def raise_for_status(self): pass
+        return _Resp()
+
+    async def fake_post(url, **kwargs):
+        class _Resp:
+            status_code = 200
+            def raise_for_status(self): pass
+            def json(self): return {"qid": "Q999", "status": "success"}
+        return _Resp()
+
+    class _FakeClient:
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): pass
+        async def get(self, url, **kw): return await fake_get(url, **kw)
+        async def post(self, url, **kw): return await fake_post(url, **kw)
+
+    import httpx
+    monkeypatch.setattr(handlers.httpx, "AsyncClient", lambda **kw: _FakeClient())
+
+    registry = StubRegistry([])
+    request = protocol.DOIPMessage(
+        version=protocol.DOIP_VERSION,
+        msg_type=protocol.MSG_TYPE_REQUEST,
+        operation=protocol.OP_CREATE,
+        flags=0,
+        object_id="",
+        metadata_blocks=[{"operation": "create", "json": '{"label": "Test item"}'}],
+    )
+
+    response = await handlers.handle_create(request, registry)
+
+    assert response.msg_type == protocol.MSG_TYPE_RESPONSE
+    assert response.operation == protocol.OP_CREATE
+    meta = response.metadata_blocks[0]
+    assert meta["status"] == "created"
+    assert meta["qid"] == "Q999"
+
+
+@pytest.mark.asyncio
+async def test_handle_create_missing_json_field(monkeypatch):
+    """Create request without a 'json' field raises ProtocolError."""
+    registry = StubRegistry([])
+    request = protocol.DOIPMessage(
+        version=protocol.DOIP_VERSION,
+        msg_type=protocol.MSG_TYPE_REQUEST,
+        operation=protocol.OP_CREATE,
+        flags=0,
+        object_id="",
+        metadata_blocks=[{"operation": "create"}],
+    )
+
+    with pytest.raises(protocol.ProtocolError, match="'json' field"):
+        await handlers.handle_create(request, registry)
+
+
+@pytest.mark.asyncio
+async def test_handle_create_unreachable_importer(monkeypatch):
+    """Create request raises ProtocolError when importer health check fails."""
+
+    class _FakeClient:
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): pass
+        async def get(self, url, **kw):
+            raise Exception("connection refused")
+
+    monkeypatch.setattr(handlers.httpx, "AsyncClient", lambda **kw: _FakeClient())
+
+    registry = StubRegistry([])
+    request = protocol.DOIPMessage(
+        version=protocol.DOIP_VERSION,
+        msg_type=protocol.MSG_TYPE_REQUEST,
+        operation=protocol.OP_CREATE,
+        flags=0,
+        object_id="",
+        metadata_blocks=[{"operation": "create", "json": '{"label": "Test item"}'}],
+    )
+
+    with pytest.raises(protocol.ProtocolError, match="not reachable"):
+        await handlers.handle_create(request, registry)
+
+
 def _load_config_or_skip() -> dict:
     """Load config.yaml from repo root or skip if unavailable/invalid."""
     cfg_path = Path(__file__).resolve().parents[2] / "config.yaml"

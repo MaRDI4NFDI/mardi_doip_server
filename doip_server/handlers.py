@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import hmac
+import json
 import mimetypes
+import os
 import tempfile
 from pathlib import Path
 from typing import List
@@ -39,6 +41,7 @@ async def handle_hello(msg: DOIPMessage, registry: object_registry.ObjectRegistr
             "update": protocol.OP_UPDATE,
             "describe": protocol.OP_DESCRIBE, # not standard
             "invoke": protocol.OP_INVOKE, # not standard
+            "create": protocol.OP_CREATE,
         },
     }
 
@@ -338,6 +341,63 @@ async def handle_purge(msg: DOIPMessage, registry: object_registry.ObjectRegistr
     )
 
 
+async def handle_create(msg: DOIPMessage, registry: object_registry.ObjectRegistry) -> DOIPMessage:
+    """Create a new Wikibase item via the importer service.
+
+    Expects a JSON string in the ``json`` field of the first metadata block.
+    Before delegating to the importer, the handler verifies that the importer's
+    ``/health`` endpoint is reachable.
+
+    Args:
+        msg: Incoming DOIP create request.
+        registry: Object registry resolver (unused, for signature parity).
+
+    Returns:
+        DOIPMessage: Response containing the QID of the newly created item.
+
+    Raises:
+        protocol.ProtocolError: If the importer is unreachable or creation fails.
+    """
+    meta = msg.metadata_blocks[0] if msg.metadata_blocks else {}
+    json_str = meta.get("json")
+    if not json_str:
+        raise protocol.ProtocolError("create requires a 'json' field in the metadata block")
+
+    try:
+        body = json.loads(json_str)
+    except json.JSONDecodeError as exc:
+        raise protocol.ProtocolError(f"create: invalid JSON: {exc}")
+
+    importer_url = os.getenv("IMPORTER_API_URL", "http://localhost:8000").rstrip("/")
+
+    async with httpx.AsyncClient(timeout=5) as client:
+        try:
+            health = await client.get(f"{importer_url}/health")
+            health.raise_for_status()
+        except Exception as exc:
+            raise protocol.ProtocolError(f"Importer service is not reachable at {importer_url}: {exc}")
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        try:
+            resp = await client.post(f"{importer_url}/create/item", json=body)
+            resp.raise_for_status()
+        except Exception as exc:
+            raise protocol.ProtocolError(f"Importer create/item failed: {exc}")
+
+    result = resp.json()
+    qid = result.get("qid") or ""
+    log.info("Created item %s via importer", qid)
+
+    return DOIPMessage(
+        version=protocol.DOIP_VERSION,
+        msg_type=protocol.MSG_TYPE_RESPONSE,
+        operation=protocol.OP_CREATE,
+        flags=0,
+        object_id=qid,
+        metadata_blocks=[{"operation": "create", "status": "created", "qid": qid}],
+    )
+
+
 async def handle_list_ops(msg: DOIPMessage, registry: object_registry.ObjectRegistry) -> DOIPMessage:
     """Return the list of supported operations.
 
@@ -356,6 +416,7 @@ async def handle_list_ops(msg: DOIPMessage, registry: object_registry.ObjectRegi
             "retrieve": protocol.OP_RETRIEVE,
             "update": protocol.OP_UPDATE,
             "invoke": protocol.OP_INVOKE,
+            "create": protocol.OP_CREATE,
         },
     }
     return DOIPMessage(

@@ -21,6 +21,7 @@ from doip_shared.constants import (
     OP_UPDATE,
     OP_DESCRIBE,
     OP_PURGE,
+    OP_CREATE,
 )
 
 HEADER_STRUCT = struct.Struct(">BBBBHI")

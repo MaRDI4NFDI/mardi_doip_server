@@ -100,7 +100,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--component", default=None, help="Component ID for selective retrieve; if absent, list components")
     parser.add_argument(
         "--action",
-        choices=["demo", "hello", "list_ops", "retrieve", "update", "invoke", "purge"],
+        choices=["demo", "hello", "list_ops", "retrieve", "update", "invoke", "purge", "create"],
         help="Action to execute",
     )
     # component removed: server no longer supports component selection
@@ -133,6 +133,16 @@ def main(argv: list[str] | None = None) -> int:
         "--params",
         default="{}",
         help="Workflow params as JSON string (for invoke)",
+    )
+    parser.add_argument(
+        "--json",
+        default=None,
+        metavar="JSON",
+        help=(
+            "JSON string describing the item to create (for create). "
+            "Must contain at least a 'label' field, e.g. "
+            "'{\"label\": \"My item\", \"description\": \"...\", \"claims\": {}}'"
+        ),
     )
 
     args = parser.parse_args(argv)
@@ -223,6 +233,17 @@ def main(argv: list[str] | None = None) -> int:
         if args.action == "purge":
             r = client.purge(args.object_id)
             print(json.dumps(r, indent=2))
+            return 0
+
+        if args.action == "create":
+            if not args.json:
+                logging.getLogger().error(
+                    "--json is required for create. "
+                    "Example: --json '{\"label\": \"My item\"}'"
+                )
+                return 1
+            r = client.create(args.json)
+            print(json.dumps(r.metadata_blocks, indent=2))
             return 0
 
         if args.action == "demo":
