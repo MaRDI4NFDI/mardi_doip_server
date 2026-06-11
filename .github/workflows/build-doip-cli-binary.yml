@@ -3,6 +3,7 @@ name: Build DOIP CLI Binaries
 on:
   push:
     branches: [ "main" ]
+    tags: [ "v*" ]
   workflow_dispatch:
 
 jobs:
@@ -138,3 +139,49 @@ jobs:
             dist/checksum.txt
           if-no-files-found: error
           overwrite: true
+
+  # -------------------------------------------------------
+  # RELEASE JOB — runs only on version tags (v*)
+  # -------------------------------------------------------
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: mardi-doip-cli-windows-latest
+          path: artifacts/windows
+
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: mardi-doip-cli-ubuntu-22.04
+          path: artifacts/linux
+
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: mardi-doip-cli-macos-latest
+          path: artifacts/macos
+
+      - name: Rename binaries for release
+        run: |
+          mv artifacts/windows/mardi-doip-cli.exe artifacts/mardi-doip-cli-windows.exe
+          mv artifacts/linux/mardi-doip-cli      artifacts/mardi-doip-cli-linux
+          mv artifacts/macos/mardi-doip-cli      artifacts/mardi-doip-cli-macos
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          files: |
+            artifacts/mardi-doip-cli-windows.exe
+            artifacts/mardi-doip-cli-linux
+            artifacts/mardi-doip-cli-macos
