@@ -344,9 +344,9 @@ async def handle_purge(msg: DOIPMessage, registry: object_registry.ObjectRegistr
 async def handle_create(msg: DOIPMessage, registry: object_registry.ObjectRegistry) -> DOIPMessage:
     """Create a new Wikibase item via the importer service.
 
-    Expects a JSON string in the ``json`` field of the first metadata block.
-    Before delegating to the importer, the handler verifies that the importer's
-    ``/health`` endpoint is reachable.
+    Expects a JSON string in the ``json`` field of the first metadata block and
+    a ``token`` field matching ``LAKEFS_PASSWORD``. Runs schema validation before
+    calling the importer.
 
     Args:
         msg: Incoming DOIP create request.
@@ -356,20 +356,29 @@ async def handle_create(msg: DOIPMessage, registry: object_registry.ObjectRegist
         DOIPMessage: Response containing the QID of the newly created item.
 
     Raises:
-        protocol.ProtocolError: If the importer is unreachable or creation fails.
+        protocol.ProtocolError: If auth fails, the payload is invalid, the
+            importer is unreachable, or creation fails.
     """
     meta = msg.metadata_blocks[0] if msg.metadata_blocks else {}
+
+    # 1. Authorization
+    _validate_create_token(meta)
+
+    # 2. Parse JSON payload
     json_str = meta.get("json")
     if not json_str:
         raise protocol.ProtocolError("create requires a 'json' field in the metadata block")
-
     try:
         body = json.loads(json_str)
     except json.JSONDecodeError as exc:
         raise protocol.ProtocolError(f"create: invalid JSON: {exc}")
 
+    # 3. Schema validation
+    _validate_create_body(body)
+
     importer_url = os.getenv("IMPORTER_API_URL", "http://localhost:8000").rstrip("/")
 
+    # 4. Health check
     async with httpx.AsyncClient(timeout=5) as client:
         try:
             health = await client.get(f"{importer_url}/health")
@@ -377,6 +386,7 @@ async def handle_create(msg: DOIPMessage, registry: object_registry.ObjectRegist
         except Exception as exc:
             raise protocol.ProtocolError(f"Importer service is not reachable at {importer_url}: {exc}")
 
+    # 5. Create item
     async with httpx.AsyncClient(timeout=30) as client:
         try:
             resp = await client.post(f"{importer_url}/create/item", json=body)
@@ -396,6 +406,67 @@ async def handle_create(msg: DOIPMessage, registry: object_registry.ObjectRegist
         object_id=qid,
         metadata_blocks=[{"operation": "create", "status": "created", "qid": qid}],
     )
+
+
+def _validate_create_token(metadata: dict) -> None:
+    """Validate the shared secret attached to a create request.
+
+    Uses ``LAKEFS_PASSWORD`` as the expected token.
+
+    Args:
+        metadata: Create metadata block from the request.
+
+    Raises:
+        protocol.ProtocolError: If the server is not configured or the token
+            is missing or invalid.
+    """
+    expected = os.getenv("LAKEFS_PASSWORD")
+    if not expected:
+        log.error("Rejected create because LAKEFS_PASSWORD is not configured")
+        raise protocol.ProtocolError("create authorization is not configured")
+
+    provided = metadata.get("token")
+    if not isinstance(provided, str) or not provided:
+        log.warning("Rejected create: no token provided")
+        raise protocol.ProtocolError("create authorization failed")
+
+    if not hmac.compare_digest(provided, expected):
+        log.warning("Rejected create: invalid token")
+        raise protocol.ProtocolError("create authorization failed")
+
+
+_PROP_RE = __import__("re").compile(r"^P\d+$")
+
+
+def _validate_create_body(body: dict) -> None:
+    """Validate the structure of a create request body.
+
+    Args:
+        body: Parsed JSON body from the create request.
+
+    Raises:
+        protocol.ProtocolError: If the body fails structural validation.
+    """
+    if not isinstance(body, dict):
+        raise protocol.ProtocolError("create body must be a JSON object")
+
+    if not body.get("label") or not isinstance(body["label"], str):
+        raise protocol.ProtocolError("create body must contain a non-empty 'label' string")
+
+    claims = body.get("claims")
+    if claims is None:
+        return
+
+    if not isinstance(claims, dict):
+        raise protocol.ProtocolError("'claims' must be a JSON object")
+
+    for key, value in claims.items():
+        if not _PROP_RE.match(key):
+            raise protocol.ProtocolError(f"invalid property ID '{key}': must match P<number>")
+        if not isinstance(value, (str, int, float)):
+            raise protocol.ProtocolError(
+                f"invalid value for '{key}': must be a string or number, got {type(value).__name__}"
+            )
 
 
 async def handle_list_ops(msg: DOIPMessage, registry: object_registry.ObjectRegistry) -> DOIPMessage:

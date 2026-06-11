@@ -144,6 +144,11 @@ def main(argv: list[str] | None = None) -> int:
             "'{\"label\": \"My item\", \"description\": \"...\", \"claims\": {}}'"
         ),
     )
+    parser.add_argument(
+        "--token",
+        default=None,
+        help="Authorization token for create. Defaults to DOIP_CREATE_TOKEN env var.",
+    )
 
     args = parser.parse_args(argv)
 
@@ -242,7 +247,7 @@ def main(argv: list[str] | None = None) -> int:
                     "Example: --json '{\"label\": \"My item\"}'"
                 )
                 return 1
-            r = client.create(args.json)
+            r = client.create(args.json, token=args.token)
             print(json.dumps(r.metadata_blocks, indent=2))
             return 0
 

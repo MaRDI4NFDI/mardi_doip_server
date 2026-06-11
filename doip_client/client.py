@@ -187,20 +187,26 @@ class StrictDOIPClient:
         env_token = os.getenv("DOIP_UPDATE_TOKEN")
         return env_token or None
 
-    def create(self, json_string: str) -> DoipResponse:
+    def create(self, json_string: str, token: str | None = None) -> DoipResponse:
         """Create a new Wikibase item via the DOIP server.
 
         Args:
             json_string: JSON string containing at minimum a ``label`` field,
                 optionally ``description`` and ``claims``.
+            token: Shared secret authorizing the create operation. Falls back
+                to the ``DOIP_CREATE_TOKEN`` environment variable when omitted.
 
         Returns:
             DoipResponse: Parsed DOIP response envelope with QID in metadata.
         """
+        resolved_token = token or os.getenv("DOIP_CREATE_TOKEN")
+        metadata: dict = {"operation": "create", "json": json_string}
+        if resolved_token:
+            metadata["token"] = resolved_token
         request = DoipRequest(
             header=Header(DOIP_VERSION, MSG_TYPE_REQUEST, OP_CREATE, 0, 0, 0),
             object_id="",
-            metadata_blocks=[{"operation": "create", "json": json_string}],
+            metadata_blocks=[metadata],
         )
         return self.send_message(request)
 
