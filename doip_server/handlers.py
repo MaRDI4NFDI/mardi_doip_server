@@ -18,6 +18,9 @@ from . import object_registry, protocol, storage_lakefs, workflows
 from .logging_config import log
 from .protocol import ComponentBlock, DOIPMessage
 
+_VERSION_FILE = Path(__file__).resolve().parents[1] / "VERSION"
+SERVER_VERSION = _VERSION_FILE.read_text(encoding="utf-8").strip() if _VERSION_FILE.exists() else "unknown"
+
 
 async def handle_hello(msg: DOIPMessage, registry: object_registry.ObjectRegistry) -> DOIPMessage:
     """Respond to hello/health check requests with server metadata.
@@ -35,6 +38,7 @@ async def handle_hello(msg: DOIPMessage, registry: object_registry.ObjectRegistr
         "status": "ok",
         "server": "mardi_doip_server",
         "version": protocol.DOIP_VERSION,
+        "server_version": SERVER_VERSION,
         "availableOperations": {
             "hello": protocol.OP_HELLO,
             "retrieve": protocol.OP_RETRIEVE,
