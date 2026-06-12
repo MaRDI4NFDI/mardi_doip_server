@@ -181,9 +181,9 @@ _ACTION_HELP: dict[str, dict] = {
         "examples": [
             ("Create a minimal item (raw format)",
              'mardi-doip-cli --action create --json \'{"label": "My dataset"}\' --token mytoken'),
-            ("Create with explicit claims (raw format)",
+            ("Create with explicit MaRDI KG claims (raw format)",
              'mardi-doip-cli --action create'
-             ' --json \'{"label": "My dataset", "description": "A test", "claims": {"P31": "Q5"}}\''
+             ' --json \'{"label": "My item", "description": "A test", "claims": {"<MaRDI-PID>": "<MaRDI-QID>"}}\''
              ' --token mytoken'),
             ("Create a workflow item (required fields only)",
              'mardi-doip-cli --action create'
@@ -344,7 +344,7 @@ def main(argv: list[str] | None = None) -> int:
         metavar="JSON",
         help=(
             "JSON string describing the item to create (for create). "
-            "Raw format: '{\"label\": \"My item\", \"claims\": {\"P31\": \"Q5\"}}'. "
+            "Raw format: '{\"label\": \"My item\", \"claims\": {\"<MaRDI-PID>\": \"<MaRDI-QID>\"}}'. "
             "Typed format: '{\"type\": \"WORKFLOW\", \"fields\": {\"name\": \"...\", \"problem_statement\": \"...\"}}'. "
             "Known types: WORKFLOW."
         ),
