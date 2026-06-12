@@ -159,25 +159,43 @@ _ACTION_HELP: dict[str, dict] = {
     "create": {
         "description": "Create a new Wikibase item on the MaRDI portal.",
         "details": (
-            "Submits a JSON description to create a new item. The JSON must include at least "
-            "a 'label' field; optionally 'description' and 'claims' may be provided. "
+            "Submits a JSON description to create a new item. Two formats are accepted. "
+            "Raw format: JSON must include at least a 'label' field; optionally 'description' "
+            "and 'claims' (mapping of property IDs such as P31 to values) may be provided. "
+            "Typed format: supply 'type': 'WORKFLOW' and a 'fields' object. "
+            "Required fields: 'name', 'problem_statement'. "
+            "Optional fields: 'uses' (QID), 'author' (QID), 'publication_date' (string), "
+            "'copyright_license' (QID), 'cites_work' (QID). "
+            "Storage fields: 'fdo_component_id' (string, e.g. rocrate.zip) may be given alone "
+            "or together with 'stored_at' (QID); omitting 'stored_at' defaults to the MaRDI "
+            "data store (Q6830870). "
+            "The server automatically sets instance-of claims "
+            "(research workflow + script-based workflow) and the MaRDI profile type. "
             "An authorization token is required either via --token or the DOIP_CREATE_TOKEN "
-            "environment variable. On success, the new item's metadata is returned."
+            "environment variable. On success, the new item's QID is returned."
         ),
         "options": [
-            ("--json JSON", 'Item description as a JSON string (required); must include "label"'),
+            ("--json JSON", "Item description as a JSON string (required); raw or typed format"),
             ("--token TOKEN", "Authorization token; defaults to DOIP_CREATE_TOKEN env var"),
         ],
         "examples": [
-            ("Create a minimal item",
+            ("Create a minimal item (raw format)",
              'mardi-doip-cli --action create --json \'{"label": "My dataset"}\' --token mytoken'),
-            ("Create an item with description and claims",
+            ("Create with explicit claims (raw format)",
              'mardi-doip-cli --action create'
-             ' --json \'{"label": "My dataset", "description": "A test dataset", "claims": {}}\''
+             ' --json \'{"label": "My dataset", "description": "A test", "claims": {"P31": "Q5"}}\''
+             ' --token mytoken'),
+            ("Create a workflow item (required fields only)",
+             'mardi-doip-cli --action create'
+             ' --json \'{"type": "WORKFLOW", "fields": {"name": "Reproduce table 1 from ...", "problem_statement": "Solve incompressible Navier-Stokes"}}\''
+             ' --token mytoken'),
+            ("Create a workflow item (all fields)",
+             'mardi-doip-cli --action create'
+             ' --json \'{"type": "WORKFLOW", "fields": {"name": "My workflow", "problem_statement": "...", "uses": "Q6830878", "author": "Q482723", "publication_date": "2026-04-09", "copyright_license": "Q57031", "cites_work": "Q12345", "stored_at": "Q6830870", "fdo_component_id": "rocrate.zip"}}\''
              ' --token mytoken'),
             ("Create using env var for token",
              'DOIP_CREATE_TOKEN=mytoken mardi-doip-cli --action create'
-             ' --json \'{"label": "My dataset"}\''),
+             ' --json \'{"type": "WORKFLOW", "fields": {"name": "My workflow", "problem_statement": "..."}}\''),
         ],
     },
 }
@@ -326,8 +344,9 @@ def main(argv: list[str] | None = None) -> int:
         metavar="JSON",
         help=(
             "JSON string describing the item to create (for create). "
-            "Must contain at least a 'label' field, e.g. "
-            "'{\"label\": \"My item\", \"description\": \"...\", \"claims\": {}}'"
+            "Raw format: '{\"label\": \"My item\", \"claims\": {\"P31\": \"Q5\"}}'. "
+            "Typed format: '{\"type\": \"WORKFLOW\", \"fields\": {\"name\": \"...\", \"problem_statement\": \"...\"}}'. "
+            "Known types: WORKFLOW."
         ),
     )
     parser.add_argument("--token", default=None, help="Authorization token for create")

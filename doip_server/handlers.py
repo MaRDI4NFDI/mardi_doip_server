@@ -445,6 +445,16 @@ _PROP_RE = __import__("re").compile(r"^P\d+$")
 def _validate_create_body(body: dict) -> None:
     """Validate the structure of a create request body.
 
+    Accepts two formats:
+
+    Raw format::
+
+        {"label": "My item", "claims": {"P31": "Q5"}}
+
+    Typed format (schema resolution happens in the importer)::
+
+        {"type": "WORKFLOW", "fields": {"name": "My workflow"}}
+
     Args:
         body: Parsed JSON body from the create request.
 
@@ -453,6 +463,14 @@ def _validate_create_body(body: dict) -> None:
     """
     if not isinstance(body, dict):
         raise protocol.ProtocolError("create body must be a JSON object")
+
+    if "type" in body:
+        if not isinstance(body["type"], str) or not body["type"]:
+            raise protocol.ProtocolError("'type' must be a non-empty string")
+        fields = body.get("fields")
+        if fields is not None and not isinstance(fields, dict):
+            raise protocol.ProtocolError("'fields' must be a JSON object")
+        return
 
     if not body.get("label") or not isinstance(body["label"], str):
         raise protocol.ProtocolError("create body must contain a non-empty 'label' string")
