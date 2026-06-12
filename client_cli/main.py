@@ -8,13 +8,13 @@ import json
 import logging
 import os
 import sys
+import textwrap
 
 from argparse import (
     ArgumentParser,
     RawDescriptionHelpFormatter,
     ArgumentDefaultsHelpFormatter,
 )
-
 
 from doip_client import StrictDOIPClient
 
@@ -24,50 +24,259 @@ logging.basicConfig(
     force=True
 )
 
-def print_mardi_logo():
-    """Print the MaRDI ASCII logo with ANSI coloring.
+_DESCRIPTION = (
+    "This is the MaRDI DOIP client.\n\n"
+    "This client enables direct interaction with the MaRDI DOIP server for retrieving object "
+    "metadata or content, and executing predefined server workflows.\n"
+    "To see a demo with standard values, execute: mardi-doip-cli --action demo\n"
+    "For more information see: https://mardi4nfdi.github.io/mardi_doip_server/"
+)
 
-    Returns:
-        None
-    """
-    # Enable ANSI support on Windows (if needed)
+_ACTIONS = ("demo", "hello", "list_ops", "retrieve", "update", "invoke", "purge", "create")
+
+_ACTION_HELP: dict[str, dict] = {
+    "hello": {
+        "description": "Send a Hello request to the DOIP server.",
+        "details": (
+            "Checks connectivity and retrieves basic server information such as the server "
+            "identifier and supported protocol version. Useful to verify that the server is "
+            "reachable and responding before running other actions."
+        ),
+        "options": [],
+        "examples": [
+            ("Check the default MaRDI server", "mardi-doip-cli --action hello"),
+            ("Check a local server without TLS", "mardi-doip-cli --action hello --host localhost --port 3567 --no-tls"),
+        ],
+    },
+    "list_ops": {
+        "description": "List all operations supported by the DOIP server.",
+        "details": (
+            "Queries the server for its advertised operation identifiers. The returned list "
+            "shows which DOIP operations (e.g. retrieve, update, create) are available, and "
+            "can be used to discover custom workflows exposed by a specific server deployment."
+        ),
+        "options": [],
+        "examples": [
+            ("List operations on the default server", "mardi-doip-cli --action list_ops"),
+            ("List operations on a custom server", "mardi-doip-cli --action list_ops --host my.server.org --port 3567"),
+        ],
+    },
+    "demo": {
+        "description": "Run a quick demo: Hello + retrieve metadata for --object-id.",
+        "details": (
+            "Runs two requests in sequence: a Hello to confirm connectivity, followed by a "
+            "metadata retrieve for the given object. Intended as a quick smoke-test to verify "
+            "that the full request/response cycle works end-to-end."
+        ),
+        "options": [
+            ("--object-id ID", "Object identifier (default: Q123)"),
+        ],
+        "examples": [
+            ("Run demo with default object", "mardi-doip-cli --action demo"),
+            ("Run demo with a specific object", "mardi-doip-cli --action demo --object-id Q6190920"),
+        ],
+    },
+    "retrieve": {
+        "description": "Retrieve an object's metadata or a specific component.",
+        "details": (
+            "Without --component, prints the object's metadata blocks as JSON. "
+            "With --component, fetches only that component's binary content: use --output to "
+            "write it to a file, or omit --output to stream raw bytes to stdout. "
+            "Component IDs are listed in the metadata under the 'components' field."
+        ),
+        "options": [
+            ("--object-id ID", "Object identifier (default: Q123)"),
+            ("--component ID", "Component ID for selective retrieve; if absent, shows metadata"),
+            ("--output PATH", "Save fetched component to this file (binary; stdout if omitted)"),
+        ],
+        "examples": [
+            ("Show metadata for an object", "mardi-doip-cli --action retrieve --object-id Q6190920"),
+            ("Download a component to a file", "mardi-doip-cli --action retrieve --object-id Q6190920 --component data --output ./data.bin"),
+            ("Stream a component to stdout", "mardi-doip-cli --action retrieve --object-id Q6190920 --component data"),
+        ],
+    },
+    "update": {
+        "description": "Upload a new file to replace a component of an existing object.",
+        "details": (
+            "Replaces the content of a named component with the bytes from --input. "
+            "Requires an update token either via --update-token or the DOIP_UPDATE_TOKEN "
+            "environment variable. The --media-type flag sets the MIME type stored alongside "
+            "the content; if omitted, application/octet-stream is used."
+        ),
+        "options": [
+            ("--object-id ID", "Object identifier (default: Q123)"),
+            ("--component ID", "Component ID to update (required)"),
+            ("--input PATH", "File to upload (required)"),
+            ("--media-type TYPE", "Media type (default: application/octet-stream)"),
+            ("--update-token TOKEN", "Shared secret; defaults to DOIP_UPDATE_TOKEN env var"),
+        ],
+        "examples": [
+            ("Update a PDF component",
+             "mardi-doip-cli --action update --object-id Q6190920 --component paper"
+             " --input paper_v2.pdf --media-type application/pdf --update-token secret123"),
+            ("Update using env var for token",
+             "DOIP_UPDATE_TOKEN=secret123 mardi-doip-cli --action update"
+             " --object-id Q6190920 --component data --input data.csv --media-type text/csv"),
+        ],
+    },
+    "invoke": {
+        "description": "Invoke a server-side workflow on an object.",
+        "details": (
+            "Triggers a named workflow that the server applies to the specified object. "
+            "Results are returned as metadata blocks. The default workflow 'equation_extraction' "
+            "extracts mathematical equations from a stored document. Additional workflows may "
+            "be discovered via the list_ops action."
+        ),
+        "options": [
+            ("--object-id ID", "Object identifier (default: Q123)"),
+            ("--workflow NAME", "Workflow name (default: equation_extraction)"),
+            ("--params JSON", "Workflow params as JSON string (default: {})"),
+        ],
+        "examples": [
+            ("Run equation extraction on an object",
+             "mardi-doip-cli --action invoke --object-id Q6190920 --workflow equation_extraction"),
+            ("Run a workflow with parameters",
+             'mardi-doip-cli --action invoke --object-id Q6190920 --workflow equation_extraction'
+             ' --params \'{"max_equations": 50}\''),
+        ],
+    },
+    "purge": {
+        "description": "Permanently delete an object from the server.",
+        "details": (
+            "Sends a purge request that removes the object and all its components from the "
+            "server. This operation is irreversible. The server may require appropriate "
+            "permissions for the request to succeed."
+        ),
+        "options": [
+            ("--object-id ID", "Object identifier (default: Q123)"),
+        ],
+        "examples": [
+            ("Purge an object", "mardi-doip-cli --action purge --object-id Q6190920"),
+            ("Purge on a custom server",
+             "mardi-doip-cli --action purge --object-id Q6190920 --host my.server.org"),
+        ],
+    },
+    "create": {
+        "description": "Create a new Wikibase item on the MaRDI portal.",
+        "details": (
+            "Submits a JSON description to create a new item. The JSON must include at least "
+            "a 'label' field; optionally 'description' and 'claims' may be provided. "
+            "An authorization token is required either via --token or the DOIP_CREATE_TOKEN "
+            "environment variable. On success, the new item's metadata is returned."
+        ),
+        "options": [
+            ("--json JSON", 'Item description as a JSON string (required); must include "label"'),
+            ("--token TOKEN", "Authorization token; defaults to DOIP_CREATE_TOKEN env var"),
+        ],
+        "examples": [
+            ("Create a minimal item",
+             'mardi-doip-cli --action create --json \'{"label": "My dataset"}\' --token mytoken'),
+            ("Create an item with description and claims",
+             'mardi-doip-cli --action create'
+             ' --json \'{"label": "My dataset", "description": "A test dataset", "claims": {}}\''
+             ' --token mytoken'),
+            ("Create using env var for token",
+             'DOIP_CREATE_TOKEN=mytoken mardi-doip-cli --action create'
+             ' --json \'{"label": "My dataset"}\''),
+        ],
+    },
+}
+
+
+def print_mardi_logo():
     if os.name == "nt":
         import ctypes
         kernel32 = ctypes.windll.kernel32
         kernel32.SetConsoleMode(kernel32.GetStdHandle(-11), 7)
 
-    # ANSI colors
     ORANGE = "\033[38;5;208m"
     RESET = "\033[0m"
 
     mardi_nfo = r"""
-██▄  ▄██  ▄▄▄  █████▄  ████▄  ██   ██  ██   ███  ██ ██████ ████▄  ██ 
-██ ▀▀ ██ ██▀██ ██▄▄██▄ ██  ██ ██   ▀█████   ██ ▀▄██ ██▄▄   ██  ██ ██ 
+██▄  ▄██  ▄▄▄  █████▄  ████▄  ██   ██  ██   ███  ██ ██████ ████▄  ██
+██ ▀▀ ██ ██▀██ ██▄▄██▄ ██  ██ ██   ▀█████   ██ ▀▄██ ██▄▄   ██  ██ ██
 ██    ██ ██▀██ ██   ██ ████▀  ██       ██   ██   ██ ██     ████▀  ██
 """
-
     print(ORANGE + mardi_nfo + RESET)
 
 
-# Combine both formatters to allow newlines and showing default arguments
+def _fmt_option_table(options: list[tuple[str, str]], indent: int = 2) -> str:
+    if not options:
+        return ""
+    col_width = max(len(flag) for flag, _ in options) + 4
+    pad = " " * indent
+    return "\n".join(f"{pad}{flag:<{col_width}}{desc}" for flag, desc in options)
+
+
+def _print_global_help() -> None:
+    actions_str = "{" + ",".join(_ACTIONS) + "}"
+    print(
+        f"usage: mardi-doip-cli [-h] [--host HOST] [--port PORT] [--no-tls] [--secure]\n"
+        f"                      [--action {actions_str}]\n"
+        f"                      [action-specific options]\n"
+    )
+    print(_DESCRIPTION)
+    print()
+    global_opts = [
+        ("-h, --help", "show this help; '--help action [name]' for action-specific help"),
+        ("--host HOST", "DOIP Server hostname (default: doip.portal.mardi4nfdi.org)"),
+        ("--port PORT", "Server port (default: 3567)"),
+        ("--no-tls", "Disable TLS wrapping"),
+        ("--secure", "Enable TLS verification"),
+        ("--action ACTION", "Action to execute: " + ", ".join(_ACTIONS)),
+    ]
+    print("options:")
+    print(_fmt_option_table(global_opts))
+    print()
+    print("Use '--help action' to list all action-specific options.")
+    print("Use '--help action <name>' for help on a specific action.")
+
+
+def _print_all_actions_help() -> None:
+    print("Action-specific options:\n")
+    for name in _ACTIONS:
+        info = _ACTION_HELP[name]
+        print(f"  {name}")
+        print(f"    {info['description']}")
+        if info["options"]:
+            print(_fmt_option_table(info["options"], indent=4))
+        print()
+    print("Use '--help action <name>' for full details and examples.")
+
+
+def _print_action_help(action: str) -> None:
+    if action not in _ACTION_HELP:
+        print(f"Unknown action: {action!r}")
+        print(f"Available actions: {', '.join(_ACTIONS)}")
+        return
+    info = _ACTION_HELP[action]
+    print(f"Action: {action}")
+    print(f"  {info['description']}\n")
+    for line in textwrap.wrap(info["details"], width=78, initial_indent="  ", subsequent_indent="  "):
+        print(line)
+    print()
+    print("Global options always apply: --host, --port, --no-tls, --secure\n")
+    if info["options"]:
+        print("Options:")
+        print(_fmt_option_table(info["options"]))
+        print()
+    examples = info.get("examples", [])
+    if examples:
+        print("Examples:")
+        for label, cmd in examples:
+            print(f"  # {label}")
+            print(f"  {cmd}")
+            print()
+
+
 class RawDescriptionDefaultsHelpFormatter(
     RawDescriptionHelpFormatter,
     ArgumentDefaultsHelpFormatter,
 ):
-    """Argument formatter combining defaults with raw description rendering."""
-
     pass
 
 
 def _resolve_cli_update_token(explicit_token: str | None) -> str | None:
-    """Resolve the update token from CLI input or the environment.
-
-    Args:
-        explicit_token: Token passed via the CLI.
-
-    Returns:
-        str | None: Resolved update token, or ``None`` when unavailable.
-    """
     if explicit_token:
         return explicit_token
     env_token = os.getenv("DOIP_UPDATE_TOKEN")
@@ -75,65 +284,42 @@ def _resolve_cli_update_token(explicit_token: str | None) -> str | None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """CLI entrypoint for interacting with the strict DOIP client.
+    args_list = list(argv) if argv is not None else sys.argv[1:]
 
-    Args:
-        argv: Optional list of arguments (defaults to ``sys.argv``).
+    # Handle help before argparse so we can show global vs action-specific views.
+    for flag in ("-h", "--help"):
+        if flag in args_list:
+            idx = args_list.index(flag)
+            rest = args_list[idx + 1:]
+            if rest and rest[0] == "action":
+                if len(rest) >= 2:
+                    _print_action_help(rest[1])
+                else:
+                    _print_all_actions_help()
+            else:
+                _print_global_help()
+            return 0
 
-    Returns:
-        int: Process exit code (0 on success, non-zero on error).
-    """
     parser = ArgumentParser(
-        description="This is the MaRDI DOIP client.\n\n" +
-                    "This client enables direct interaction with the MaRDI DOIP server for retrieving object " +
-                    "metadata or content, and executing predefined server workflows.\n" +
-                    "To see a demo with standard values, execute: python -m client_cli.main --action demo\n" +
-                    "For more information see: https://mardi4nfdi.github.io/mardi_doip_server/",
-        formatter_class=RawDescriptionDefaultsHelpFormatter
+        prog="mardi-doip-cli",
+        description=_DESCRIPTION,
+        formatter_class=RawDescriptionDefaultsHelpFormatter,
+        add_help=False,
     )
 
     parser.add_argument("--host", default="doip.portal.mardi4nfdi.org", help="DOIP Server hostname")
     parser.add_argument("--port", type=int, default=3567, help="Server port")
     parser.add_argument("--no-tls", action="store_true", help="Disable TLS wrapping")
-    parser.add_argument("--secure", action="store_true", help="Enable TLS verification (if you do not use a self-certified cert)")
+    parser.add_argument("--secure", action="store_true", help="Enable TLS verification")
     parser.add_argument("--object-id", default="Q123", help="Object identifier")
-    parser.add_argument("--component", default=None, help="Component ID for selective retrieve; if absent, list components")
-    parser.add_argument(
-        "--action",
-        choices=["demo", "hello", "list_ops", "retrieve", "update", "invoke", "purge", "create"],
-        help="Action to execute",
-    )
-    # component removed: server no longer supports component selection
-    parser.add_argument(
-        "--output",
-        default=None,
-        help="Path to save first component (retrieve only). If not specified, component is not saved.",
-    )
-    parser.add_argument(
-        "--input",
-        default=None,
-        help="Path to the file to upload for update.",
-    )
-    parser.add_argument(
-        "--media-type",
-        default=None,
-        help="Media type for update uploads. If omitted, application/octet-stream is used.",
-    )
-    parser.add_argument(
-        "--update-token",
-        default=None,
-        help="Shared secret for update uploads. Defaults to DOIP_UPDATE_TOKEN when omitted.",
-    )
-    parser.add_argument(
-        "--workflow",
-        default="equation_extraction",
-        help="Workflow name (for invoke)",
-    )
-    parser.add_argument(
-        "--params",
-        default="{}",
-        help="Workflow params as JSON string (for invoke)",
-    )
+    parser.add_argument("--component", default=None, help="Component ID for selective retrieve")
+    parser.add_argument("--action", choices=list(_ACTIONS), help="Action to execute")
+    parser.add_argument("--output", default=None, help="Path to save first component (retrieve only)")
+    parser.add_argument("--input", default=None, help="Path to the file to upload for update")
+    parser.add_argument("--media-type", default=None, help="Media type for update uploads")
+    parser.add_argument("--update-token", default=None, help="Shared secret for update uploads")
+    parser.add_argument("--workflow", default="equation_extraction", help="Workflow name (for invoke)")
+    parser.add_argument("--params", default="{}", help="Workflow params as JSON string (for invoke)")
     parser.add_argument(
         "--json",
         default=None,
@@ -144,13 +330,9 @@ def main(argv: list[str] | None = None) -> int:
             "'{\"label\": \"My item\", \"description\": \"...\", \"claims\": {}}'"
         ),
     )
-    parser.add_argument(
-        "--token",
-        default=None,
-        help="Authorization token for create. Defaults to DOIP_CREATE_TOKEN env var.",
-    )
+    parser.add_argument("--token", default=None, help="Authorization token for create")
 
-    args = parser.parse_args(argv)
+    args = parser.parse_args(args_list)
 
     client = StrictDOIPClient(
         host=args.host,
@@ -184,18 +366,15 @@ def main(argv: list[str] | None = None) -> int:
                 if args.output:
                     with open(args.output, "wb") as f:
                         f.write(content)
-                    logging.getLogger().info(f"Wrote to file %s - contains media type '%s' ", args.output, media_type )
+                    logging.getLogger().info("Wrote to file %s - contains media type '%s'", args.output, media_type)
                     return 0
-                # stdout binary
                 sys.stdout.buffer.write(content)
-                logging.getLogger().info(f"\n\n Output contains media type '%s' ", args.output, media_type )
+                logging.getLogger().info("\n\n Output contains media type '%s'", media_type)
                 return 0
 
-            # Show only meta data - no binary data
             r = client.retrieve(args.object_id)
             print("Metadata:")
             print(json.dumps(r.metadata_blocks, indent=2))
-
             return 0
 
         if args.action == "invoke":
@@ -252,15 +431,18 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         if args.action == "demo":
-            logging.getLogger().info("Contacting DOIP server (using: %s:%s)...", args.host, args.port )
+            logging.getLogger().info("Contacting DOIP server (using: %s:%s)...", args.host, args.port)
             r = client.hello()
             print(json.dumps(r, indent=2))
             meta = client.retrieve(args.object_id)
             print(json.dumps(meta.metadata_blocks, indent=2))
             return 0
 
-        # No action selected, show help
-        parser.print_help()
+        # No action selected, show brief usage
+        print(parser.format_usage(), end="")
+        print(f"\n{_DESCRIPTION}\n")
+        print("options:")
+        print("  -h, --help            show this help message and exit")
         return 1
 
     except Exception as exc:
