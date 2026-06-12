@@ -17,7 +17,7 @@ from urllib.parse import urlparse
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 from doip_client import StrictDOIPClient
 from doip_server.logging_config import log
@@ -241,19 +241,43 @@ async def download_component(object_id: str, component_id: str, force_reload: st
 
 
 class _CreateBody(BaseModel):
-    label: str
+    # Raw format
+    label: str | None = None
     description: str | None = None
     claims: dict | None = None
+    # Typed format
+    type: str | None = None
+    fields: dict | None = None
+    # Shared
     token: str | None = None
+
+    @model_validator(mode="after")
+    def _check_format(self) -> "_CreateBody":
+        has_raw = self.label is not None
+        has_typed = self.type is not None
+        if not has_raw and not has_typed:
+            raise ValueError("either 'label' (raw format) or 'type' (typed format) is required")
+        if has_raw and has_typed:
+            raise ValueError("'label' and 'type' are mutually exclusive")
+        return self
 
 
 @app.post("/doip/create")
 async def create_object(body: _CreateBody):
     """Create a new Wikibase item via the DOIP server.
 
+    Accepts two formats:
+
+    **Raw format**::
+
+        {"label": "My item", "description": "...", "claims": {...}, "token": "..."}
+
+    **Typed format**::
+
+        {"type": "WORKFLOW", "fields": {"name": "My workflow", ...}, "token": "..."}
+
     Args:
-        body: JSON payload with ``label`` (required), optional ``description``
-            and ``claims``.
+        body: JSON payload in raw or typed format.
 
     Returns:
         dict: Metadata block from the DOIP server confirming creation and
@@ -263,11 +287,15 @@ async def create_object(body: _CreateBody):
         HTTPException: When the DOIP backend is unreachable or returns an error.
     """
     import json
-    json_string = json.dumps({
-        "label": body.label,
-        "description": body.description,
-        "claims": body.claims or {},
-    })
+    if body.type is not None:
+        payload: dict = {"type": body.type, "fields": body.fields or {}}
+    else:
+        payload = {
+            "label": body.label,
+            "description": body.description,
+            "claims": body.claims or {},
+        }
+    json_string = json.dumps(payload)
     log.info("HTTP create requested", extra={"label": body.label})
     client = _client()
     try:
