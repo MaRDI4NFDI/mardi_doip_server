@@ -404,7 +404,7 @@ async def _validate_wiki_credentials(username: str, password: str) -> None:
     Raises:
         protocol.ProtocolError: If the API is unreachable or credentials are invalid.
     """
-    api_url = os.getenv("MEDIAWIKI_API_URL", "http://wikibase/w/api.php")
+    api_url = os.getenv("MEDIAWIKI_API_URL", "http://wikibase-jobrunner/w/api.php")
     async with httpx.AsyncClient(timeout=10) as client:
         try:
             r = await client.get(api_url, params={
