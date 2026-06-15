@@ -16,6 +16,7 @@ class ObjectRegistry:
     def __init__(self):
         """Initialize registry caches and shared state."""
         self._manifest_cache: Dict[str, Dict] = {}
+        self._type_cache: Dict[str, Dict] = {}
         self._lock = asyncio.Lock()
         self.fdo_api = os.getenv("FDO_API", "https://fdo.portal.mardi4nfdi.de/fdo/")
 
@@ -87,6 +88,35 @@ class ObjectRegistry:
 
         return content, media_type
 
+
+    async def fetch_type_fdo(self, type_id: str) -> Dict:
+        """Fetch and cache the type FDO JSON-LD for a given type ID.
+
+        Args:
+            type_id: Short type identifier, e.g. ``ScholarlyArticle``.
+
+        Returns:
+            Dict: Type FDO JSON-LD payload including ``propertyMappings``.
+
+        Raises:
+            httpx.HTTPStatusError: If the type is not found or the FDO façade errors.
+        """
+        async with self._lock:
+            if type_id in self._type_cache:
+                log.info("Type cache hit for %s.", type_id)
+                return self._type_cache[type_id]
+
+        url = f"{self.fdo_api.rstrip('/')}/types/{type_id}"
+        log.info("Fetching type FDO from %s", url)
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(url)
+            resp.raise_for_status()
+            data = resp.json()
+
+        async with self._lock:
+            self._type_cache[type_id] = data
+
+        return data
 
     async def get_manifest(self, qid: str) -> Dict:
         """Return the manifest (FDO JSON) for a base QID.

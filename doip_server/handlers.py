@@ -16,6 +16,7 @@ from rocrate.model.file import File
 from . import object_registry, protocol, storage_lakefs, workflows
 from .logging_config import log
 from .protocol import ComponentBlock, DOIPMessage
+from doip_shared.constants import KNOWN_TYPE_IDS
 
 _VERSION_FILE = Path(__file__).resolve().parents[1] / "VERSION"
 SERVER_VERSION = _VERSION_FILE.read_text(encoding="utf-8").strip() if _VERSION_FILE.exists() else "unknown"
@@ -32,6 +33,7 @@ async def handle_hello(msg: DOIPMessage, registry: object_registry.ObjectRegistr
         DOIPMessage: Response containing server status and capabilities.
     """
     log.info("Handling hello request for object_id=%s", msg.object_id)
+    type_base = getattr(registry, "fdo_api", "").rstrip("/") + "/types/"
     metadata_block = {
         "operation": "hello",
         "status": "ok",
@@ -45,6 +47,10 @@ async def handle_hello(msg: DOIPMessage, registry: object_registry.ObjectRegistr
             "describe": protocol.OP_DESCRIBE, # not standard
             "invoke": protocol.OP_INVOKE, # not standard
             "create": protocol.OP_CREATE,
+        },
+        "typeRegistry": {
+            "baseUri": type_base,
+            "types": {t: f"{type_base}{t}" for t in KNOWN_TYPE_IDS},
         },
     }
 
@@ -79,6 +85,27 @@ async def handle_describe(msg: DOIPMessage, registry: object_registry.ObjectRegi
     )
 
 
+def _extract_type_id(object_id: str, fdo_api_base: str) -> str | None:
+    """Return the type ID if object_id refers to a MaRDI type FDO, otherwise None.
+
+    Accepts both the short form ``types/ScholarlyArticle`` and the full URI
+    ``https://fdo.portal.mardi4nfdi.de/fdo/types/ScholarlyArticle``.
+
+    Args:
+        object_id: Raw object_id from the DOIP message.
+        fdo_api_base: The configured FDO API base URL (e.g. "https://…/fdo/").
+
+    Returns:
+        str | None: Type ID (e.g. "ScholarlyArticle") or None if not a type ID.
+    """
+    if object_id.startswith("types/"):
+        return object_id[len("types/"):]
+    full_prefix = fdo_api_base.rstrip("/") + "/types/"
+    if object_id.startswith(full_prefix):
+        return object_id[len(full_prefix):]
+    return None
+
+
 async def handle_retrieve(msg: DOIPMessage, registry: object_registry.ObjectRegistry) -> DOIPMessage:
     """Retrieve metadata or a specific component for a DOIP object.
 
@@ -86,6 +113,9 @@ async def handle_retrieve(msg: DOIPMessage, registry: object_registry.ObjectRegi
 
     If "element" == "rocrate" the server tries to build a rocrate object from the data stored with
     the object.
+
+    Type FDOs (object_id starting with "types/" or the full type URI) are routed to
+    the type registry endpoint and returned as metadata-only responses.
 
     Args:
         msg: Incoming DOIP retrieve request.
@@ -97,6 +127,19 @@ async def handle_retrieve(msg: DOIPMessage, registry: object_registry.ObjectRegi
     Raises:
         KeyError: If a requested component cannot be found.
     """
+    type_id = _extract_type_id(msg.object_id, getattr(registry, "fdo_api", ""))
+    if type_id:
+        fdo_json = await registry.fetch_type_fdo(type_id)
+        return DOIPMessage(
+            version=protocol.DOIP_VERSION,
+            msg_type=protocol.MSG_TYPE_RESPONSE,
+            operation=protocol.OP_RETRIEVE,
+            flags=0,
+            object_id=msg.object_id,
+            metadata_blocks=[fdo_json],
+            component_blocks=[],
+        )
+
     pid    = msg.object_id.upper()
     meta   = (msg.metadata_blocks[0] if msg.metadata_blocks else {})
     element   = meta.get("element")  # componentId or None
@@ -276,6 +319,11 @@ async def _handle_property_update(
     """
     username, password = _extract_wiki_credentials(metadata)
 
+    # The "properties" dict must use Wikibase P-IDs as keys (e.g. {"P28": "2024-01-15",
+    # "P16": "Q456"}). Schema.org field names are NOT resolved server-side. To build a
+    # valid payload, clients should first RETRIEVE the item's digitalObjectType FDO
+    # (e.g. RETRIEVE fdo/types/ScholarlyArticle) and consult its propertyMappings to
+    # translate field names to P-IDs before sending this request.
     properties = metadata.get("properties", {})
     if not isinstance(properties, dict):
         raise protocol.ProtocolError("update 'properties' must be a JSON object")

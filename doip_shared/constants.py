@@ -21,3 +21,14 @@ OP_CREATE = 0x08
 BLOCK_METADATA = 0x01
 BLOCK_COMPONENT = 0x02
 BLOCK_WORKFLOW = 0x03
+
+# Short type IDs of MaRDI-owned type FDOs served at {FDO_API}/types/{type_id}.
+# These are advertised in HELLO responses so clients can discover the type registry.
+KNOWN_TYPE_IDS = [
+    "ScholarlyArticle",
+    "Dataset",
+    "Workflow",
+    "Person",
+    "SoftwareApplication",
+    "SoftwareSourceCode",
+]
