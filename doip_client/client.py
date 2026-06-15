@@ -187,6 +187,37 @@ class StrictDOIPClient:
         env_token = os.getenv("DOIP_UPDATE_TOKEN")
         return env_token or None
 
+    def update_properties(
+        self,
+        object_id: str,
+        properties: dict,
+        update_token: str | None = None,
+    ) -> DoipResponse:
+        """Update Wikibase item properties (label, description, claims) for an existing object.
+
+        Args:
+            object_id: Target object identifier (QID).
+            properties: Dict accepted by the importer's /update/item endpoint.
+                May contain ``label``, ``description``, ``claims`` (dict of
+                pid→value or pid→[values]), and ``do_override`` (bool).
+            update_token: Shared secret; falls back to DOIP_UPDATE_TOKEN env var.
+
+        Returns:
+            DoipResponse: Parsed DOIP response envelope.
+        """
+        resolved_token = self._resolve_update_token(update_token)
+        metadata: dict = {"operation": "update", "properties": properties}
+        if resolved_token:
+            metadata["token"] = resolved_token
+
+        request = DoipRequest(
+            header=Header(DOIP_VERSION, MSG_TYPE_REQUEST, OP_UPDATE, 0, 0, 0),
+            object_id=object_id,
+            metadata_blocks=[metadata],
+            component_blocks=[],
+        )
+        return self.send_message(request)
+
     def create(self, json_string: str, token: str | None = None) -> DoipResponse:
         """Create a new Wikibase item via the DOIP server.
 

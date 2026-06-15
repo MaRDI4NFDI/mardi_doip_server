@@ -96,27 +96,41 @@ _ACTION_HELP: dict[str, dict] = {
         ],
     },
     "update": {
-        "description": "Upload a new file to replace a component of an existing object.",
+        "description": "Upload a new file component, or update Wikibase item properties.",
         "details": (
-            "Replaces the content of a named component with the bytes from --input. "
-            "Requires an update token either via --update-token or the DOIP_UPDATE_TOKEN "
-            "environment variable. The --media-type flag sets the MIME type stored alongside "
-            "the content; if omitted, application/octet-stream is used."
+            "Two modes:\n"
+            "  Component mode (--input + --component): replaces the content of a named "
+            "component with the bytes from --input. The --media-type flag sets the MIME "
+            "type; defaults to application/octet-stream.\n"
+            "  Property mode (--properties): updates label, description, or claims on the "
+            "Wikibase item identified by --object-id. Supply a JSON object with any of: "
+            "label (str), description (str), claims (dict of pid→value or pid→[values]), "
+            "do_override (bool). If a property already has values and do_override is not "
+            "set, the call is refused and the existing values are returned. With "
+            "do_override=true, supply the complete new set — existing values are replaced.\n"
+            "Both modes require --update-token or the DOIP_UPDATE_TOKEN environment variable."
         ),
         "options": [
             ("--object-id ID", "Object identifier (default: Q123)"),
-            ("--component ID", "Component ID to update (required)"),
-            ("--input PATH", "File to upload (required)"),
+            ("--component ID", "Component ID to update (required for component mode)"),
+            ("--input PATH", "File to upload (required for component mode)"),
             ("--media-type TYPE", "Media type (default: application/octet-stream)"),
+            ("--properties JSON", "JSON object of properties to update (property mode)"),
             ("--update-token TOKEN", "Shared secret; defaults to DOIP_UPDATE_TOKEN env var"),
         ],
         "examples": [
             ("Update a PDF component",
              "mardi-doip-cli --action update --object-id Q6190920 --component paper"
              " --input paper_v2.pdf --media-type application/pdf --update-token secret123"),
-            ("Update using env var for token",
-             "DOIP_UPDATE_TOKEN=secret123 mardi-doip-cli --action update"
-             " --object-id Q6190920 --component data --input data.csv --media-type text/csv"),
+            ("Add an author claim (property not yet set)",
+             "mardi-doip-cli --action update --object-id Q6190920 --update-token secret123"
+             ' --properties \'{"claims": {"P16": "Q482723"}}\''),
+            ("Override an author claim with two authors",
+             "mardi-doip-cli --action update --object-id Q6190920 --update-token secret123"
+             ' --properties \'{"claims": {"P16": ["Q111", "Q482723"]}, "do_override": true}\''),
+            ("Change the item label",
+             "mardi-doip-cli --action update --object-id Q6190920 --update-token secret123"
+             ' --properties \'{"label": "New title"}\''),
         ],
     },
     "invoke": {
@@ -339,6 +353,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--workflow", default="equation_extraction", help="Workflow name (for invoke)")
     parser.add_argument("--params", default="{}", help="Workflow params as JSON string (for invoke)")
     parser.add_argument(
+        "--properties",
+        default=None,
+        metavar="JSON",
+        help=(
+            "JSON object of Wikibase properties to update (for update action, property mode). "
+            "Keys: label (str), description (str), claims (dict), do_override (bool). "
+            "Mutually exclusive with --input/--component."
+        ),
+    )
+    parser.add_argument(
         "--json",
         default=None,
         metavar="JSON",
@@ -406,17 +430,36 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         if args.action == "update":
-            if not args.component:
-                logging.getLogger().error("--component is required for update.")
-                return 1
-            if not args.input:
-                logging.getLogger().error("--input is required for update.")
-                return 1
             update_token = _resolve_cli_update_token(args.update_token)
             if not update_token:
                 logging.getLogger().error(
                     "Update authorization requires --update-token or DOIP_UPDATE_TOKEN."
                 )
+                return 1
+
+            if args.properties is not None:
+                if args.input or args.component:
+                    logging.getLogger().error(
+                        "--properties and --input/--component are mutually exclusive."
+                    )
+                    return 1
+                try:
+                    props = json.loads(args.properties)
+                except json.JSONDecodeError as exc:
+                    logging.getLogger().error("Invalid JSON in --properties: %s", exc)
+                    return 1
+                if not isinstance(props, dict):
+                    logging.getLogger().error("--properties must be a JSON object.")
+                    return 1
+                r = client.update_properties(args.object_id, props, update_token=update_token)
+                print(json.dumps(r.metadata_blocks, indent=2))
+                return 0
+
+            if not args.component:
+                logging.getLogger().error("--component is required for component update.")
+                return 1
+            if not args.input:
+                logging.getLogger().error("--input is required for component update.")
                 return 1
 
             with open(args.input, "rb") as f:

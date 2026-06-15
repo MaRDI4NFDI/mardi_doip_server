@@ -165,20 +165,29 @@ async def handle_retrieve(msg: DOIPMessage, registry: object_registry.ObjectRegi
 
 
 async def handle_update(msg: DOIPMessage, registry: object_registry.ObjectRegistry) -> DOIPMessage:
-    """Store one component for an existing object and create a lakeFS commit.
+    """Route an update request to either property update or component upload.
+
+    If the metadata block contains a ``properties`` key and no component blocks
+    are present, the request is treated as a Wikibase property update and
+    forwarded to the importer. Otherwise the existing lakeFS component-upload
+    path is taken.
 
     Args:
         msg: Incoming DOIP update request.
         registry: Object registry used to verify object existence and purge cache.
 
     Returns:
-        DOIPMessage: Response confirming the committed update.
+        DOIPMessage: Response confirming the update.
 
     Raises:
         protocol.ProtocolError: If authorization fails or the request is malformed.
     """
     object_id = msg.object_id.upper()
     metadata = msg.metadata_blocks[0] if msg.metadata_blocks else {}
+
+    if "properties" in metadata and not msg.component_blocks:
+        return await _handle_property_update(object_id, metadata, registry)
+
     element = metadata.get("element")
     _validate_update_token(object_id, metadata)
 
@@ -239,6 +248,73 @@ async def handle_update(msg: DOIPMessage, registry: object_registry.ObjectRegist
                 "commitId": commit["commit_id"],
             }
         ],
+    )
+
+
+async def _handle_property_update(
+    object_id: str,
+    metadata: dict,
+    registry: object_registry.ObjectRegistry,
+) -> DOIPMessage:
+    """Forward a Wikibase property update to the importer service.
+
+    Validates the token, then posts ``{qid, ...properties}`` to
+    ``IMPORTER_API_URL/update/item``. On HTTP 409 (conflict) the importer's
+    error and existing_values are surfaced as a ProtocolError so the caller
+    knows what values are already present.
+
+    Args:
+        object_id: Target QID.
+        metadata: Metadata block from the DOIP request.
+        registry: Object registry; cache entry is purged on success.
+
+    Returns:
+        DOIPMessage: Response confirming the update.
+
+    Raises:
+        protocol.ProtocolError: On auth failure, bad payload, or importer error.
+    """
+    _validate_update_token(object_id, metadata)
+
+    properties = metadata.get("properties", {})
+    if not isinstance(properties, dict):
+        raise protocol.ProtocolError("update 'properties' must be a JSON object")
+
+    importer_url = os.getenv("IMPORTER_API_URL", "http://localhost:8000").rstrip("/")
+    body = {"qid": object_id, **properties}
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        try:
+            resp = await client.post(f"{importer_url}/update/item", json=body)
+        except Exception as exc:
+            raise protocol.ProtocolError(f"Importer update/item request failed: {exc}")
+
+    if resp.status_code == 409:
+        result = resp.json()
+        existing = result.get("existing_values", [])
+        raise protocol.ProtocolError(
+            f"conflict: {result.get('error', 'property already set')} "
+            f"Existing values: {existing}"
+        )
+    if not resp.is_success:
+        raise protocol.ProtocolError(
+            f"Importer update/item failed with status {resp.status_code}: {resp.text}"
+        )
+
+    await registry.purge(object_id)
+    log.info("Updated properties for %s via importer", object_id)
+
+    return DOIPMessage(
+        version=protocol.DOIP_VERSION,
+        msg_type=protocol.MSG_TYPE_RESPONSE,
+        operation=protocol.OP_UPDATE,
+        flags=0,
+        object_id=object_id,
+        metadata_blocks=[{
+            "operation": "update",
+            "status": "updated",
+            "objectId": object_id,
+        }],
     )
 
 
