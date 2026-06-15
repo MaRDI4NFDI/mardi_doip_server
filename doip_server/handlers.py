@@ -281,7 +281,8 @@ async def _handle_property_update(
         raise protocol.ProtocolError("update 'properties' must be a JSON object")
 
     importer_url = os.getenv("IMPORTER_API_URL", "http://localhost:8000").rstrip("/")
-    body = {"qid": object_id, **properties}
+    safe_props = {k: v for k, v in properties.items() if k != "qid"}
+    body = {"qid": object_id, **safe_props}
 
     async with httpx.AsyncClient(timeout=30) as client:
         try:
@@ -290,7 +291,10 @@ async def _handle_property_update(
             raise protocol.ProtocolError(f"Importer update/item request failed: {exc}")
 
     if resp.status_code == 409:
-        result = resp.json()
+        try:
+            result = resp.json()
+        except Exception:
+            result = {}
         existing = result.get("existing_values", [])
         raise protocol.ProtocolError(
             f"conflict: {result.get('error', 'property already set')} "

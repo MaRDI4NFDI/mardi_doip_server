@@ -759,6 +759,133 @@ async def test_handle_create_unreachable_importer(monkeypatch):
         await handlers.handle_create(request, registry)
 
 
+@pytest.mark.asyncio
+async def test_handle_property_update_success(monkeypatch):
+    """Property update routes to importer and returns updated status."""
+    import httpx
+
+    purged = []
+
+    class StubRegistryPurge(StubRegistry):
+        async def purge(self, object_id):
+            purged.append(object_id)
+
+    registry = StubRegistryPurge([])
+    monkeypatch.setattr(handlers.storage_lakefs, "get_update_token", lambda: "secret")
+    monkeypatch.setenv("IMPORTER_API_URL", "http://importer")
+
+    async def fake_post(self, url, **kwargs):
+        return httpx.Response(200, json={"qid": "Q1", "status": "updated"})
+
+    monkeypatch.setattr(httpx.AsyncClient, "post", fake_post)
+
+    request = protocol.DOIPMessage(
+        version=protocol.DOIP_VERSION,
+        msg_type=protocol.MSG_TYPE_REQUEST,
+        operation=protocol.OP_UPDATE,
+        flags=0,
+        object_id="Q1",
+        metadata_blocks=[{"operation": "update", "properties": {"label": "New"}, "token": "secret"}],
+        component_blocks=[],
+    )
+
+    response = await handlers.handle_update(request, registry)
+
+    assert response.metadata_blocks[0]["status"] == "updated"
+    assert purged == ["Q1"]
+
+
+@pytest.mark.asyncio
+async def test_handle_property_update_conflict(monkeypatch):
+    """Property update raises ProtocolError on 409 conflict from importer."""
+    import httpx
+
+    registry = StubRegistry([])
+    monkeypatch.setattr(handlers.storage_lakefs, "get_update_token", lambda: "secret")
+    monkeypatch.setenv("IMPORTER_API_URL", "http://importer")
+
+    async def fake_post(self, url, **kwargs):
+        return httpx.Response(
+            409,
+            json={"status": "conflict", "error": "P16 already has values", "existing_values": ["Q50"]},
+        )
+
+    monkeypatch.setattr(httpx.AsyncClient, "post", fake_post)
+
+    request = protocol.DOIPMessage(
+        version=protocol.DOIP_VERSION,
+        msg_type=protocol.MSG_TYPE_REQUEST,
+        operation=protocol.OP_UPDATE,
+        flags=0,
+        object_id="Q1",
+        metadata_blocks=[{"operation": "update", "properties": {"claims": {"P16": "Q99"}}, "token": "secret"}],
+        component_blocks=[],
+    )
+
+    with pytest.raises(protocol.ProtocolError, match="conflict"):
+        await handlers.handle_update(request, registry)
+
+
+@pytest.mark.asyncio
+async def test_handle_property_update_qid_in_properties_ignored(monkeypatch):
+    """A 'qid' key inside properties must not override the object_id."""
+    import httpx
+
+    sent_bodies = []
+
+    async def fake_post(self, url, **kwargs):
+        sent_bodies.append(kwargs.get("json", {}))
+        return httpx.Response(200, json={"qid": "Q1", "status": "updated"})
+
+    registry = StubRegistry([])
+    monkeypatch.setattr(handlers.storage_lakefs, "get_update_token", lambda: "secret")
+    monkeypatch.setenv("IMPORTER_API_URL", "http://importer")
+    monkeypatch.setattr(httpx.AsyncClient, "post", fake_post)
+
+    request = protocol.DOIPMessage(
+        version=protocol.DOIP_VERSION,
+        msg_type=protocol.MSG_TYPE_REQUEST,
+        operation=protocol.OP_UPDATE,
+        flags=0,
+        object_id="Q1",
+        metadata_blocks=[
+            {"operation": "update", "properties": {"qid": "Q999", "label": "x"}, "token": "secret"}
+        ],
+        component_blocks=[],
+    )
+
+    await handlers.handle_update(request, registry)
+    assert sent_bodies[0]["qid"] == "Q1"
+
+
+@pytest.mark.asyncio
+async def test_handle_property_update_409_non_json_body(monkeypatch):
+    """ProtocolError is raised even when the 409 body is not valid JSON."""
+    import httpx
+
+    registry = StubRegistry([])
+    monkeypatch.setattr(handlers.storage_lakefs, "get_update_token", lambda: "secret")
+    monkeypatch.setenv("IMPORTER_API_URL", "http://importer")
+
+    async def fake_post(self, url, **kwargs):
+        return httpx.Response(409, content=b"upstream proxy error")
+
+    monkeypatch.setattr(httpx.AsyncClient, "post", fake_post)
+
+    request = protocol.DOIPMessage(
+        version=protocol.DOIP_VERSION,
+        msg_type=protocol.MSG_TYPE_REQUEST,
+        operation=protocol.OP_UPDATE,
+        flags=0,
+        object_id="Q1",
+        metadata_blocks=[{"operation": "update", "properties": {"label": "x"}, "token": "secret"}],
+        component_blocks=[],
+    )
+
+    with pytest.raises(protocol.ProtocolError, match="conflict"):
+        await handlers.handle_update(request, registry)
+
+
 def _load_config_or_skip() -> dict:
     """Load config.yaml from repo root or skip if unavailable/invalid."""
     cfg_path = Path(__file__).resolve().parents[2] / "config.yaml"

@@ -23,6 +23,11 @@ if [[ -z "$ENV" ]]; then
     echo "Before running, port-forward the importer in a separate terminal:"
     echo "  staging:    kubectl port-forward svc/staging-importer -n staging 8000:80"
     echo "  production: kubectl port-forward svc/importer -n production 8000:80"
+    echo ""
+    echo "Example CLI call (in a third terminal, after the server is running):"
+    echo "  python client_cli/main.py --host 127.0.0.1 --port 3567 --no-tls --action create \\"
+    echo "    --token \"\$LAKEFS_PASSWORD\" \\"
+    echo "    --json '{\"type\":\"WORKFLOW\",\"fields\":{\"name\":\"My workflow\",\"problem_statement\":\"Solve X\"}}'"
     exit 0
 fi
 if [[ "$ENV" == "production" ]]; then
