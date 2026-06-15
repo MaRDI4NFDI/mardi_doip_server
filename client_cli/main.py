@@ -108,7 +108,9 @@ _ACTION_HELP: dict[str, dict] = {
             "do_override (bool). If a property already has values and do_override is not "
             "set, the call is refused and the existing values are returned. With "
             "do_override=true, supply the complete new set — existing values are replaced.\n"
-            "Both modes require --update-token or the DOIP_UPDATE_TOKEN environment variable."
+            "Both modes require wiki bot credentials via --username/--password or the "
+            "DOIP_USERNAME/DOIP_PASSWORD environment variables. "
+            "Bot passwords can be created at Special:BotPasswords on the wiki."
         ),
         "options": [
             ("--object-id ID", "Object identifier (default: Q123)"),
@@ -116,20 +118,29 @@ _ACTION_HELP: dict[str, dict] = {
             ("--input PATH", "File to upload (required for component mode)"),
             ("--media-type TYPE", "Media type (default: application/octet-stream)"),
             ("--properties JSON", "JSON object of properties to update (property mode)"),
-            ("--update-token TOKEN", "Shared secret; defaults to DOIP_UPDATE_TOKEN env var"),
+            ("--username USER", "Wiki bot username (User@AppName); falls back to DOIP_USERNAME"),
+            ("--password PASS", "Wiki bot password; falls back to DOIP_PASSWORD"),
         ],
         "examples": [
             ("Update a PDF component",
              "mardi-doip-cli --action update --object-id Q6190920 --component paper"
-             " --input paper_v2.pdf --media-type application/pdf --update-token secret123"),
+             " --input paper_v2.pdf --media-type application/pdf"
+             " --username MyUser@MyBot --password abc123"),
             ("Add an author claim (property not yet set)",
-             "mardi-doip-cli --action update --object-id Q6190920 --update-token secret123"
+             "mardi-doip-cli --action update --object-id Q6190920"
+             " --username MyUser@MyBot --password abc123"
              ' --properties \'{"claims": {"P16": "Q482723"}}\''),
             ("Override an author claim with two authors",
-             "mardi-doip-cli --action update --object-id Q6190920 --update-token secret123"
+             "mardi-doip-cli --action update --object-id Q6190920"
+             " --username MyUser@MyBot --password abc123"
              ' --properties \'{"claims": {"P16": ["Q111", "Q482723"]}, "do_override": true}\''),
             ("Change the item label",
-             "mardi-doip-cli --action update --object-id Q6190920 --update-token secret123"
+             "mardi-doip-cli --action update --object-id Q6190920"
+             " --username MyUser@MyBot --password abc123"
+             ' --properties \'{"label": "New title"}\''),
+            ("Use environment variables instead of flags",
+             "DOIP_USERNAME=MyUser@MyBot DOIP_PASSWORD=abc123"
+             " mardi-doip-cli --action update --object-id Q6190920"
              ' --properties \'{"label": "New title"}\''),
         ],
     },
@@ -190,25 +201,27 @@ _ACTION_HELP: dict[str, dict] = {
         ),
         "options": [
             ("--json JSON", "Item description as a JSON string (required); raw or typed format"),
-            ("--token TOKEN", "Authorization token; defaults to DOIP_CREATE_TOKEN env var"),
+            ("--username USER", "Wiki bot username (User@AppName); falls back to DOIP_USERNAME"),
+            ("--password PASS", "Wiki bot password; falls back to DOIP_PASSWORD"),
         ],
         "examples": [
             ("Create a minimal item (raw format)",
-             'mardi-doip-cli --action create --json \'{"label": "My dataset"}\' --token mytoken'),
+             'mardi-doip-cli --action create --json \'{"label": "My dataset"}\''
+             ' --username MyUser@MyBot --password abc123'),
             ("Create with explicit MaRDI KG claims (raw format)",
              'mardi-doip-cli --action create'
              ' --json \'{"label": "My item", "description": "A test", "claims": {"<MaRDI-PID>": "<MaRDI-QID>"}}\''
-             ' --token mytoken'),
+             ' --username MyUser@MyBot --password abc123'),
             ("Create a workflow item (required fields only)",
              'mardi-doip-cli --action create'
              ' --json \'{"type": "WORKFLOW", "fields": {"name": "Reproduce table 1 from ...", "problem_statement": "Solve incompressible Navier-Stokes"}}\''
-             ' --token mytoken'),
+             ' --username MyUser@MyBot --password abc123'),
             ("Create a workflow item (all fields)",
              'mardi-doip-cli --action create'
              ' --json \'{"type": "WORKFLOW", "fields": {"name": "My workflow", "problem_statement": "...", "uses": "Q6830878", "author": "Q482723", "publication_date": "2026-04-09", "copyright_license": "Q57031", "cites_work": "Q12345", "stored_at": "Q6830870", "fdo_component_id": "rocrate.zip"}}\''
-             ' --token mytoken'),
-            ("Create using env var for token",
-             'DOIP_CREATE_TOKEN=mytoken mardi-doip-cli --action create'
+             ' --username MyUser@MyBot --password abc123'),
+            ("Use environment variables instead of flags",
+             'DOIP_USERNAME=MyUser@MyBot DOIP_PASSWORD=abc123 mardi-doip-cli --action create'
              ' --json \'{"type": "WORKFLOW", "fields": {"name": "My workflow", "problem_statement": "..."}}\''),
         ],
     },
@@ -308,11 +321,13 @@ class RawDescriptionDefaultsHelpFormatter(
     pass
 
 
-def _resolve_cli_update_token(explicit_token: str | None) -> str | None:
-    if explicit_token:
-        return explicit_token
-    env_token = os.getenv("DOIP_UPDATE_TOKEN")
-    return env_token or None
+def _resolve_cli_credentials(
+    explicit_username: str | None,
+    explicit_password: str | None,
+) -> tuple[str | None, str | None]:
+    username = explicit_username or os.getenv("DOIP_USERNAME")
+    password = explicit_password or os.getenv("DOIP_PASSWORD")
+    return username or None, password or None
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -349,7 +364,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output", default=None, help="Path to save first component (retrieve only)")
     parser.add_argument("--input", default=None, help="Path to the file to upload for update")
     parser.add_argument("--media-type", default=None, help="Media type for update uploads")
-    parser.add_argument("--update-token", default=None, help="Shared secret for update uploads")
+    parser.add_argument("--username", default=None, help="Wiki bot username (User@AppName); falls back to DOIP_USERNAME")
+    parser.add_argument("--password", default=None, help="Wiki bot password; falls back to DOIP_PASSWORD")
     parser.add_argument("--workflow", default="equation_extraction", help="Workflow name (for invoke)")
     parser.add_argument("--params", default="{}", help="Workflow params as JSON string (for invoke)")
     parser.add_argument(
@@ -373,7 +389,8 @@ def main(argv: list[str] | None = None) -> int:
             "Known types: WORKFLOW."
         ),
     )
-    parser.add_argument("--token", default=None, help="Authorization token for create")
+    # --token kept as a hidden alias for backwards compatibility but --username/--password are canonical
+
 
     args = parser.parse_args(args_list)
 
@@ -430,10 +447,11 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         if args.action == "update":
-            update_token = _resolve_cli_update_token(args.update_token)
-            if not update_token:
+            username, password = _resolve_cli_credentials(args.username, args.password)
+            if not username or not password:
                 logging.getLogger().error(
-                    "Update authorization requires --update-token or DOIP_UPDATE_TOKEN."
+                    "Update requires --username/--password or DOIP_USERNAME/DOIP_PASSWORD env vars. "
+                    "Create a bot password at Special:BotPasswords on the wiki."
                 )
                 return 1
 
@@ -451,7 +469,7 @@ def main(argv: list[str] | None = None) -> int:
                 if not isinstance(props, dict):
                     logging.getLogger().error("--properties must be a JSON object.")
                     return 1
-                r = client.update_properties(args.object_id, props, update_token=update_token)
+                r = client.update_properties(args.object_id, props, username=username, password=password)
                 print(json.dumps(r.metadata_blocks, indent=2))
                 return 0
 
@@ -471,7 +489,8 @@ def main(argv: list[str] | None = None) -> int:
                 args.component,
                 content,
                 media_type=media_type,
-                update_token=update_token,
+                username=username,
+                password=password,
             )
             print(json.dumps(r.metadata_blocks, indent=2))
             return 0
@@ -488,7 +507,14 @@ def main(argv: list[str] | None = None) -> int:
                     "Example: --json '{\"label\": \"My item\"}'"
                 )
                 return 1
-            r = client.create(args.json, token=args.token)
+            username, password = _resolve_cli_credentials(args.username, args.password)
+            if not username or not password:
+                logging.getLogger().error(
+                    "Create requires --username/--password or DOIP_USERNAME/DOIP_PASSWORD env vars. "
+                    "Create a bot password at Special:BotPasswords on the wiki."
+                )
+                return 1
+            r = client.create(args.json, username=username, password=password)
             print(json.dumps(r.metadata_blocks, indent=2))
             return 0
 

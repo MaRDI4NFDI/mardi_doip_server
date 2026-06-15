@@ -237,7 +237,8 @@ async def test_handle_update_stores_component_and_commits(monkeypatch):
     registry = StubRegistry([])
     registry.fetch_fdo_object = fake_fetch_fdo
 
-    monkeypatch.setattr(handlers.storage_lakefs, "get_update_token", lambda: "secret")
+    async def _mock_validate_ok(username, password): pass
+    monkeypatch.setattr(handlers, "_validate_wiki_credentials", _mock_validate_ok)
     monkeypatch.setattr(handlers.storage_lakefs, "put_component_bytes", fake_put_component_bytes)
     monkeypatch.setattr(handlers.storage_lakefs, "commit_changes", fake_commit_changes)
     monkeypatch.setattr(handlers.storage_lakefs, "reset_uncommitted_object", fake_reset_uncommitted_object)
@@ -248,7 +249,7 @@ async def test_handle_update_stores_component_and_commits(monkeypatch):
         operation=protocol.OP_UPDATE,
         flags=0,
         object_id="Q1",
-        metadata_blocks=[{"operation": "update", "element": "primary.pdf", "token": "secret"}],
+        metadata_blocks=[{"operation": "update", "element": "primary.pdf", "username": "testuser", "password": "testpass"}],
         component_blocks=[
             protocol.ComponentBlock(
                 component_id="primary.pdf",
@@ -280,9 +281,15 @@ async def test_handle_update_rejects_multiple_components(monkeypatch):
     Returns:
         None
     """
-    monkeypatch.setattr(handlers.storage_lakefs, "get_update_token", lambda: "secret")
+    async def _mock_validate_ok(username, password): pass
+    monkeypatch.setattr(handlers, "_validate_wiki_credentials", _mock_validate_ok)
+
+    async def fake_fetch_fdo(pid):
+        return {"@id": pid}
+
     registry = StubRegistry([])
-    metadata = [{"operation": "update", "element": "primary", "token": "secret"}]
+    registry.fetch_fdo_object = fake_fetch_fdo
+    metadata = [{"operation": "update", "element": "primary", "username": "testuser", "password": "testpass"}]
     request = protocol.DOIPMessage(
         version=protocol.DOIP_VERSION,
         msg_type=protocol.MSG_TYPE_REQUEST,
@@ -313,9 +320,11 @@ async def test_handle_update_rejects_mismatched_component_id(monkeypatch):
     async def fake_fetch_fdo(pid):
         return {"@id": pid}
 
+    async def _mock_validate_ok(username, password): pass
+    monkeypatch.setattr(handlers, "_validate_wiki_credentials", _mock_validate_ok)
+
     registry = StubRegistry([])
     registry.fetch_fdo_object = fake_fetch_fdo
-    monkeypatch.setattr(handlers.storage_lakefs, "get_update_token", lambda: "secret")
 
     request = protocol.DOIPMessage(
         version=protocol.DOIP_VERSION,
@@ -323,7 +332,7 @@ async def test_handle_update_rejects_mismatched_component_id(monkeypatch):
         operation=protocol.OP_UPDATE,
         flags=0,
         object_id="Q1",
-        metadata_blocks=[{"operation": "update", "element": "primary", "token": "secret"}],
+        metadata_blocks=[{"operation": "update", "element": "primary", "username": "testuser", "password": "testpass"}],
         component_blocks=[protocol.ComponentBlock(component_id="secondary", content=b"data")],
     )
 
@@ -359,7 +368,8 @@ async def test_handle_update_resets_uncommitted_object_on_commit_failure(monkeyp
     registry = StubRegistry([])
     registry.fetch_fdo_object = fake_fetch_fdo
 
-    monkeypatch.setattr(handlers.storage_lakefs, "get_update_token", lambda: "secret")
+    async def _mock_validate_ok(username, password): pass
+    monkeypatch.setattr(handlers, "_validate_wiki_credentials", _mock_validate_ok)
     monkeypatch.setattr(handlers.storage_lakefs, "put_component_bytes", fake_put_component_bytes)
     monkeypatch.setattr(handlers.storage_lakefs, "commit_changes", fake_commit_changes)
     monkeypatch.setattr(handlers.storage_lakefs, "reset_uncommitted_object", fake_reset_uncommitted_object)
@@ -370,7 +380,7 @@ async def test_handle_update_resets_uncommitted_object_on_commit_failure(monkeyp
         operation=protocol.OP_UPDATE,
         flags=0,
         object_id="Q1",
-        metadata_blocks=[{"operation": "update", "element": "primary", "token": "secret"}],
+        metadata_blocks=[{"operation": "update", "element": "primary", "username": "testuser", "password": "testpass"}],
         component_blocks=[protocol.ComponentBlock(component_id="primary", content=b"data")],
     )
 
@@ -382,8 +392,8 @@ async def test_handle_update_resets_uncommitted_object_on_commit_failure(monkeyp
 
 
 @pytest.mark.asyncio
-async def test_handle_update_rejects_missing_token_before_fetch(monkeypatch):
-    """Ensure update authorization happens before object lookup and storage writes.
+async def test_handle_update_rejects_missing_credentials_before_fetch(monkeypatch):
+    """Ensure update credential extraction happens before object lookup and storage writes.
 
     Args:
         monkeypatch: Pytest monkeypatch fixture.
@@ -391,18 +401,16 @@ async def test_handle_update_rejects_missing_token_before_fetch(monkeypatch):
     Returns:
         None
     """
-    monkeypatch.setattr(handlers.storage_lakefs, "get_update_token", lambda: "secret")
-
     registry = StubRegistry([])
 
     async def fake_fetch_fdo(pid):
-        raise AssertionError("fetch_fdo_object should not be called without auth")
+        raise AssertionError("fetch_fdo_object should not be called without credentials")
 
     async def fake_put_component_bytes(*args, **kwargs):
-        raise AssertionError("put_component_bytes should not be called without auth")
+        raise AssertionError("put_component_bytes should not be called without credentials")
 
     async def fake_commit_changes(*args, **kwargs):
-        raise AssertionError("commit_changes should not be called without auth")
+        raise AssertionError("commit_changes should not be called without credentials")
 
     registry.fetch_fdo_object = fake_fetch_fdo
     monkeypatch.setattr(handlers.storage_lakefs, "put_component_bytes", fake_put_component_bytes)
@@ -418,13 +426,13 @@ async def test_handle_update_rejects_missing_token_before_fetch(monkeypatch):
         component_blocks=[protocol.ComponentBlock(component_id="primary", content=b"data")],
     )
 
-    with pytest.raises(protocol.ProtocolError, match="update authorization failed"):
+    with pytest.raises(protocol.ProtocolError, match="'username' is required"):
         await handlers.handle_update(request, registry)
 
 
 @pytest.mark.asyncio
-async def test_handle_update_rejects_invalid_token_before_storage(monkeypatch):
-    """Ensure update rejects incorrect shared secrets before any side effects.
+async def test_handle_update_rejects_invalid_credentials_before_storage(monkeypatch):
+    """Ensure update rejects invalid wiki credentials before any side effects.
 
     Args:
         monkeypatch: Pytest monkeypatch fixture.
@@ -432,18 +440,21 @@ async def test_handle_update_rejects_invalid_token_before_storage(monkeypatch):
     Returns:
         None
     """
-    monkeypatch.setattr(handlers.storage_lakefs, "get_update_token", lambda: "secret")
+    async def _mock_validate_fail(username, password):
+        raise protocol.ProtocolError("Invalid wiki credentials")
+
+    monkeypatch.setattr(handlers, "_validate_wiki_credentials", _mock_validate_fail)
 
     registry = StubRegistry([])
 
     async def fake_fetch_fdo(pid):
-        raise AssertionError("fetch_fdo_object should not be called with invalid auth")
+        raise AssertionError("fetch_fdo_object should not be called with invalid credentials")
 
     async def fake_put_component_bytes(*args, **kwargs):
-        raise AssertionError("put_component_bytes should not be called with invalid auth")
+        raise AssertionError("put_component_bytes should not be called with invalid credentials")
 
     async def fake_commit_changes(*args, **kwargs):
-        raise AssertionError("commit_changes should not be called with invalid auth")
+        raise AssertionError("commit_changes should not be called with invalid credentials")
 
     registry.fetch_fdo_object = fake_fetch_fdo
     monkeypatch.setattr(handlers.storage_lakefs, "put_component_bytes", fake_put_component_bytes)
@@ -455,17 +466,17 @@ async def test_handle_update_rejects_invalid_token_before_storage(monkeypatch):
         operation=protocol.OP_UPDATE,
         flags=0,
         object_id="Q1",
-        metadata_blocks=[{"operation": "update", "element": "primary", "token": "wrong"}],
+        metadata_blocks=[{"operation": "update", "element": "primary", "username": "testuser", "password": "testpass"}],
         component_blocks=[protocol.ComponentBlock(component_id="primary", content=b"data")],
     )
 
-    with pytest.raises(protocol.ProtocolError, match="update authorization failed"):
+    with pytest.raises(protocol.ProtocolError, match="Invalid wiki credentials"):
         await handlers.handle_update(request, registry)
 
 
 @pytest.mark.asyncio
-async def test_handle_update_rejects_when_server_token_is_unset(monkeypatch):
-    """Ensure update rejects requests when the server lacks a configured token.
+async def test_handle_update_rejects_when_mediawiki_api_unreachable(monkeypatch):
+    """Ensure update rejects requests when the MediaWiki API cannot be reached.
 
     Args:
         monkeypatch: Pytest monkeypatch fixture.
@@ -473,12 +484,15 @@ async def test_handle_update_rejects_when_server_token_is_unset(monkeypatch):
     Returns:
         None
     """
-    monkeypatch.setattr(handlers.storage_lakefs, "get_update_token", lambda: None)
+    async def _mock_validate_unreachable(username, password):
+        raise protocol.ProtocolError("Could not reach MediaWiki API for credential validation: connection refused")
+
+    monkeypatch.setattr(handlers, "_validate_wiki_credentials", _mock_validate_unreachable)
 
     registry = StubRegistry([])
 
     async def fake_fetch_fdo(pid):
-        raise AssertionError("fetch_fdo_object should not run when auth is unconfigured")
+        raise AssertionError("fetch_fdo_object should not run when API is unreachable")
 
     registry.fetch_fdo_object = fake_fetch_fdo
 
@@ -488,11 +502,11 @@ async def test_handle_update_rejects_when_server_token_is_unset(monkeypatch):
         operation=protocol.OP_UPDATE,
         flags=0,
         object_id="Q1",
-        metadata_blocks=[{"operation": "update", "element": "primary", "token": "secret"}],
+        metadata_blocks=[{"operation": "update", "element": "primary", "username": "testuser", "password": "testpass"}],
         component_blocks=[protocol.ComponentBlock(component_id="primary", content=b"data")],
     )
 
-    with pytest.raises(protocol.ProtocolError, match="update authorization is not configured"):
+    with pytest.raises(protocol.ProtocolError, match="Could not reach MediaWiki API"):
         await handlers.handle_update(request, registry)
 
 
@@ -635,7 +649,6 @@ class _FakeHttpClient:
 @pytest.mark.asyncio
 async def test_handle_create_success(monkeypatch):
     """Successful create returns 'created' status and the new QID."""
-    monkeypatch.setenv("LAKEFS_PASSWORD", "secret")
     monkeypatch.setattr(handlers.httpx, "AsyncClient", lambda **kw: _FakeHttpClient())
 
     registry = StubRegistry([])
@@ -645,7 +658,7 @@ async def test_handle_create_success(monkeypatch):
         operation=protocol.OP_CREATE,
         flags=0,
         object_id="",
-        metadata_blocks=[{"operation": "create", "token": "secret", "json": '{"label": "Test item"}'}],
+        metadata_blocks=[{"operation": "create", "username": "testuser", "password": "testpass", "json": '{"label": "Test item"}'}],
     )
 
     response = await handlers.handle_create(request, registry)
@@ -658,9 +671,8 @@ async def test_handle_create_success(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_handle_create_missing_token(monkeypatch):
-    """Create request without a token raises ProtocolError."""
-    monkeypatch.setenv("LAKEFS_PASSWORD", "secret")
+async def test_handle_create_missing_username(monkeypatch):
+    """Create request without a username raises ProtocolError."""
     registry = StubRegistry([])
     request = protocol.DOIPMessage(
         version=protocol.DOIP_VERSION,
@@ -671,14 +683,13 @@ async def test_handle_create_missing_token(monkeypatch):
         metadata_blocks=[{"operation": "create", "json": '{"label": "Test item"}'}],
     )
 
-    with pytest.raises(protocol.ProtocolError, match="authorization failed"):
+    with pytest.raises(protocol.ProtocolError, match="'username' is required"):
         await handlers.handle_create(request, registry)
 
 
 @pytest.mark.asyncio
-async def test_handle_create_wrong_token(monkeypatch):
-    """Create request with wrong token raises ProtocolError."""
-    monkeypatch.setenv("LAKEFS_PASSWORD", "secret")
+async def test_handle_create_missing_password(monkeypatch):
+    """Create request with username but no password raises ProtocolError."""
     registry = StubRegistry([])
     request = protocol.DOIPMessage(
         version=protocol.DOIP_VERSION,
@@ -686,17 +697,16 @@ async def test_handle_create_wrong_token(monkeypatch):
         operation=protocol.OP_CREATE,
         flags=0,
         object_id="",
-        metadata_blocks=[{"operation": "create", "token": "wrong", "json": '{"label": "Test item"}'}],
+        metadata_blocks=[{"operation": "create", "username": "testuser", "json": '{"label": "Test item"}'}],
     )
 
-    with pytest.raises(protocol.ProtocolError, match="authorization failed"):
+    with pytest.raises(protocol.ProtocolError, match="'password' is required"):
         await handlers.handle_create(request, registry)
 
 
 @pytest.mark.asyncio
 async def test_handle_create_missing_json_field(monkeypatch):
     """Create request without a 'json' field raises ProtocolError."""
-    monkeypatch.setenv("LAKEFS_PASSWORD", "secret")
     registry = StubRegistry([])
     request = protocol.DOIPMessage(
         version=protocol.DOIP_VERSION,
@@ -704,7 +714,7 @@ async def test_handle_create_missing_json_field(monkeypatch):
         operation=protocol.OP_CREATE,
         flags=0,
         object_id="",
-        metadata_blocks=[{"operation": "create", "token": "secret"}],
+        metadata_blocks=[{"operation": "create", "username": "testuser", "password": "testpass"}],
     )
 
     with pytest.raises(protocol.ProtocolError, match="'json' field"):
@@ -714,7 +724,6 @@ async def test_handle_create_missing_json_field(monkeypatch):
 @pytest.mark.asyncio
 async def test_handle_create_invalid_property_id(monkeypatch):
     """Create request with a malformed property ID raises ProtocolError."""
-    monkeypatch.setenv("LAKEFS_PASSWORD", "secret")
     registry = StubRegistry([])
     request = protocol.DOIPMessage(
         version=protocol.DOIP_VERSION,
@@ -724,7 +733,8 @@ async def test_handle_create_invalid_property_id(monkeypatch):
         object_id="",
         metadata_blocks=[{
             "operation": "create",
-            "token": "secret",
+            "username": "testuser",
+            "password": "testpass",
             "json": '{"label": "Test", "claims": {"wdt:P31": "Q5"}}',
         }],
     )
@@ -736,8 +746,6 @@ async def test_handle_create_invalid_property_id(monkeypatch):
 @pytest.mark.asyncio
 async def test_handle_create_unreachable_importer(monkeypatch):
     """Create request raises ProtocolError when importer health check fails."""
-    monkeypatch.setenv("LAKEFS_PASSWORD", "secret")
-
     class _FailClient:
         async def __aenter__(self): return self
         async def __aexit__(self, *a): pass
@@ -752,7 +760,7 @@ async def test_handle_create_unreachable_importer(monkeypatch):
         operation=protocol.OP_CREATE,
         flags=0,
         object_id="",
-        metadata_blocks=[{"operation": "create", "token": "secret", "json": '{"label": "Test item"}'}],
+        metadata_blocks=[{"operation": "create", "username": "testuser", "password": "testpass", "json": '{"label": "Test item"}'}],
     )
 
     with pytest.raises(protocol.ProtocolError, match="not reachable"):
@@ -771,7 +779,6 @@ async def test_handle_property_update_success(monkeypatch):
             purged.append(object_id)
 
     registry = StubRegistryPurge([])
-    monkeypatch.setattr(handlers.storage_lakefs, "get_update_token", lambda: "secret")
     monkeypatch.setenv("IMPORTER_API_URL", "http://importer")
 
     async def fake_post(self, url, **kwargs):
@@ -785,7 +792,7 @@ async def test_handle_property_update_success(monkeypatch):
         operation=protocol.OP_UPDATE,
         flags=0,
         object_id="Q1",
-        metadata_blocks=[{"operation": "update", "properties": {"label": "New"}, "token": "secret"}],
+        metadata_blocks=[{"operation": "update", "properties": {"label": "New"}, "username": "testuser", "password": "testpass"}],
         component_blocks=[],
     )
 
@@ -801,7 +808,6 @@ async def test_handle_property_update_conflict(monkeypatch):
     import httpx
 
     registry = StubRegistry([])
-    monkeypatch.setattr(handlers.storage_lakefs, "get_update_token", lambda: "secret")
     monkeypatch.setenv("IMPORTER_API_URL", "http://importer")
 
     async def fake_post(self, url, **kwargs):
@@ -818,7 +824,7 @@ async def test_handle_property_update_conflict(monkeypatch):
         operation=protocol.OP_UPDATE,
         flags=0,
         object_id="Q1",
-        metadata_blocks=[{"operation": "update", "properties": {"claims": {"P16": "Q99"}}, "token": "secret"}],
+        metadata_blocks=[{"operation": "update", "properties": {"claims": {"P16": "Q99"}}, "username": "testuser", "password": "testpass"}],
         component_blocks=[],
     )
 
@@ -838,7 +844,6 @@ async def test_handle_property_update_qid_in_properties_ignored(monkeypatch):
         return httpx.Response(200, json={"qid": "Q1", "status": "updated"})
 
     registry = StubRegistry([])
-    monkeypatch.setattr(handlers.storage_lakefs, "get_update_token", lambda: "secret")
     monkeypatch.setenv("IMPORTER_API_URL", "http://importer")
     monkeypatch.setattr(httpx.AsyncClient, "post", fake_post)
 
@@ -849,7 +854,7 @@ async def test_handle_property_update_qid_in_properties_ignored(monkeypatch):
         flags=0,
         object_id="Q1",
         metadata_blocks=[
-            {"operation": "update", "properties": {"qid": "Q999", "label": "x"}, "token": "secret"}
+            {"operation": "update", "properties": {"qid": "Q999", "label": "x"}, "username": "testuser", "password": "testpass"}
         ],
         component_blocks=[],
     )
@@ -864,7 +869,6 @@ async def test_handle_property_update_409_non_json_body(monkeypatch):
     import httpx
 
     registry = StubRegistry([])
-    monkeypatch.setattr(handlers.storage_lakefs, "get_update_token", lambda: "secret")
     monkeypatch.setenv("IMPORTER_API_URL", "http://importer")
 
     async def fake_post(self, url, **kwargs):
@@ -878,7 +882,7 @@ async def test_handle_property_update_409_non_json_body(monkeypatch):
         operation=protocol.OP_UPDATE,
         flags=0,
         object_id="Q1",
-        metadata_blocks=[{"operation": "update", "properties": {"label": "x"}, "token": "secret"}],
+        metadata_blocks=[{"operation": "update", "properties": {"label": "x"}, "username": "testuser", "password": "testpass"}],
         component_blocks=[],
     )
 

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import hmac
 import json
 import mimetypes
 import os
@@ -189,7 +188,8 @@ async def handle_update(msg: DOIPMessage, registry: object_registry.ObjectRegist
         return await _handle_property_update(object_id, metadata, registry)
 
     element = metadata.get("element")
-    _validate_update_token(object_id, metadata)
+    username, password = _extract_wiki_credentials(metadata)
+    await _validate_wiki_credentials(username, password)
 
     await registry.fetch_fdo_object(object_id)
 
@@ -258,8 +258,8 @@ async def _handle_property_update(
 ) -> DOIPMessage:
     """Forward a Wikibase property update to the importer service.
 
-    Validates the token, then posts ``{qid, ...properties}`` to
-    ``IMPORTER_API_URL/update/item``. On HTTP 409 (conflict) the importer's
+    Extracts wiki credentials, then posts ``{qid, username, password, ...properties}``
+    to ``IMPORTER_API_URL/update/item``. On HTTP 409 (conflict) the importer's
     error and existing_values are surfaced as a ProtocolError so the caller
     knows what values are already present.
 
@@ -274,7 +274,7 @@ async def _handle_property_update(
     Raises:
         protocol.ProtocolError: On auth failure, bad payload, or importer error.
     """
-    _validate_update_token(object_id, metadata)
+    username, password = _extract_wiki_credentials(metadata)
 
     properties = metadata.get("properties", {})
     if not isinstance(properties, dict):
@@ -282,7 +282,7 @@ async def _handle_property_update(
 
     importer_url = os.getenv("IMPORTER_API_URL", "http://localhost:8000").rstrip("/")
     safe_props = {k: v for k, v in properties.items() if k != "qid"}
-    body = {"qid": object_id, **safe_props}
+    body = {"qid": object_id, "username": username, "password": password, **safe_props}
 
     async with httpx.AsyncClient(timeout=30) as client:
         try:
@@ -322,33 +322,70 @@ async def _handle_property_update(
     )
 
 
-def _validate_update_token(object_id: str, metadata: dict) -> None:
-    """Validate the shared secret attached to an update request.
+def _extract_wiki_credentials(metadata: dict) -> tuple[str, str]:
+    """Extract wiki bot credentials from a DOIP metadata block.
 
     Args:
-        object_id: Target object identifier for logging context.
-        metadata: Update metadata block from the request.
+        metadata: DOIP metadata block from the incoming request.
 
     Returns:
-        None
+        tuple[str, str]: (username, password)
 
     Raises:
-        protocol.ProtocolError: If the server is not configured for updates or
-            if the provided token is missing or invalid.
+        protocol.ProtocolError: If either field is absent or empty.
     """
-    expected_token = storage_lakefs.get_update_token()
-    if not expected_token:
-        log.error("Rejected update for %s because no update token is configured", object_id)
-        raise protocol.ProtocolError("update authorization is not configured")
+    username = metadata.get("username")
+    password = metadata.get("password")
+    if not isinstance(username, str) or not username:
+        raise protocol.ProtocolError("'username' is required in the metadata block")
+    if not isinstance(password, str) or not password:
+        raise protocol.ProtocolError("'password' is required in the metadata block")
+    return username, password
 
-    provided_token = metadata.get("token")
-    if not isinstance(provided_token, str) or not provided_token:
-        log.warning("Rejected update for %s because no update token was provided", object_id)
-        raise protocol.ProtocolError("update authorization failed")
 
-    if not hmac.compare_digest(provided_token, expected_token):
-        log.warning("Rejected update for %s because the update token was invalid", object_id)
-        raise protocol.ProtocolError("update authorization failed")
+async def _validate_wiki_credentials(username: str, password: str) -> None:
+    """Verify wiki bot credentials against the MediaWiki login API.
+
+    Used for operations that write to lakeFS directly (component uploads) and
+    therefore cannot rely on the importer to surface an auth failure.
+
+    Args:
+        username: MediaWiki username (bot-password format: ``User@AppName``).
+        password: MediaWiki bot password.
+
+    Raises:
+        protocol.ProtocolError: If the API is unreachable or credentials are invalid.
+    """
+    api_url = os.getenv("MEDIAWIKI_API_URL", "http://wikibase/w/api.php")
+    async with httpx.AsyncClient(timeout=10) as client:
+        try:
+            r = await client.get(api_url, params={
+                "action": "query",
+                "meta": "tokens",
+                "type": "login",
+                "format": "json",
+            })
+            r.raise_for_status()
+            login_token = r.json()["query"]["tokens"]["logintoken"]
+        except Exception as exc:
+            raise protocol.ProtocolError(f"Could not reach MediaWiki API for credential validation: {exc}")
+
+        try:
+            r = await client.post(api_url, data={
+                "action": "login",
+                "lgname": username,
+                "lgpassword": password,
+                "lgtoken": login_token,
+                "format": "json",
+            })
+            r.raise_for_status()
+            result = r.json().get("login", {}).get("result")
+        except Exception as exc:
+            raise protocol.ProtocolError(f"MediaWiki credential validation failed: {exc}")
+
+    if result != "Success":
+        log.warning("Wiki credential validation failed for user %s: %s", username, result)
+        raise protocol.ProtocolError("Invalid wiki credentials")
 
 
 async def handle_invoke(msg: DOIPMessage, registry: object_registry.ObjectRegistry) -> DOIPMessage:
@@ -429,8 +466,8 @@ async def handle_create(msg: DOIPMessage, registry: object_registry.ObjectRegist
     """Create a new Wikibase item via the importer service.
 
     Expects a JSON string in the ``json`` field of the first metadata block and
-    a ``token`` field matching ``LAKEFS_PASSWORD``. Runs schema validation before
-    calling the importer.
+    ``username``/``password`` fields containing the user's wiki bot credentials.
+    Runs schema validation before calling the importer.
 
     Args:
         msg: Incoming DOIP create request.
@@ -445,8 +482,8 @@ async def handle_create(msg: DOIPMessage, registry: object_registry.ObjectRegist
     """
     meta = msg.metadata_blocks[0] if msg.metadata_blocks else {}
 
-    # 1. Authorization
-    _validate_create_token(meta)
+    # 1. Extract wiki credentials
+    username, password = _extract_wiki_credentials(meta)
 
     # 2. Parse JSON payload
     json_str = meta.get("json")
@@ -470,7 +507,9 @@ async def handle_create(msg: DOIPMessage, registry: object_registry.ObjectRegist
         except Exception as exc:
             raise protocol.ProtocolError(f"Importer service is not reachable at {importer_url}: {exc}")
 
-    # 5. Create item
+    # 5. Create item with user credentials
+    body["username"] = username
+    body["password"] = password
     async with httpx.AsyncClient(timeout=30) as client:
         try:
             resp = await client.post(f"{importer_url}/create/item", json=body)
@@ -491,32 +530,6 @@ async def handle_create(msg: DOIPMessage, registry: object_registry.ObjectRegist
         metadata_blocks=[{"operation": "create", "status": "created", "qid": qid}],
     )
 
-
-def _validate_create_token(metadata: dict) -> None:
-    """Validate the shared secret attached to a create request.
-
-    Uses ``LAKEFS_PASSWORD`` as the expected token.
-
-    Args:
-        metadata: Create metadata block from the request.
-
-    Raises:
-        protocol.ProtocolError: If the server is not configured or the token
-            is missing or invalid.
-    """
-    expected = os.getenv("LAKEFS_PASSWORD")
-    if not expected:
-        log.error("Rejected create because LAKEFS_PASSWORD is not configured")
-        raise protocol.ProtocolError("create authorization is not configured")
-
-    provided = metadata.get("token")
-    if not isinstance(provided, str) or not provided:
-        log.warning("Rejected create: no token provided")
-        raise protocol.ProtocolError("create authorization failed")
-
-    if not hmac.compare_digest(provided, expected):
-        log.warning("Rejected create: invalid token")
-        raise protocol.ProtocolError("create authorization failed")
 
 
 _PROP_RE = __import__("re").compile(r"^P\d+$")

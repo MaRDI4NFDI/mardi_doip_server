@@ -98,7 +98,8 @@ async def test_client_server_integration_update_and_retrieve_component(monkeypat
     async def fake_get_component_bytes(object_id, component_id):
         return stored[(object_id, component_id)][0]
 
-    monkeypatch.setattr(storage_lakefs, "get_update_token", lambda: "secret")
+    async def _mock_validate_ok(username, password): pass
+    monkeypatch.setattr(handlers, "_validate_wiki_credentials", _mock_validate_ok)
     monkeypatch.setattr(storage_lakefs, "put_component_bytes", fake_put_component_bytes)
     monkeypatch.setattr(storage_lakefs, "commit_changes", fake_commit_changes)
     monkeypatch.setattr(storage_lakefs, "reset_uncommitted_object", fake_reset_uncommitted_object)
@@ -124,7 +125,8 @@ async def test_client_server_integration_update_and_retrieve_component(monkeypat
             "primary",
             b"updated-pdf",
             "application/pdf",
-            "secret",
+            username="testuser",
+            password="testpass",
         )
         assert update.header.op_code == protocol.OP_UPDATE
         assert update.metadata_blocks[0]["status"] == "committed"
@@ -145,8 +147,8 @@ async def test_client_server_integration_update_and_retrieve_component(monkeypat
 
 
 @pytest.mark.asyncio
-async def test_client_server_integration_update_rejects_invalid_token(monkeypatch):
-    """Ensure invalid update tokens are rejected before any storage mutation.
+async def test_client_server_integration_update_rejects_invalid_credentials(monkeypatch):
+    """Ensure invalid wiki credentials are rejected before any storage mutation.
 
     Args:
         monkeypatch: Pytest monkeypatch fixture.
@@ -163,7 +165,10 @@ async def test_client_server_integration_update_rejects_invalid_token(monkeypatc
     async def fake_commit_changes(message, metadata=None, branch=None, allow_empty=True):
         raise AssertionError("commit_changes should not be called when auth fails")
 
-    monkeypatch.setattr(storage_lakefs, "get_update_token", lambda: "secret")
+    async def _mock_validate_fail(username, password):
+        raise protocol.ProtocolError("Invalid wiki credentials")
+
+    monkeypatch.setattr(handlers, "_validate_wiki_credentials", _mock_validate_fail)
     monkeypatch.setattr(storage_lakefs, "put_component_bytes", fake_put_component_bytes)
     monkeypatch.setattr(storage_lakefs, "commit_changes", fake_commit_changes)
 
@@ -187,11 +192,12 @@ async def test_client_server_integration_update_rejects_invalid_token(monkeypatc
             "primary",
             b"updated-pdf",
             "application/pdf",
-            "wrong",
+            username="testuser",
+            password="testpass",
         )
         assert update.header.op_code == protocol.OP_UPDATE
         assert update.header.msg_type == protocol.MSG_TYPE_ERROR
-        assert update.metadata_blocks[0]["message"] == "update authorization failed"
+        assert update.metadata_blocks[0]["message"] == "Invalid wiki credentials"
         assert stored == {}
 
     finally:

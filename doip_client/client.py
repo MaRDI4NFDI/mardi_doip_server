@@ -138,7 +138,8 @@ class StrictDOIPClient:
         component_id: str,
         content: bytes,
         media_type: str = "application/octet-stream",
-        update_token: str | None = None,
+        username: str | None = None,
+        password: str | None = None,
     ) -> DoipResponse:
         """Update one component on an existing object.
 
@@ -147,15 +148,19 @@ class StrictDOIPClient:
             component_id: Component identifier to create or replace.
             content: Component bytes to upload.
             media_type: MIME type recorded for the uploaded component.
-            update_token: Optional shared secret for authorizing the update.
+            username: Wiki bot username (``User@AppName`` format).
+            password: Wiki bot password.
 
         Returns:
             DoipResponse: Parsed DOIP response envelope.
         """
-        resolved_token = self._resolve_update_token(update_token)
-        metadata = {"operation": "update", "element": component_id}
-        if resolved_token:
-            metadata["token"] = resolved_token
+        resolved_username, resolved_password = self._resolve_credentials(username, password)
+        metadata = {
+            "operation": "update",
+            "element": component_id,
+            "username": resolved_username,
+            "password": resolved_password,
+        }
 
         request = DoipRequest(
             header=Header(DOIP_VERSION, MSG_TYPE_REQUEST, OP_UPDATE, 0, 0, 0),
@@ -172,26 +177,39 @@ class StrictDOIPClient:
         return self.send_message(request)
 
     @staticmethod
-    def _resolve_update_token(update_token: str | None) -> str | None:
-        """Resolve the update token from explicit input or the environment.
+    def _resolve_credentials(
+        username: str | None,
+        password: str | None,
+    ) -> tuple[str, str]:
+        """Resolve wiki credentials from explicit input or environment variables.
+
+        Falls back to ``DOIP_USERNAME`` / ``DOIP_PASSWORD`` when not supplied.
 
         Args:
-            update_token: Explicit token supplied by the caller.
+            username: Explicit username or ``None``.
+            password: Explicit password or ``None``.
 
         Returns:
-            str | None: Explicit token when provided, otherwise
-                ``DOIP_UPDATE_TOKEN`` from the environment.
+            tuple[str, str]: Resolved (username, password).
+
+        Raises:
+            ValueError: If credentials cannot be resolved from either source.
         """
-        if update_token:
-            return update_token
-        env_token = os.getenv("DOIP_UPDATE_TOKEN")
-        return env_token or None
+        resolved_user = username or os.getenv("DOIP_USERNAME", "")
+        resolved_pass = password or os.getenv("DOIP_PASSWORD", "")
+        if not resolved_user or not resolved_pass:
+            raise ValueError(
+                "Wiki credentials are required. Supply username/password or set "
+                "DOIP_USERNAME and DOIP_PASSWORD environment variables."
+            )
+        return resolved_user, resolved_pass
 
     def update_properties(
         self,
         object_id: str,
         properties: dict,
-        update_token: str | None = None,
+        username: str | None = None,
+        password: str | None = None,
     ) -> DoipResponse:
         """Update Wikibase item properties (label, description, claims) for an existing object.
 
@@ -200,15 +218,19 @@ class StrictDOIPClient:
             properties: Dict accepted by the importer's /update/item endpoint.
                 May contain ``label``, ``description``, ``claims`` (dict of
                 pid→value or pid→[values]), and ``do_override`` (bool).
-            update_token: Shared secret; falls back to DOIP_UPDATE_TOKEN env var.
+            username: Wiki bot username; falls back to DOIP_USERNAME env var.
+            password: Wiki bot password; falls back to DOIP_PASSWORD env var.
 
         Returns:
             DoipResponse: Parsed DOIP response envelope.
         """
-        resolved_token = self._resolve_update_token(update_token)
-        metadata: dict = {"operation": "update", "properties": properties}
-        if resolved_token:
-            metadata["token"] = resolved_token
+        resolved_username, resolved_password = self._resolve_credentials(username, password)
+        metadata: dict = {
+            "operation": "update",
+            "properties": properties,
+            "username": resolved_username,
+            "password": resolved_password,
+        }
 
         request = DoipRequest(
             header=Header(DOIP_VERSION, MSG_TYPE_REQUEST, OP_UPDATE, 0, 0, 0),
@@ -218,22 +240,30 @@ class StrictDOIPClient:
         )
         return self.send_message(request)
 
-    def create(self, json_string: str, token: str | None = None) -> DoipResponse:
+    def create(
+        self,
+        json_string: str,
+        username: str | None = None,
+        password: str | None = None,
+    ) -> DoipResponse:
         """Create a new Wikibase item via the DOIP server.
 
         Args:
             json_string: JSON string containing at minimum a ``label`` field,
                 optionally ``description`` and ``claims``.
-            token: Shared secret authorizing the create operation. Falls back
-                to the ``DOIP_CREATE_TOKEN`` environment variable when omitted.
+            username: Wiki bot username; falls back to DOIP_USERNAME env var.
+            password: Wiki bot password; falls back to DOIP_PASSWORD env var.
 
         Returns:
             DoipResponse: Parsed DOIP response envelope with QID in metadata.
         """
-        resolved_token = token or os.getenv("DOIP_CREATE_TOKEN")
-        metadata: dict = {"operation": "create", "json": json_string}
-        if resolved_token:
-            metadata["token"] = resolved_token
+        resolved_username, resolved_password = self._resolve_credentials(username, password)
+        metadata: dict = {
+            "operation": "create",
+            "json": json_string,
+            "username": resolved_username,
+            "password": resolved_password,
+        }
         request = DoipRequest(
             header=Header(DOIP_VERSION, MSG_TYPE_REQUEST, OP_CREATE, 0, 0, 0),
             object_id="",
