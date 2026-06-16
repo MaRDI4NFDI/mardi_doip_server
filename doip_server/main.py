@@ -224,6 +224,8 @@ async def dispatch(msg: protocol.DOIPMessage, registry: object_registry.ObjectRe
             return await handlers.handle_purge(msg, registry)
         if msg.operation == protocol.OP_CREATE or op_name == "create":
             return await handlers.handle_create(msg, registry)
+        if msg.operation == protocol.OP_SEARCH or op_name == "search":
+            return await handlers.handle_search(msg, registry)
     except protocol.ProtocolError:
         raise
     except Exception as exc:

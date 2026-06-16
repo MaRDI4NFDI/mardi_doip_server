@@ -153,6 +153,43 @@ async def on_startup():
         extra={"host": DEFAULT_DOIP_HOST, "port": DEFAULT_DOIP_PORT}
     )
 
+@app.get("/doip/search")
+async def search_objects(
+    q: str = Query(..., description="Search query"),
+    limit: int = Query(10, ge=1, le=50, description="Maximum results"),
+    namespaces: str = Query("120", description="Comma-separated namespace IDs, or 'all'"),
+):
+    """Search the MaRDI knowledge graph.
+
+    Args:
+        q: Search query string.
+        limit: Maximum number of results (1–50).
+        namespaces: Comma-separated namespace IDs (e.g. ``120``, ``120,4202``) or ``all``.
+
+    Returns:
+        dict: Metadata block with total_hits and results list.
+
+    Raises:
+        HTTPException: When the DOIP backend is unreachable or returns an error.
+    """
+    if namespaces.strip().lower() == "all":
+        ns_param: list[int] | str = "all"
+    else:
+        try:
+            ns_param = [int(n.strip()) for n in namespaces.split(",") if n.strip()]
+        except ValueError:
+            raise HTTPException(status_code=400, detail="namespaces must be comma-separated integers or 'all'")
+
+    log.info("HTTP search requested", extra={"query": q, "namespaces": namespaces})
+    client = _client()
+    try:
+        result = await asyncio.to_thread(client.search, q, limit, ns_param)
+    except Exception as exc:
+        log.exception("Search failed")
+        raise HTTPException(status_code=502, detail=f"Search error: {exc}")
+    return result.metadata_blocks[0] if result.metadata_blocks else {}
+
+
 @app.post("/doip/purge/{object_id}")
 async def purge_object(object_id: str):
     """Purge the server-side manifest cache for an object.
