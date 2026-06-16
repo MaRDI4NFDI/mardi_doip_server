@@ -8,7 +8,7 @@ import struct
 import ssl
 from pathlib import Path
 
-from doip_shared.constants import OP_CREATE, OP_HELLO, OP_INVOKE, OP_LIST_OPS, OP_PURGE, OP_RETRIEVE, OP_UPDATE
+from doip_shared.constants import OP_CREATE, OP_HELLO, OP_INVOKE, OP_LIST_OPS, OP_PURGE, OP_RETRIEVE, OP_SEARCH, OP_UPDATE
 
 from . import protocol, tls, utils
 from .logging_config import log
@@ -266,6 +266,37 @@ class StrictDOIPClient:
         }
         request = DoipRequest(
             header=Header(DOIP_VERSION, MSG_TYPE_REQUEST, OP_CREATE, 0, 0, 0),
+            object_id="",
+            metadata_blocks=[metadata],
+        )
+        return self.send_message(request)
+
+    def search(
+        self,
+        query: str,
+        limit: int = 10,
+        namespaces: list[int] | str = None,
+    ) -> DoipResponse:
+        """Search the MaRDI knowledge graph via the DOIP server.
+
+        Args:
+            query: Search string.
+            limit: Maximum number of results (1–50, default 10).
+            namespaces: List of MediaWiki namespace IDs to search (default [120]).
+                Pass ``"all"`` for the full portal default set.
+
+        Returns:
+            DoipResponse: Response with total_hits and results list in metadata.
+        """
+        metadata: dict = {
+            "operation": "search",
+            "query": query,
+            "limit": limit,
+        }
+        if namespaces is not None:
+            metadata["namespaces"] = namespaces
+        request = DoipRequest(
+            header=Header(DOIP_VERSION, MSG_TYPE_REQUEST, OP_SEARCH, 0, 0, 0),
             object_id="",
             metadata_blocks=[metadata],
         )

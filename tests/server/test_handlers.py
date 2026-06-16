@@ -909,3 +909,153 @@ def _load_config_or_skip() -> dict:
     if not isinstance(cfg, dict):
         pytest.skip("config.yaml does not contain a mapping")
     return cfg
+
+
+# ── handle_search tests ────────────────────────────────────────────────────────
+
+def _search_request(meta: dict) -> protocol.DOIPMessage:
+    return protocol.DOIPMessage(
+        version=protocol.DOIP_VERSION,
+        msg_type=protocol.MSG_TYPE_REQUEST,
+        operation=protocol.OP_SEARCH,
+        flags=0,
+        object_id="",
+        metadata_blocks=[meta],
+    )
+
+
+def _mediawiki_response(total_hits: int, results: list) -> dict:
+    return {"query": {"searchinfo": {"totalhits": total_hits}, "search": results}}
+
+
+def _mock_search_response(status_code: int, body: dict):
+    import httpx
+    req = httpx.Request("GET", "http://wiki/w/api.php")
+    return httpx.Response(status_code, json=body, request=req)
+
+
+@pytest.mark.asyncio
+async def test_handle_search_success(monkeypatch):
+    """Search returns parsed results with extracted QIDs."""
+    import httpx
+
+    registry = StubRegistry([])
+    monkeypatch.setenv("MEDIAWIKI_API_URL", "http://wiki/w/api.php")
+
+    async def fake_get(self, url, **kwargs):
+        return _mock_search_response(200, _mediawiki_response(1, [
+            {"ns": 120, "title": "Item:Q6242573", "snippet": "scientific article", "timestamp": "2026-01-01T00:00:00Z"},
+        ]))
+
+    monkeypatch.setattr(httpx.AsyncClient, "get", fake_get)
+
+    response = await handlers.handle_search(_search_request({"query": "10.1103/PHYSREVA.88.052328"}), registry)
+
+    assert response.operation == protocol.OP_SEARCH
+    meta = response.metadata_blocks[0]
+    assert meta["status"] == "ok"
+    assert meta["total_hits"] == 1
+    assert meta["results"][0]["qid"] == "Q6242573"
+    assert meta["results"][0]["namespace"] == "Item"
+
+
+@pytest.mark.asyncio
+async def test_handle_search_person_namespace(monkeypatch):
+    """QID is extracted from snippet text for Person namespace results."""
+    import httpx
+
+    registry = StubRegistry([])
+    monkeypatch.setenv("MEDIAWIKI_API_URL", "http://wiki/w/api.php")
+
+    async def fake_get(self, url, **kwargs):
+        return _mock_search_response(200, _mediawiki_response(1, [
+            {"ns": 4202, "title": "Person:1397363", "snippet": "zbMath MaRDI QIDQ1397363 Conrad J.", "timestamp": "2023-09-24T13:23:01Z"},
+        ]))
+
+    monkeypatch.setattr(httpx.AsyncClient, "get", fake_get)
+
+    response = await handlers.handle_search(
+        _search_request({"query": "Conrad", "namespaces": [4202]}), registry
+    )
+
+    meta = response.metadata_blocks[0]
+    assert meta["results"][0]["qid"] == "Q1397363"
+    assert meta["results"][0]["namespace"] == "Person"
+
+
+@pytest.mark.asyncio
+async def test_handle_search_multiple_namespaces(monkeypatch):
+    """Requesting multiple namespaces passes them pipe-separated to the API."""
+    import httpx
+
+    registry = StubRegistry([])
+    monkeypatch.setenv("MEDIAWIKI_API_URL", "http://wiki/w/api.php")
+    captured_params = {}
+
+    async def fake_get(self, url, params=None, **kwargs):
+        captured_params.update(params or {})
+        return _mock_search_response(200, _mediawiki_response(0, []))
+
+    monkeypatch.setattr(httpx.AsyncClient, "get", fake_get)
+
+    await handlers.handle_search(
+        _search_request({"query": "test", "namespaces": [120, 4202]}), registry
+    )
+
+    assert captured_params["srnamespace"] == "120|4202"
+
+
+@pytest.mark.asyncio
+async def test_handle_search_all_namespaces(monkeypatch):
+    """Passing 'all' expands to the full portal default namespace list."""
+    import httpx
+
+    registry = StubRegistry([])
+    monkeypatch.setenv("MEDIAWIKI_API_URL", "http://wiki/w/api.php")
+    captured_params = {}
+
+    async def fake_get(self, url, params=None, **kwargs):
+        captured_params.update(params or {})
+        return _mock_search_response(200, _mediawiki_response(0, []))
+
+    monkeypatch.setattr(httpx.AsyncClient, "get", fake_get)
+
+    await handlers.handle_search(_search_request({"query": "test", "namespaces": "all"}), registry)
+
+    ns_ids = [int(n) for n in captured_params["srnamespace"].split("|")]
+    assert 120 in ns_ids
+    assert 4202 in ns_ids
+    assert 4214 in ns_ids
+
+
+@pytest.mark.asyncio
+async def test_handle_search_missing_query(monkeypatch):
+    """Missing query raises ProtocolError."""
+    registry = StubRegistry([])
+    with pytest.raises(protocol.ProtocolError, match="query"):
+        await handlers.handle_search(_search_request({}), registry)
+
+
+@pytest.mark.asyncio
+async def test_handle_search_unknown_namespace(monkeypatch):
+    """Unknown namespace ID raises ProtocolError."""
+    registry = StubRegistry([])
+    with pytest.raises(protocol.ProtocolError, match="Unknown namespace"):
+        await handlers.handle_search(_search_request({"query": "test", "namespaces": [9999]}), registry)
+
+
+@pytest.mark.asyncio
+async def test_handle_search_api_unreachable(monkeypatch):
+    """MediaWiki API failure raises ProtocolError."""
+    import httpx
+
+    registry = StubRegistry([])
+    monkeypatch.setenv("MEDIAWIKI_API_URL", "http://wiki/w/api.php")
+
+    async def fake_get(self, url, **kwargs):
+        raise httpx.ConnectError("refused")
+
+    monkeypatch.setattr(httpx.AsyncClient, "get", fake_get)
+
+    with pytest.raises(protocol.ProtocolError, match="unreachable"):
+        await handlers.handle_search(_search_request({"query": "test"}), registry)
