@@ -744,6 +744,8 @@ async def handle_search(msg: DOIPMessage, registry: object_registry.ObjectRegist
         snippet_html = r.get("snippet", "")
         snippet = clean_tag.sub("", snippet_html).strip()
         qid = _extract_qid_from_result(ns, title, snippet)
+        if qid is None:
+            continue
         results.append({
             "qid": qid,
             "title": title,
