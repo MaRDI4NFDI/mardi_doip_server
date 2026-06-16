@@ -936,13 +936,15 @@ def _mock_search_response(status_code: int, body: dict):
 
 @pytest.mark.asyncio
 async def test_handle_search_success(monkeypatch):
-    """Search returns parsed results with extracted QIDs."""
+    """Search returns parsed results with extracted QIDs; srnamespace=120 when no type."""
     import httpx
 
     registry = StubRegistry([])
     monkeypatch.setenv("MEDIAWIKI_API_URL", "http://wiki/w/api.php")
+    captured_params = {}
 
-    async def fake_get(self, url, **kwargs):
+    async def fake_get(self, url, params=None, **kwargs):
+        captured_params.update(params or {})
         return _mock_search_response(200, _mediawiki_response(1, [
             {"ns": 120, "title": "Item:Q6242573", "snippet": "scientific article", "timestamp": "2026-01-01T00:00:00Z"},
         ]))
@@ -956,36 +958,42 @@ async def test_handle_search_success(monkeypatch):
     assert meta["status"] == "ok"
     assert meta["total_hits"] == 1
     assert meta["results"][0]["qid"] == "Q6242573"
-    assert meta["results"][0]["namespace"] == "Item"
+    assert "namespace" not in meta["results"][0]
+    assert captured_params["srnamespace"] == "120"
 
 
 @pytest.mark.asyncio
-async def test_handle_search_person_namespace(monkeypatch):
-    """QID is extracted from snippet text for Person namespace results."""
+async def test_handle_search_with_type(monkeypatch):
+    """Type filter prepends haswbfacet:P1460=Q… and omits srnamespace."""
     import httpx
 
     registry = StubRegistry([])
     monkeypatch.setenv("MEDIAWIKI_API_URL", "http://wiki/w/api.php")
+    captured_params = {}
 
-    async def fake_get(self, url, **kwargs):
+    async def fake_get(self, url, params=None, **kwargs):
+        captured_params.update(params or {})
         return _mock_search_response(200, _mediawiki_response(1, [
-            {"ns": 4202, "title": "Person:1397363", "snippet": "zbMath MaRDI QIDQ1397363 Conrad J.", "timestamp": "2023-09-24T13:23:01Z"},
+            {"ns": 120, "title": "Item:Q6534216", "snippet": "a workflow", "timestamp": "2026-01-01T00:00:00Z"},
         ]))
 
     monkeypatch.setattr(httpx.AsyncClient, "get", fake_get)
 
     response = await handlers.handle_search(
-        _search_request({"query": "Conrad", "namespaces": [4202]}), registry
+        _search_request({"query": "navier stokes", "type": "workflow"}), registry
     )
 
     meta = response.metadata_blocks[0]
-    assert meta["results"][0]["qid"] == "Q1397363"
-    assert meta["results"][0]["namespace"] == "Person"
+    assert meta["status"] == "ok"
+    assert meta["type"] == "workflow"
+    assert "haswbfacet:P1460=Q6534216" in captured_params["srsearch"]
+    assert "navier stokes" in captured_params["srsearch"]
+    assert "srnamespace" not in captured_params
 
 
 @pytest.mark.asyncio
-async def test_handle_search_multiple_namespaces(monkeypatch):
-    """Requesting multiple namespaces passes them pipe-separated to the API."""
+async def test_handle_search_type_only(monkeypatch):
+    """Type without query uses haswbfacet as the full search string."""
     import httpx
 
     registry = StubRegistry([])
@@ -998,16 +1006,15 @@ async def test_handle_search_multiple_namespaces(monkeypatch):
 
     monkeypatch.setattr(httpx.AsyncClient, "get", fake_get)
 
-    await handlers.handle_search(
-        _search_request({"query": "test", "namespaces": [120, 4202]}), registry
-    )
+    await handlers.handle_search(_search_request({"type": "dataset"}), registry)
 
-    assert captured_params["srnamespace"] == "120|4202"
+    assert captured_params["srsearch"] == "haswbfacet:P1460=Q5984635"
+    assert "srnamespace" not in captured_params
 
 
 @pytest.mark.asyncio
-async def test_handle_search_all_namespaces(monkeypatch):
-    """Passing 'all' expands to the full portal default namespace list."""
+async def test_handle_search_type_raw_qid(monkeypatch):
+    """Raw QID is accepted as type value."""
     import httpx
 
     registry = StubRegistry([])
@@ -1020,28 +1027,25 @@ async def test_handle_search_all_namespaces(monkeypatch):
 
     monkeypatch.setattr(httpx.AsyncClient, "get", fake_get)
 
-    await handlers.handle_search(_search_request({"query": "test", "namespaces": "all"}), registry)
+    await handlers.handle_search(_search_request({"type": "Q6534216"}), registry)
 
-    ns_ids = [int(n) for n in captured_params["srnamespace"].split("|")]
-    assert 120 in ns_ids
-    assert 4202 in ns_ids
-    assert 4214 in ns_ids
+    assert captured_params["srsearch"] == "haswbfacet:P1460=Q6534216"
 
 
 @pytest.mark.asyncio
-async def test_handle_search_missing_query(monkeypatch):
-    """Missing query raises ProtocolError."""
+async def test_handle_search_no_query_no_type(monkeypatch):
+    """Neither query nor type raises ProtocolError."""
     registry = StubRegistry([])
-    with pytest.raises(protocol.ProtocolError, match="query"):
+    with pytest.raises(protocol.ProtocolError, match="query.*type|type.*query"):
         await handlers.handle_search(_search_request({}), registry)
 
 
 @pytest.mark.asyncio
-async def test_handle_search_unknown_namespace(monkeypatch):
-    """Unknown namespace ID raises ProtocolError."""
+async def test_handle_search_unknown_type(monkeypatch):
+    """Unknown type name raises ProtocolError."""
     registry = StubRegistry([])
-    with pytest.raises(protocol.ProtocolError, match="Unknown namespace"):
-        await handlers.handle_search(_search_request({"query": "test", "namespaces": [9999]}), registry)
+    with pytest.raises(protocol.ProtocolError, match="Unknown type"):
+        await handlers.handle_search(_search_request({"type": "unicorn"}), registry)
 
 
 @pytest.mark.asyncio

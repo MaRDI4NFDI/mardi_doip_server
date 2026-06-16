@@ -10,6 +10,8 @@ import os
 import sys
 import textwrap
 
+from doip_shared.constants import MARDI_PROFILE_TYPES
+
 from argparse import (
     ArgumentParser,
     RawDescriptionHelpFormatter,
@@ -230,29 +232,27 @@ _ACTION_HELP: dict[str, dict] = {
         "details": (
             "Runs a fulltext search against the MaRDI portal via the MediaWiki search API. "
             "Returns a list of matching items with their QIDs, titles, and snippets. "
-            "Use --namespaces to target specific content types: 120 (Item, default), "
-            "4202 (Person), 4206 (Publication), 4210 (Dataset), 4214 (Workflow), "
-            "4216 (Algorithm), 4218 (Service), 4220 (Theorem), 4226 (Model), "
-            "4228 (Quantity), 122 (Property), 4200 (Formula), 0 (Pages). "
-            "Pass 'all' to search all namespaces. "
-            "Multiple namespaces can be given as a comma-separated list."
+            "Use --type to filter by MaRDI profile type (e.g. workflow, dataset, person). "
+            "At least one of --query or --type must be provided. "
+            "Without --type, search is restricted to Items. "
+            f"Known types: {', '.join(sorted(MARDI_PROFILE_TYPES))}."
         ),
         "options": [
-            ("--query QUERY", "Search string (required)"),
+            ("--query QUERY", "Fulltext search string"),
+            ("--type TYPE", f"Filter by MaRDI profile type name or raw QID (e.g. workflow, dataset)"),
             ("--limit N", "Maximum results to return (1–50, default 10)"),
-            ("--namespaces NS", "Namespace IDs: single int, comma-separated list, or 'all' (default: 120)"),
         ],
         "examples": [
             ("Search for a DOI",
              'mardi-doip-cli --action search --query "10.1103/PHYSREVA.88.052328"'),
             ("Find persons named Conrad",
-             'mardi-doip-cli --action search --query "Conrad" --namespaces 4202'),
-            ("Find workflows",
-             'mardi-doip-cli --action search --query "workflow" --namespaces 120 --limit 20'),
-            ("Search across all namespaces",
-             'mardi-doip-cli --action search --query "quantum entanglement" --namespaces all'),
-            ("Search persons and publications",
-             'mardi-doip-cli --action search --query "Anderson" --namespaces 4202,4206'),
+             'mardi-doip-cli --action search --query "Conrad" --type person'),
+            ("List all workflows",
+             'mardi-doip-cli --action search --type workflow --limit 20'),
+            ("Find datasets about quantum entanglement",
+             'mardi-doip-cli --action search --query "quantum entanglement" --type dataset'),
+            ("Filter by raw QID",
+             'mardi-doip-cli --action search --type Q6534216 --limit 10'),
         ],
     },
 }
@@ -422,13 +422,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--query", default=None, help="Search string (for search action)")
     parser.add_argument("--limit", type=int, default=10, help="Maximum results for search (1–50, default 10)")
     parser.add_argument(
-        "--namespaces",
-        default="120",
+        "--type",
+        default=None,
+        metavar="TYPE",
         help=(
-            "Namespace IDs for search: single int, comma-separated list, or 'all'. "
-            "120=Item, 4202=Person, 4206=Publication, 4210=Dataset, 4214=Workflow, "
-            "4216=Algorithm, 4218=Service, 4220=Theorem, 4226=Model, 4228=Quantity, "
-            "122=Property, 4200=Formula, 0=Pages. (default: 120)"
+            f"MaRDI profile type for search: name (e.g. workflow, dataset) or raw QID. "
+            f"Known names: {', '.join(sorted(MARDI_PROFILE_TYPES))}."
         ),
     )
     # --token kept as a hidden alias for backwards compatibility but --username/--password are canonical
@@ -561,19 +560,10 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         if args.action == "search":
-            if not args.query:
-                logging.getLogger().error("--query is required for search.")
+            if not args.query and not args.type:
+                logging.getLogger().error("--query or --type (or both) is required for search.")
                 return 1
-            ns_raw = args.namespaces.strip().lower()
-            if ns_raw == "all":
-                ns_param = "all"
-            else:
-                try:
-                    ns_param = [int(n.strip()) for n in args.namespaces.split(",") if n.strip()]
-                except ValueError:
-                    logging.getLogger().error("--namespaces must be comma-separated integers or 'all'.")
-                    return 1
-            r = client.search(args.query, limit=args.limit, namespaces=ns_param)
+            r = client.search(args.query, limit=args.limit, type=args.type)
             print(json.dumps(r.metadata_blocks, indent=2))
             return 0
 

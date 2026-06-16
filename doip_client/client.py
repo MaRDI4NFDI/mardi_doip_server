@@ -273,17 +273,18 @@ class StrictDOIPClient:
 
     def search(
         self,
-        query: str,
+        query: str | None = None,
         limit: int = 10,
-        namespaces: list[int] | str = None,
+        type: str | None = None,
     ) -> DoipResponse:
         """Search the MaRDI knowledge graph via the DOIP server.
 
         Args:
-            query: Search string.
+            query: Fulltext search string.
             limit: Maximum number of results (1–50, default 10).
-            namespaces: List of MediaWiki namespace IDs to search (default [120]).
-                Pass ``"all"`` for the full portal default set.
+            type: MaRDI profile type name (e.g. ``"workflow"``) or raw QID
+                (e.g. ``"Q6534216"``). Filters via ``haswbfacet:P1460=Q…``.
+                At least one of query or type must be provided.
 
         Returns:
             DoipResponse: Response with total_hits and results list in metadata.
@@ -293,8 +294,8 @@ class StrictDOIPClient:
             "query": query,
             "limit": limit,
         }
-        if namespaces is not None:
-            metadata["namespaces"] = namespaces
+        if type is not None:
+            metadata["type"] = type
         request = DoipRequest(
             header=Header(DOIP_VERSION, MSG_TYPE_REQUEST, OP_SEARCH, 0, 0, 0),
             object_id="",

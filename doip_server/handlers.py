@@ -17,7 +17,7 @@ from rocrate.model.file import File
 from . import object_registry, protocol, storage_lakefs, workflows
 from .logging_config import log
 from .protocol import ComponentBlock, DOIPMessage
-from doip_shared.constants import KNOWN_TYPE_IDS
+from doip_shared.constants import KNOWN_TYPE_IDS, MARDI_PROFILE_TYPES
 
 _VERSION_FILE = Path(__file__).resolve().parents[1] / "VERSION"
 SERVER_VERSION = _VERSION_FILE.read_text(encoding="utf-8").strip() if _VERSION_FILE.exists() else "unknown"
@@ -635,24 +635,6 @@ def _validate_create_body(body: dict) -> None:
             )
 
 
-_KNOWN_NAMESPACES: dict[int, str] = {
-    0: "Pages",
-    120: "Item",
-    122: "Property",
-    4200: "Formula",
-    4202: "Person",
-    4206: "Publication",
-    4210: "Dataset",
-    4214: "Workflow",
-    4216: "Algorithm",
-    4218: "Service",
-    4220: "Theorem",
-    4226: "Model",
-    4228: "Quantity",
-}
-
-_PORTAL_DEFAULT_NAMESPACES = [0, 120, 122, 4200, 4202, 4206, 4210, 4214, 4216, 4218, 4220, 4226, 4228]
-
 _MARDI_QID_RE = re.compile(r"MaRDI\s+QIDQ(\d+)")
 _TITLE_QNUM_RE = re.compile(r"\bQ(\d+)\b")
 
@@ -672,29 +654,46 @@ def _extract_qid_from_result(ns: int, title: str, snippet: str) -> str | None:
     return None
 
 
+def _resolve_profile_type(type_str: str) -> str:
+    """Resolve a profile type name or raw QID to a QID string."""
+    if type_str in MARDI_PROFILE_TYPES:
+        return MARDI_PROFILE_TYPES[type_str]
+    if re.match(r"^Q\d+$", type_str):
+        return type_str
+    raise protocol.ProtocolError(
+        f"Unknown type {type_str!r}. Known types: {sorted(MARDI_PROFILE_TYPES)}"
+    )
+
+
 async def handle_search(msg: DOIPMessage, registry: object_registry.ObjectRegistry) -> DOIPMessage:
     """Search the MaRDI knowledge graph via the MediaWiki fulltext search API.
 
     Args:
         msg: Incoming DOIP search request. Metadata block fields:
-            - ``query`` (str, required): Search string.
+            - ``query`` (str, optional): Fulltext search string.
+            - ``type`` (str, optional): MaRDI profile type name (e.g. ``"workflow"``)
+              or raw QID (e.g. ``"Q6534216"``). Filters via ``haswbfacet:P1460=Q…``.
+              At least one of ``query`` or ``type`` must be provided.
             - ``limit`` (int, optional): Max results, default 10, max 50.
-            - ``namespaces`` (list[int] | "all", optional): Namespaces to search,
-              default [120]. Pass ``"all"`` for the full portal default set.
         registry: Object registry resolver (unused, for signature parity).
 
     Returns:
-        DOIPMessage: Response with total_hits, namespace list, and results.
+        DOIPMessage: Response with total_hits and results.
 
     Raises:
-        protocol.ProtocolError: If query is missing, namespaces are invalid, or
-            the MediaWiki API is unreachable.
+        protocol.ProtocolError: If neither query nor type is given, type is unknown,
+            or the MediaWiki API is unreachable.
     """
     meta = msg.metadata_blocks[0] if msg.metadata_blocks else {}
 
     query = meta.get("query")
-    if not isinstance(query, str) or not query.strip():
-        raise protocol.ProtocolError("search requires a non-empty 'query' field")
+    has_query = isinstance(query, str) and query.strip()
+
+    type_str = meta.get("type")
+    has_type = isinstance(type_str, str) and type_str.strip()
+
+    if not has_query and not has_type:
+        raise protocol.ProtocolError("search requires at least one of 'query' or 'type'")
 
     raw_limit = meta.get("limit", 10)
     try:
@@ -702,46 +701,44 @@ async def handle_search(msg: DOIPMessage, registry: object_registry.ObjectRegist
     except (TypeError, ValueError):
         raise protocol.ProtocolError("'limit' must be an integer")
 
-    raw_ns = meta.get("namespaces", [120])
-    if raw_ns == "all":
-        namespaces = _PORTAL_DEFAULT_NAMESPACES
+    facet_prefix = ""
+    if has_type:
+        qid = _resolve_profile_type(type_str.strip())
+        facet_prefix = f"haswbfacet:P1460={qid}"
+
+    if has_query and facet_prefix:
+        sr_query = f"{facet_prefix} {query.strip()}"
+    elif facet_prefix:
+        sr_query = facet_prefix
     else:
-        if not isinstance(raw_ns, list):
-            raw_ns = [raw_ns]
-        try:
-            namespaces = [int(n) for n in raw_ns]
-        except (TypeError, ValueError):
-            raise protocol.ProtocolError("'namespaces' must be a list of integers or \"all\"")
-        unknown = [n for n in namespaces if n not in _KNOWN_NAMESPACES]
-        if unknown:
-            raise protocol.ProtocolError(
-                f"Unknown namespace(s): {unknown}. Known: {sorted(_KNOWN_NAMESPACES)}"
-            )
+        sr_query = query.strip()
 
     api_url = os.getenv("MEDIAWIKI_API_URL", "http://wikibase-jobrunner/w/api.php")
-    ns_param = "|".join(str(n) for n in namespaces)
+
+    params: dict = {
+        "action": "query",
+        "list": "search",
+        "srsearch": sr_query,
+        "srlimit": limit,
+        "format": "json",
+    }
+    if not has_type:
+        params["srnamespace"] = "120"
 
     async with httpx.AsyncClient(timeout=15) as client:
         try:
-            resp = await client.get(api_url, params={
-                "action": "query",
-                "list": "search",
-                "srsearch": query.strip(),
-                "srnamespace": ns_param,
-                "srlimit": limit,
-                "format": "json",
-            })
+            resp = await client.get(api_url, params=params)
             resp.raise_for_status()
             data = resp.json()
         except Exception as exc:
             raise protocol.ProtocolError(f"MediaWiki search API unreachable: {exc}")
 
     search_info = data.get("query", {}).get("searchinfo", {})
-    raw_results = data.get("query", {}).get("search", [])
+    total_hits = search_info.get("totalhits", 0)
 
     clean_tag = re.compile(r"<[^>]+>")
     results = []
-    for r in raw_results:
+    for r in data.get("query", {}).get("search", []):
         ns = r.get("ns", 0)
         title = r.get("title", "")
         snippet_html = r.get("snippet", "")
@@ -750,12 +747,11 @@ async def handle_search(msg: DOIPMessage, registry: object_registry.ObjectRegist
         results.append({
             "qid": qid,
             "title": title,
-            "namespace": _KNOWN_NAMESPACES.get(ns, str(ns)),
             "snippet": snippet,
             "timestamp": r.get("timestamp"),
         })
 
-    log.info("Search '%s' in ns=%s returned %d/%d results", query, namespaces, len(results), search_info.get("totalhits", 0))
+    log.info("Search query=%r type=%r returned %d/%d results", sr_query, type_str, len(results), total_hits)
 
     return DOIPMessage(
         version=protocol.DOIP_VERSION,
@@ -766,9 +762,9 @@ async def handle_search(msg: DOIPMessage, registry: object_registry.ObjectRegist
         metadata_blocks=[{
             "operation": "search",
             "status": "ok",
-            "query": query.strip(),
-            "namespaces": namespaces,
-            "total_hits": search_info.get("totalhits", 0),
+            "query": query.strip() if has_query else "",
+            "type": type_str.strip() if has_type else None,
+            "total_hits": total_hits,
             "limit": limit,
             "results": results,
         }],
