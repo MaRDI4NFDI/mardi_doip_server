@@ -649,6 +649,8 @@ class _FakeHttpClient:
 @pytest.mark.asyncio
 async def test_handle_create_success(monkeypatch):
     """Successful create returns 'created' status and the new QID."""
+    async def _mock_validate_ok(username, password): pass
+    monkeypatch.setattr(handlers, "_validate_wiki_credentials", _mock_validate_ok)
     monkeypatch.setattr(handlers.httpx, "AsyncClient", lambda **kw: _FakeHttpClient())
 
     registry = StubRegistry([])
@@ -707,6 +709,8 @@ async def test_handle_create_missing_password(monkeypatch):
 @pytest.mark.asyncio
 async def test_handle_create_missing_json_field(monkeypatch):
     """Create request without a 'json' field raises ProtocolError."""
+    async def _mock_validate_ok(username, password): pass
+    monkeypatch.setattr(handlers, "_validate_wiki_credentials", _mock_validate_ok)
     registry = StubRegistry([])
     request = protocol.DOIPMessage(
         version=protocol.DOIP_VERSION,
@@ -724,6 +728,8 @@ async def test_handle_create_missing_json_field(monkeypatch):
 @pytest.mark.asyncio
 async def test_handle_create_invalid_property_id(monkeypatch):
     """Create request with a malformed property ID raises ProtocolError."""
+    async def _mock_validate_ok(username, password): pass
+    monkeypatch.setattr(handlers, "_validate_wiki_credentials", _mock_validate_ok)
     registry = StubRegistry([])
     request = protocol.DOIPMessage(
         version=protocol.DOIP_VERSION,
@@ -746,6 +752,9 @@ async def test_handle_create_invalid_property_id(monkeypatch):
 @pytest.mark.asyncio
 async def test_handle_create_unreachable_importer(monkeypatch):
     """Create request raises ProtocolError when importer health check fails."""
+    async def _mock_validate_ok(username, password): pass
+    monkeypatch.setattr(handlers, "_validate_wiki_credentials", _mock_validate_ok)
+
     class _FailClient:
         async def __aenter__(self): return self
         async def __aexit__(self, *a): pass

@@ -530,8 +530,9 @@ async def handle_create(msg: DOIPMessage, registry: object_registry.ObjectRegist
     """
     meta = msg.metadata_blocks[0] if msg.metadata_blocks else {}
 
-    # 1. Extract wiki credentials
+    # 1. Extract and validate wiki credentials
     username, password = _extract_wiki_credentials(meta)
+    await _validate_wiki_credentials(username, password)
 
     # 2. Parse JSON payload
     json_str = meta.get("json")
