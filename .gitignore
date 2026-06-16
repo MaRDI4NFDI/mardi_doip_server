@@ -9,3 +9,5 @@ certs/server.key
 /dist/
 /.codex
 /.claude/settings.local.json
+__pycache__/
+*.pyc
