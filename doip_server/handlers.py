@@ -766,7 +766,7 @@ async def handle_search(msg: DOIPMessage, registry: object_registry.ObjectRegist
             "status": "ok",
             "query": query.strip() if has_query else "",
             "type": type_str.strip() if has_type else None,
-            "total_hits": total_hits,
+            "total_hits": len(results),
             "limit": limit,
             "results": results,
         }],
