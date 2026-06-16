@@ -769,6 +769,7 @@ async def handle_search(msg: DOIPMessage, registry: object_registry.ObjectRegist
             "query": query.strip(),
             "namespaces": namespaces,
             "total_hits": search_info.get("totalhits", 0),
+            "limit": limit,
             "results": results,
         }],
     )

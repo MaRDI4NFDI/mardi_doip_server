@@ -574,15 +574,7 @@ def main(argv: list[str] | None = None) -> int:
                     logging.getLogger().error("--namespaces must be comma-separated integers or 'all'.")
                     return 1
             r = client.search(args.query, limit=args.limit, namespaces=ns_param)
-            if r.metadata_blocks:
-                meta = r.metadata_blocks[0]
-                print(f"total_hits: {meta.get('total_hits', 0)}")
-                for item in meta.get("results", []):
-                    qid = item.get("qid") or "-"
-                    ns_name = item.get("namespace", "")
-                    title = item.get("title", "")
-                    snippet = item.get("snippet", "")
-                    print(f"  [{qid:12}]  {ns_name:12}  {title:40}  {snippet[:60]}")
+            print(json.dumps(r.metadata_blocks, indent=2))
             return 0
 
         if args.action == "demo":
