@@ -168,11 +168,11 @@ _ACTION_HELP: dict[str, dict] = {
         ],
     },
     "purge": {
-        "description": "Permanently delete an object from the server.",
+        "description": "Invalidate the server-side cached manifest for an object.",
         "details": (
-            "Sends a purge request that removes the object and all its components from the "
-            "server. This operation is irreversible. The server may require appropriate "
-            "permissions for the request to succeed."
+            "Evicts the object's manifest from the server's in-memory cache, forcing a fresh "
+            "fetch from the FDO façade on the next access. Does not delete the object or any "
+            "of its components."
         ),
         "options": [
             ("--object-id ID", "Object identifier (default: Q123)"),
