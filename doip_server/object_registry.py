@@ -45,13 +45,20 @@ class ObjectRegistry:
     async def purge(self, pid: str) -> None:
         """Remove a PID from the manifest cache, forcing a fresh fetch on next access.
 
+        If the PID starts with ``types/``, the corresponding type cache entry is
+        evicted instead.
+
         Args:
-            pid: PID/QID to evict from the cache.
+            pid: PID/QID or type path (e.g. ``types/Workflow``) to evict from cache.
         """
-        pid = pid.upper()
         async with self._lock:
-            self._manifest_cache.pop(pid, None)
-        log.info(f"Cache purged for {pid}.")
+            if pid.lower().startswith("types/"):
+                type_id = pid.split("/", 1)[1]
+                self._type_cache.pop(type_id, None)
+                log.info(f"Type cache purged for {type_id}.")
+            else:
+                self._manifest_cache.pop(pid.upper(), None)
+                log.info(f"Cache purged for {pid.upper()}.")
 
     async def get_component(self, object_id: str, component_id: str) -> tuple[bytes, str]:
         """Resolve a component via manifest and load its bytes from storage.
