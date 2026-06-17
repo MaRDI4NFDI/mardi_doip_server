@@ -750,6 +750,57 @@ async def test_handle_create_invalid_property_id(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_handle_create_list_claim_values_accepted(monkeypatch):
+    """Create request with a list of QIDs for a property is accepted."""
+    async def _mock_validate_ok(username, password): pass
+    monkeypatch.setattr(handlers, "_validate_wiki_credentials", _mock_validate_ok)
+    monkeypatch.setattr(handlers.httpx, "AsyncClient", lambda **kw: _FakeHttpClient())
+
+    registry = StubRegistry([])
+    request = protocol.DOIPMessage(
+        version=protocol.DOIP_VERSION,
+        msg_type=protocol.MSG_TYPE_REQUEST,
+        operation=protocol.OP_CREATE,
+        flags=0,
+        object_id="",
+        metadata_blocks=[{
+            "operation": "create",
+            "username": "testuser",
+            "password": "testpass",
+            "json": '{"label": "Test", "claims": {"P31": ["Q68657", "Q6830884"]}}',
+        }],
+    )
+
+    response = await handlers.handle_create(request, registry)
+    assert response.metadata_blocks[0]["status"] == "created"
+
+
+@pytest.mark.asyncio
+async def test_handle_create_list_claim_with_invalid_element_rejected(monkeypatch):
+    """Create request with a list containing a non-scalar value raises ProtocolError."""
+    async def _mock_validate_ok(username, password): pass
+    monkeypatch.setattr(handlers, "_validate_wiki_credentials", _mock_validate_ok)
+
+    registry = StubRegistry([])
+    request = protocol.DOIPMessage(
+        version=protocol.DOIP_VERSION,
+        msg_type=protocol.MSG_TYPE_REQUEST,
+        operation=protocol.OP_CREATE,
+        flags=0,
+        object_id="",
+        metadata_blocks=[{
+            "operation": "create",
+            "username": "testuser",
+            "password": "testpass",
+            "json": '{"label": "Test", "claims": {"P31": ["Q68657", {"nested": "bad"}]}}',
+        }],
+    )
+
+    with pytest.raises(protocol.ProtocolError, match="invalid value in list for"):
+        await handlers.handle_create(request, registry)
+
+
+@pytest.mark.asyncio
 async def test_handle_create_unreachable_importer(monkeypatch):
     """Create request raises ProtocolError when importer health check fails."""
     async def _mock_validate_ok(username, password): pass

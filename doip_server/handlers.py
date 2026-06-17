@@ -629,7 +629,13 @@ def _validate_create_body(body: dict) -> None:
     for key, value in claims.items():
         if not _PROP_RE.match(key):
             raise protocol.ProtocolError(f"invalid property ID '{key}': must match P<number>")
-        if not isinstance(value, (str, int, float)):
+        if isinstance(value, list):
+            for item in value:
+                if not isinstance(item, (str, int, float)):
+                    raise protocol.ProtocolError(
+                        f"invalid value in list for '{key}': must be a string or number, got {type(item).__name__}"
+                    )
+        elif not isinstance(value, (str, int, float)):
             raise protocol.ProtocolError(
                 f"invalid value for '{key}': must be a string or number, got {type(value).__name__}"
             )
