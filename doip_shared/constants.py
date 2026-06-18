@@ -59,4 +59,5 @@ KNOWN_TYPE_IDS = [
     "Person",
     "SoftwareApplication",
     "SoftwareSourceCode",
+    "Formula",
 ]
