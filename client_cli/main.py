@@ -7,6 +7,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import pathlib
 import sys
 import textwrap
 
@@ -22,8 +23,11 @@ from doip_client import StrictDOIPClient
 
 _LOG_FORMAT = "%(asctime)s %(levelname)s %(message)s"
 
+_VERSION_FILE = pathlib.Path(__file__).parent.parent / "VERSION"
+_VERSION = _VERSION_FILE.read_text().strip() if _VERSION_FILE.exists() else "unknown"
+
 _DESCRIPTION = (
-    "This is the MaRDI DOIP client.\n\n"
+    f"This is the MaRDI DOIP client (version {_VERSION}).\n\n"
     "This client enables direct interaction with the MaRDI DOIP server for retrieving object "
     "metadata or content, and executing predefined server workflows.\n"
     "To see a demo with standard values, execute: mardi-doip-cli --action demo\n"
@@ -584,7 +588,7 @@ def main(argv: list[str] | None = None) -> int:
         print(parser.format_usage(), end="")
         print(f"\n{_DESCRIPTION}\n")
         print("options:")
-        print("  -h, --help            show this help message and exit")
+        print("  -h, --help            show more help")
         return 1
 
     except Exception as exc:
