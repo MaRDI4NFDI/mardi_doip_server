@@ -23,8 +23,13 @@ from doip_client import StrictDOIPClient
 
 _LOG_FORMAT = "%(asctime)s %(levelname)s %(message)s"
 
-_VERSION_FILE = pathlib.Path(__file__).parent.parent / "VERSION"
-_VERSION = _VERSION_FILE.read_text().strip() if _VERSION_FILE.exists() else "unknown"
+def _read_version() -> str:
+    # PyInstaller extracts bundled data to sys._MEIPASS; fall back to repo root in dev
+    base = pathlib.Path(getattr(sys, "_MEIPASS", None) or pathlib.Path(__file__).parent.parent)
+    vf = base / "VERSION"
+    return vf.read_text().strip() if vf.exists() else "unknown"
+
+_VERSION = _read_version()
 
 _DESCRIPTION = (
     f"This is the MaRDI DOIP client (version {_VERSION}).\n\n"

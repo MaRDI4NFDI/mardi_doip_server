@@ -103,6 +103,7 @@ jobs:
             --onefile client_cli\main.py `
             --name mardi-doip-cli `
             --console `
+            --add-data "VERSION;." `
             --hidden-import=anyio `
             --hidden-import=sniffio `
             --hidden-import=h11 `
@@ -126,6 +127,7 @@ jobs:
                 --onefile client_cli/main.py \
                 --name mardi-doip-cli \
                 --console \
+                --add-data "VERSION:." \
                 --hidden-import=anyio \
                 --hidden-import=sniffio \
                 --hidden-import=h11 \
@@ -143,6 +145,7 @@ jobs:
             --onefile client_cli/main.py \
             --name mardi-doip-cli \
             --console \
+            --add-data "VERSION:." \
             --hidden-import=anyio \
             --hidden-import=sniffio \
             --hidden-import=h11 \
