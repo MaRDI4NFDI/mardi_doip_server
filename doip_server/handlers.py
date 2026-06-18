@@ -586,6 +586,46 @@ async def handle_create(msg: DOIPMessage, registry: object_registry.ObjectRegist
 _PROP_RE = __import__("re").compile(r"^P\d+$")
 
 
+def _validate_claim_value(key: str, v, in_list: bool = False) -> None:
+    """Validate a single claim value — bare scalar or {value, qualifiers} object.
+
+    Args:
+        key: Property ID (for error messages).
+        v: The value to validate.
+        in_list: Whether this value appears inside a list (affects error message).
+
+    Raises:
+        protocol.ProtocolError: If the value fails structural validation.
+    """
+    context = f"in list for '{key}'" if in_list else f"for '{key}'"
+    if isinstance(v, (str, int, float)):
+        return
+    if isinstance(v, dict):
+        if not isinstance(v.get("value"), (str, int, float)):
+            raise protocol.ProtocolError(
+                f"invalid value object {context}: 'value' field must be a string or number"
+            )
+        qualifiers = v.get("qualifiers", {})
+        if not isinstance(qualifiers, dict):
+            raise protocol.ProtocolError(
+                f"invalid qualifiers {context}: must be a JSON object"
+            )
+        for q_pid, q_val in qualifiers.items():
+            if not _PROP_RE.match(q_pid):
+                raise protocol.ProtocolError(
+                    f"invalid qualifier property ID '{q_pid}': must match P<number>"
+                )
+            if not isinstance(q_val, (str, int, float)):
+                raise protocol.ProtocolError(
+                    f"invalid qualifier value for '{q_pid}': must be a string or number"
+                )
+        return
+    raise protocol.ProtocolError(
+        f"invalid value {context}: must be a string, number, or {{value, qualifiers}} object,"
+        f" got {type(v).__name__}"
+    )
+
+
 def _validate_create_body(body: dict) -> None:
     """Validate the structure of a create request body.
 
@@ -631,14 +671,9 @@ def _validate_create_body(body: dict) -> None:
             raise protocol.ProtocolError(f"invalid property ID '{key}': must match P<number>")
         if isinstance(value, list):
             for item in value:
-                if not isinstance(item, (str, int, float)):
-                    raise protocol.ProtocolError(
-                        f"invalid value in list for '{key}': must be a string or number, got {type(item).__name__}"
-                    )
-        elif not isinstance(value, (str, int, float)):
-            raise protocol.ProtocolError(
-                f"invalid value for '{key}': must be a string or number, got {type(value).__name__}"
-            )
+                _validate_claim_value(key, item, in_list=True)
+        else:
+            _validate_claim_value(key, value)
 
 
 _MARDI_QID_RE = re.compile(r"MaRDI\s+QIDQ(\d+)")

@@ -796,7 +796,83 @@ async def test_handle_create_list_claim_with_invalid_element_rejected(monkeypatc
         }],
     )
 
-    with pytest.raises(protocol.ProtocolError, match="invalid value in list for"):
+    with pytest.raises(protocol.ProtocolError, match="in list for"):
+        await handlers.handle_create(request, registry)
+
+
+@pytest.mark.asyncio
+async def test_handle_create_qualifier_object_accepted(monkeypatch):
+    """Claim value as {value, qualifiers} object is accepted and forwarded to the importer."""
+    async def _mock_validate_ok(username, password): pass
+    monkeypatch.setattr(handlers, "_validate_wiki_credentials", _mock_validate_ok)
+    monkeypatch.setattr(handlers.httpx, "AsyncClient", lambda **kw: _FakeHttpClient())
+
+    registry = StubRegistry([])
+    request = protocol.DOIPMessage(
+        version=protocol.DOIP_VERSION,
+        msg_type=protocol.MSG_TYPE_REQUEST,
+        operation=protocol.OP_CREATE,
+        flags=0,
+        object_id="",
+        metadata_blocks=[{
+            "operation": "create",
+            "username": "testuser",
+            "password": "testpass",
+            "json": '{"label": "Test formula", "claims": {"P983": {"value": "y_n", "qualifiers": {"P984": "Q12345"}}}}',
+        }],
+    )
+
+    response = await handlers.handle_create(request, registry)
+    assert response.metadata_blocks[0]["status"] == "created"
+
+
+@pytest.mark.asyncio
+async def test_handle_create_qualifier_object_missing_value_rejected(monkeypatch):
+    """Qualifier object without a 'value' field raises ProtocolError."""
+    async def _mock_validate_ok(username, password): pass
+    monkeypatch.setattr(handlers, "_validate_wiki_credentials", _mock_validate_ok)
+
+    registry = StubRegistry([])
+    request = protocol.DOIPMessage(
+        version=protocol.DOIP_VERSION,
+        msg_type=protocol.MSG_TYPE_REQUEST,
+        operation=protocol.OP_CREATE,
+        flags=0,
+        object_id="",
+        metadata_blocks=[{
+            "operation": "create",
+            "username": "testuser",
+            "password": "testpass",
+            "json": '{"label": "Test", "claims": {"P983": {"qualifiers": {"P984": "Q123"}}}}',
+        }],
+    )
+
+    with pytest.raises(protocol.ProtocolError, match="'value' field must be a string or number"):
+        await handlers.handle_create(request, registry)
+
+
+@pytest.mark.asyncio
+async def test_handle_create_qualifier_invalid_pid_rejected(monkeypatch):
+    """Qualifier with a malformed property ID raises ProtocolError."""
+    async def _mock_validate_ok(username, password): pass
+    monkeypatch.setattr(handlers, "_validate_wiki_credentials", _mock_validate_ok)
+
+    registry = StubRegistry([])
+    request = protocol.DOIPMessage(
+        version=protocol.DOIP_VERSION,
+        msg_type=protocol.MSG_TYPE_REQUEST,
+        operation=protocol.OP_CREATE,
+        flags=0,
+        object_id="",
+        metadata_blocks=[{
+            "operation": "create",
+            "username": "testuser",
+            "password": "testpass",
+            "json": '{"label": "Test", "claims": {"P983": {"value": "y_n", "qualifiers": {"BADPID": "Q123"}}}}',
+        }],
+    )
+
+    with pytest.raises(protocol.ProtocolError, match="invalid qualifier property ID"):
         await handlers.handle_create(request, registry)
 
 
