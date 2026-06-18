@@ -207,7 +207,7 @@ _ACTION_HELP: dict[str, dict] = {
             "environment variable. On success, the new item's QID is returned."
         ),
         "options": [
-            ("--json JSON", "Item description as a JSON string (required); raw or typed format"),
+            ("--json JSON|@FILE", "Item description as a JSON string or @/path/to/file.json (required)"),
             ("--username USER", "Wiki bot username (User@AppName); falls back to DOIP_USERNAME"),
             ("--password PASS", "Wiki bot password; falls back to DOIP_PASSWORD"),
         ],
@@ -425,9 +425,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--json",
         default=None,
-        metavar="JSON",
+        metavar="JSON|@FILE",
         help=(
-            "JSON string describing the item to create (for create). "
+            "JSON string describing the item to create (for create), or @/path/to/file.json to read from a file. "
             "Raw format: '{\"label\": \"My item\", \"claims\": {\"<MaRDI-PID>\": \"<MaRDI-QID>\"}}'. "
             "Typed format: '{\"type\": \"WORKFLOW\", \"fields\": {\"name\": \"...\", \"problem_statement\": \"...\"}}'. "
             "Known types: WORKFLOW."
@@ -516,8 +516,15 @@ def main(argv: list[str] | None = None) -> int:
                         "--properties and --input/--component are mutually exclusive."
                     )
                     return 1
+                props_str = args.properties
+                if props_str.startswith("@"):
+                    try:
+                        props_str = pathlib.Path(props_str[1:]).read_text(encoding="utf-8")
+                    except OSError as exc:
+                        logging.getLogger().error("Cannot read properties file: %s", exc)
+                        return 1
                 try:
-                    props = json.loads(args.properties)
+                    props = json.loads(props_str)
                 except json.JSONDecodeError as exc:
                     logging.getLogger().error("Invalid JSON in --properties: %s", exc)
                     return 1
@@ -559,9 +566,16 @@ def main(argv: list[str] | None = None) -> int:
             if not args.json:
                 logging.getLogger().error(
                     "--json is required for create. "
-                    "Example: --json '{\"label\": \"My item\"}'"
+                    "Example: --json '{\"label\": \"My item\"}' or --json @/path/to/item.json"
                 )
                 return 1
+            json_str = args.json
+            if json_str.startswith("@"):
+                try:
+                    json_str = pathlib.Path(json_str[1:]).read_text(encoding="utf-8")
+                except OSError as exc:
+                    logging.getLogger().error("Cannot read JSON file: %s", exc)
+                    return 1
             username, password = _resolve_cli_credentials(args.username, args.password)
             if not username or not password:
                 logging.getLogger().error(
@@ -569,7 +583,7 @@ def main(argv: list[str] | None = None) -> int:
                     "Create a bot password at Special:BotPasswords on the wiki."
                 )
                 return 1
-            r = client.create(args.json, username=username, password=password)
+            r = client.create(json_str, username=username, password=password)
             print(json.dumps(r.metadata_blocks, indent=2))
             return 0
 
