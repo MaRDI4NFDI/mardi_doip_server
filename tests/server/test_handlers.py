@@ -1114,3 +1114,63 @@ async def test_handle_search_api_unreachable(monkeypatch):
 
     with pytest.raises(protocol.ProtocolError, match="unreachable"):
         await handlers.handle_search(_search_request({"query": "test"}), registry)
+
+
+@pytest.mark.asyncio
+async def test_handle_search_software_type_queries_both_facets(monkeypatch):
+    """'software' type issues two MW queries (P1460=Q5976450 and P31=Q57080) and merges results."""
+    import httpx
+
+    registry = StubRegistry([])
+    monkeypatch.setenv("MEDIAWIKI_API_URL", "http://wiki/w/api.php")
+    captured_queries: list[str] = []
+
+    async def fake_get(self, url, params=None, **kwargs):
+        sr = params.get("srsearch", "")
+        captured_queries.append(sr)
+        if "P1460" in sr:
+            body = _mediawiki_response(1, [
+                {"ns": 120, "title": "Item:Q27041", "snippet": "Lean theorem prover", "timestamp": "2026-01-01T00:00:00Z"},
+            ])
+        else:
+            body = _mediawiki_response(1, [
+                {"ns": 120, "title": "Item:Q63925", "snippet": "CRAN R package", "timestamp": "2026-01-01T00:00:00Z"},
+            ])
+        return _mock_search_response(200, body)
+
+    monkeypatch.setattr(httpx.AsyncClient, "get", fake_get)
+
+    response = await handlers.handle_search(_search_request({"type": "software"}), registry)
+
+    assert any("haswbfacet:P1460=Q5976450" in q for q in captured_queries)
+    assert any("haswbfacet:P31=Q57080" in q for q in captured_queries)
+    assert any("haswbfacet:P31=Q56605" in q for q in captured_queries)
+    assert all("srnamespace" not in q for q in captured_queries)
+
+    meta = response.metadata_blocks[0]
+    assert meta["status"] == "ok"
+    returned_qids = {r["qid"] for r in meta["results"]}
+    assert returned_qids == {"Q27041", "Q63925"}
+
+
+@pytest.mark.asyncio
+async def test_handle_search_software_type_deduplicates(monkeypatch):
+    """Items appearing in both facet queries are only returned once."""
+    import httpx
+
+    registry = StubRegistry([])
+    monkeypatch.setenv("MEDIAWIKI_API_URL", "http://wiki/w/api.php")
+
+    async def fake_get(self, url, params=None, **kwargs):
+        body = _mediawiki_response(1, [
+            {"ns": 120, "title": "Item:Q99999", "snippet": "same item", "timestamp": "2026-01-01T00:00:00Z"},
+        ])
+        return _mock_search_response(200, body)
+
+    monkeypatch.setattr(httpx.AsyncClient, "get", fake_get)
+
+    response = await handlers.handle_search(_search_request({"type": "software"}), registry)
+
+    meta = response.metadata_blocks[0]
+    assert meta["total_hits"] == 1
+    assert len(meta["results"]) == 1

@@ -17,7 +17,7 @@ from rocrate.model.file import File
 from . import object_registry, protocol, storage_lakefs, workflows
 from .logging_config import log
 from .protocol import ComponentBlock, DOIPMessage
-from doip_shared.constants import KNOWN_TYPE_IDS, MARDI_PROFILE_TYPES
+from doip_shared.constants import KNOWN_TYPE_IDS, MARDI_PROFILE_TYPES, MARDI_MULTI_TYPE_FACETS
 
 _VERSION_FILE = Path(__file__).resolve().parents[1] / "VERSION"
 SERVER_VERSION = _VERSION_FILE.read_text(encoding="utf-8").strip() if _VERSION_FILE.exists() else "unknown"
@@ -707,59 +707,70 @@ async def handle_search(msg: DOIPMessage, registry: object_registry.ObjectRegist
     except (TypeError, ValueError):
         raise protocol.ProtocolError("'limit' must be an integer")
 
-    facet_prefix = ""
+    # Build (property, qid) facet pairs for the type.
+    # Multi-facet types (e.g. "software") issue one MW query per facet and merge results.
+    type_facets: list[tuple[str, str]] = []
     if has_type:
-        qid = _resolve_profile_type(type_str.strip())
-        facet_prefix = f"haswbfacet:P1460={qid}"
+        type_key = type_str.strip()
+        if type_key in MARDI_MULTI_TYPE_FACETS:
+            type_facets = MARDI_MULTI_TYPE_FACETS[type_key]
+        else:
+            qid = _resolve_profile_type(type_key)
+            type_facets = [("P1460", qid)]
 
-    if has_query and facet_prefix:
-        sr_query = f"{facet_prefix} {query.strip()}"
-    elif facet_prefix:
-        sr_query = facet_prefix
-    else:
-        sr_query = query.strip()
+    facet_prefixes = [f"haswbfacet:{prop}={qid}" for prop, qid in type_facets] or [""]
 
     api_url = os.getenv("MEDIAWIKI_API_URL", "http://wikibase-jobrunner/w/api.php")
 
-    params: dict = {
-        "action": "query",
-        "list": "search",
-        "srsearch": sr_query,
-        "srlimit": limit,
-        "format": "json",
-    }
-    if not has_type:
-        params["srnamespace"] = "120"
+    clean_tag = re.compile(r"<[^>]+>")
+    seen: dict[str, dict] = {}  # qid → result fields, preserves insertion order for dedup
+    total_hits = 0
 
     async with httpx.AsyncClient(timeout=15) as client:
-        try:
-            resp = await client.get(api_url, params=params)
-            resp.raise_for_status()
-            data = resp.json()
-        except Exception as exc:
-            raise protocol.ProtocolError(f"MediaWiki search API unreachable: {exc}")
+        for facet_prefix in facet_prefixes:
+            if has_query and facet_prefix:
+                sr_query = f"{facet_prefix} {query.strip()}"
+            elif facet_prefix:
+                sr_query = facet_prefix
+            else:
+                sr_query = query.strip()
 
-    search_info = data.get("query", {}).get("searchinfo", {})
-    total_hits = search_info.get("totalhits", 0)
+            params: dict = {
+                "action": "query",
+                "list": "search",
+                "srsearch": sr_query,
+                "srlimit": limit,
+                "format": "json",
+            }
+            if not type_facets:
+                params["srnamespace"] = "120"
 
-    clean_tag = re.compile(r"<[^>]+>")
-    results = []
-    for r in data.get("query", {}).get("search", []):
-        ns = r.get("ns", 0)
-        title = r.get("title", "")
-        snippet_html = r.get("snippet", "")
-        snippet = clean_tag.sub("", snippet_html).strip()
-        qid = _extract_qid_from_result(ns, title, snippet)
-        if qid is None:
-            continue
-        results.append({
-            "qid": qid,
-            "title": title,
-            "snippet": snippet,
-            "timestamp": r.get("timestamp"),
-        })
+            try:
+                resp = await client.get(api_url, params=params)
+                resp.raise_for_status()
+                data = resp.json()
+            except Exception as exc:
+                raise protocol.ProtocolError(f"MediaWiki search API unreachable: {exc}")
 
-    log.info("Search query=%r type=%r returned %d/%d results", sr_query, type_str, len(results), total_hits)
+            total_hits += data.get("query", {}).get("searchinfo", {}).get("totalhits", 0)
+
+            for r in data.get("query", {}).get("search", []):
+                ns = r.get("ns", 0)
+                title = r.get("title", "")
+                snippet_html = r.get("snippet", "")
+                snippet = clean_tag.sub("", snippet_html).strip()
+                found_qid = _extract_qid_from_result(ns, title, snippet)
+                if found_qid is None or found_qid in seen:
+                    continue
+                seen[found_qid] = {
+                    "title": title,
+                    "snippet": snippet,
+                    "timestamp": r.get("timestamp"),
+                }
+
+    results = [{"qid": qid, **fields} for qid, fields in list(seen.items())[:limit]]
+
+    log.info("Search query=%r type=%r returned %d/%d results", query, type_str, len(results), total_hits)
 
     return DOIPMessage(
         version=protocol.DOIP_VERSION,

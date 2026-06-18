@@ -43,6 +43,13 @@ MARDI_PROFILE_TYPES: dict[str, str] = {
     "jupyter_notebook":    "Q6767917",
 }
 
+# Types that span multiple (property, QID) facets.
+# "software" covers SoftwareApplication (P1460=Q5976450) and SoftwareSourceCode (P31=Q57080).
+# handle_search issues one MW query per facet and merges the results.
+MARDI_MULTI_TYPE_FACETS: dict[str, list[tuple[str, str]]] = {
+    "software": [("P1460", "Q5976450"), ("P31", "Q57080"), ("P31", "Q56605")],
+}
+
 # Short type IDs of MaRDI-owned type FDOs served at {FDO_API}/types/{type_id}.
 # These are advertised in HELLO responses so clients can discover the type registry.
 KNOWN_TYPE_IDS = [

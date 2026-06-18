@@ -20,11 +20,7 @@ from argparse import (
 
 from doip_client import StrictDOIPClient
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s %(levelname)s %(message)s",
-    force=True
-)
+_LOG_FORMAT = "%(asctime)s %(levelname)s %(message)s"
 
 _DESCRIPTION = (
     "This is the MaRDI DOIP client.\n\n"
@@ -298,6 +294,7 @@ def _print_global_help() -> None:
         ("--port PORT", "Server port (default: 3567)"),
         ("--no-tls", "Disable TLS wrapping"),
         ("--secure", "Enable TLS verification"),
+        ("--no-banner", "Suppress banner and all log output; print only raw JSON"),
         ("--action ACTION", "Action to execute: " + ", ".join(_ACTIONS)),
     ]
     print("options:")
@@ -363,6 +360,13 @@ def _resolve_cli_credentials(
 def main(argv: list[str] | None = None) -> int:
     args_list = list(argv) if argv is not None else sys.argv[1:]
 
+    no_banner = "--no-banner" in args_list
+    if no_banner:
+        logging.disable(logging.CRITICAL)
+    else:
+        logging.basicConfig(level=logging.DEBUG, format=_LOG_FORMAT, force=True)
+        print_mardi_logo()
+
     # Handle help before argparse so we can show global vs action-specific views.
     for flag in ("-h", "--help"):
         if flag in args_list:
@@ -388,6 +392,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--port", type=int, default=3567, help="Server port")
     parser.add_argument("--no-tls", action="store_true", help="Disable TLS wrapping")
     parser.add_argument("--secure", action="store_true", help="Enable TLS verification")
+    parser.add_argument("--no-banner", action="store_true", help="Suppress banner and all log output; print only raw JSON")
     parser.add_argument("--object-id", default="Q123", help="Object identifier")
     parser.add_argument("--component", default=None, help="Component ID for selective retrieve")
     parser.add_argument("--action", choices=list(_ACTIONS), help="Action to execute")
@@ -590,5 +595,4 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    print_mardi_logo()
     sys.exit(main())
