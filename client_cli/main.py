@@ -299,7 +299,7 @@ def _print_global_help() -> None:
     print()
     global_opts = [
         ("-h, --help", "show this help; '--help action [name]' for action-specific help"),
-        ("--host HOST", "DOIP Server hostname (default: doip.portal.mardi4nfdi.org)"),
+        ("--host HOST", "DOIP Server hostname (default: doip.portal.mardi4nfdi.de)"),
         ("--port PORT", "Server port (default: 3567)"),
         ("--no-tls", "Disable TLS wrapping"),
         ("--secure", "Enable TLS verification"),
@@ -397,7 +397,7 @@ def main(argv: list[str] | None = None) -> int:
         add_help=False,
     )
 
-    parser.add_argument("--host", default="doip.portal.mardi4nfdi.org", help="DOIP Server hostname")
+    parser.add_argument("--host", default="doip.portal.mardi4nfdi.de", help="DOIP Server hostname")
     parser.add_argument("--port", type=int, default=3567, help="Server port")
     parser.add_argument("--no-tls", action="store_true", help="Disable TLS wrapping")
     parser.add_argument("--secure", action="store_true", help="Enable TLS verification")
@@ -488,7 +488,6 @@ def main(argv: list[str] | None = None) -> int:
                 return 0
 
             r = client.retrieve(args.object_id)
-            print("Metadata:")
             print(json.dumps(r.metadata_blocks, indent=2))
             return 0
 
