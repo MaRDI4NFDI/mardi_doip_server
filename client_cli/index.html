@@ -159,7 +159,9 @@
             <div class="ml-auto flex items-center gap-2 md:flex-1 md:justify-end">
                 <div class="hidden w-full flex-1 md:flex md:w-auto md:flex-none">
                     <div class="hidden w-full flex-1 md:flex md:w-auto md:flex-none">
-    <button onclick="onSearchBarClick(event)" data-slot="dialog-trigger" data-variant="outline" data-size="default" class="inline-flex shrink-0 items-center gap-2 text-sm whitespace-nowrap transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&amp;_svg]:pointer-events-none [&amp;_svg]:shrink-0 [&amp;_svg:not([class*='size-'])]:size-4 border bg-background hover:text-accent-foreground dark:border-input dark:hover:bg-input/50 px-4 py-2 has-[&gt;svg]:px-3 relative h-8 w-full justify-start rounded-lg pl-3 font-normal text-foreground shadow-none hover:bg-muted/50 sm:pr-12 md:w-48 lg:w-56 xl:w-64 dark:bg-card" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="radix-_r_1_" data-state="closed">
+    <button onclick="onSearchBarClick(event)" data-slot="dialog-trigger" data-variant="outline" data-size="default"
+        class="inline-flex shrink-0 items-center gap-2 text-sm whitespace-nowrap transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&amp;_svg]:pointer-events-none [&amp;_svg]:shrink-0 [&amp;_svg:not([class*='size-'])]:size-4 border bg-background hover:text-accent-foreground dark:border-input dark:hover:bg-input/50 px-4 py-2 has-[&gt;svg]:px-3 relative h-8 w-full justify-start rounded-lg pl-3 font-normal text-foreground shadow-none hover:bg-muted/50 sm:pr-12 md:w-48 lg:w-56 xl:w-64 dark:bg-card"
+        type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="radix-_r_1_" data-state="closed">
         <span class="hidden lg:inline-flex">Search documentation...</span>
         <span class="inline-flex lg:hidden">Search...</span>
     </button>
@@ -602,8 +604,9 @@
         </h1>
 
         <div class="flex items-center gap-2 pt-1.5">
+          
           <button
-    onclick="fetch(`https://mardi4nfdi.github.io/mardi_doip_server/client_cli.md`).then((r) => r.blob()).then((blob) => navigator.clipboard.write([new ClipboardItem({ 'text/plain': blob })]))"
+    onclick="fetch(`..`).then((r) => r.text()).then((text) => navigator.clipboard.write([new ClipboardItem({ 'text/plain': text })]))"
     data-slot="button" class="secondary cursor-pointer">
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
         stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="tabler-icon tabler-icon-copy ">
@@ -614,6 +617,7 @@
     </svg>
     <span class="max-md:hidden">Copy Page</span>
 </button>
+          
           
           <a data-slot="button" id="previous-button"
             class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&amp;_svg]:pointer-events-none [&amp;_svg:not([class*='size-'])]:size-4 shrink-0 [&amp;_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive bg-secondary text-secondary-foreground hover:bg-secondary/80 extend-touch-target size-8 shadow-none md:size-7"
@@ -652,7 +656,8 @@
     </div>
   </div>
   <div class="typography w-full flex-1 *:data-[slot=alert]:first:mt-0">
-    <p>The <code>client_cli</code> module provides a minimal command-line interface around the DOIP client.</p>
+    <h1 id="client-cli">Client CLI<a class="headerlink" href="#client-cli" title="Permanent link">&para;</a></h1>
+<p>The <code>client_cli</code> module provides a minimal command-line interface around the DOIP client.</p>
 <h2 id="running">Running<a class="headerlink" href="#running" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nv">PYTHONPATH</span><span class="o">=</span>.<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>client_cli.main<span class="w"> </span>--object-id<span class="w"> </span>Q123<span class="w"> </span>--action<span class="w"> </span>retrieve<span class="w"> </span>
 </code></pre></div>
@@ -663,7 +668,8 @@
 <li><code>--no-tls</code>: Disable TLS wrapping (useful for local plaintext servers)</li>
 <li><code>--secure</code>: Enable TLS certificate/hostname verification</li>
 <li><code>--object-id</code>: Object identifier to retrieve (default <code>Q123</code>)</li>
-<li><code>--action</code>: One of <code>demo</code>, <code>hello</code>, <code>retrieve</code>, <code>update</code>, <code>invoke</code>, <code>purge</code> (default <code>demo</code>)</li>
+<li><code>--action</code>: One of <code>demo</code>, <code>hello</code>, <code>list_ops</code>, <code>retrieve</code>, <code>create</code>, <code>update</code>, <code>search</code>, <code>describe</code>, <code>invoke</code>, <code>purge</code> (default <code>demo</code>).
+  Every action except <code>demo</code> is a server operation taken from <code>doip_shared/operations.py</code>, so this list cannot drift from what the server advertises. Run <code>--action list_ops</code> to ask a specific deployment.</li>
 <li><code>--component</code>: Component ID to retrieve (retrieve/demo actions)</li>
 <li><code>--input</code>: File path to upload for <code>update</code></li>
 <li><code>--media-type</code>: Explicit media type for <code>update</code>; defaults to <code>application/octet-stream</code></li>
@@ -676,8 +682,12 @@
 <h3 id="actions">Actions<a class="headerlink" href="#actions" title="Permanent link">&para;</a></h3>
 <ul>
 <li><code>demo</code>: Runs <code>hello</code> then <code>retrieve</code>.</li>
-<li><code>hello</code>: Runs only the hello operation.</li>
+<li><code>hello</code>: Runs only the hello operation; reports the server's operations and type registry.</li>
+<li><code>list_ops</code>: Lists the operations the server supports, with their DOIP identifiers.</li>
 <li><code>retrieve</code>: Runs retrieve for the given object (and optional component).</li>
+<li><code>describe</code>: Returns the FDO record (kernel, profile, provenance) for <code>--object-id</code>.</li>
+<li><code>create</code>: Creates a new object in the knowledge graph.</li>
+<li><code>search</code>: Searches the knowledge graph and returns matching object ids.</li>
 <li><code>update</code>: Uploads one component to an existing object and creates a lakeFS commit.</li>
 <li><code>invoke</code>: Runs a workflow for the given object with optional params.</li>
 <li><code>purge</code>: Evicts the cached manifest for <code>--object-id</code> from the server's in-memory cache.</li>
@@ -695,7 +705,7 @@
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>python<span class="w"> </span>-m<span class="w"> </span>client_cli.main<span class="w"> </span>--host<span class="w"> </span>localhost<span class="w"> </span>--no-tls<span class="w"> </span>--action<span class="w"> </span>retrieve<span class="w"> </span>--object-id<span class="w"> </span>Q6032968<span class="w"> </span>--component<span class="w"> </span>rocrate<span class="w"> </span>--output<span class="w"> </span>crate.zip
 </code></pre></div>
 <h3 id="example-update-one-component">Example: Update One Component<a class="headerlink" href="#example-update-one-component" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nv">PYTHONPATH</span><span class="o">=</span>.<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>client_cli.main<span class="w"> </span>--host<span class="w"> </span><span class="m">127</span>.0.0.1<span class="w"> </span>--no-tls<span class="w"> </span>--action<span class="w"> </span>update<span class="w"> </span>--object-id<span class="w"> </span>Q6190920<span class="w"> </span>--component<span class="w"> </span>fulltext.pdf<span class="w"> </span>--input<span class="w"> </span>pdf.pdf<span class="w"> </span>--media-type<span class="w"> </span>application/pdf<span class="w"> </span>--update-token<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DOIP_UPDATE_TOKEN</span><span class="s2">&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nv">PYTHONPATH</span><span class="o">=</span>.<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>client_cli.main<span class="w"> </span>--host<span class="w"> </span><span class="m">127</span>.0.0.1<span class="w"> </span>--no-tls<span class="w"> </span>--action<span class="w"> </span>update<span class="w"> </span>--object-id<span class="w"> </span>Q6190920<span class="w"> </span>--component<span class="w"> </span>fulltext.pdf<span class="w"> </span>--input<span class="w"> </span>pdf.pdf<span class="w"> </span>--media-type<span class="w"> </span>application/pdf<span class="w"> </span>--update-token<span class="w"> </span><span class="s2">"</span><span class="nv">$DOIP_UPDATE_TOKEN</span><span class="s2">"</span>
 </code></pre></div>
 <p><code>update</code> is component-scoped. It updates or adds the specified component and leaves all other components unchanged.
 Component IDs are exact storage names. If you upload <code>fulltext</code>, retrieve <code>fulltext</code>. If you upload <code>fulltext.pdf</code>, retrieve <code>fulltext.pdf</code>.</p>
@@ -882,43 +892,43 @@ Component IDs are exact storage names. If you upload <code>fulltext</code>, retr
         
         
         
+        <a href="#running"
+            class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
+            data-active="false" data-depth="2" onClick="deferSetActiveTocLink('#running');">
+            Running
+        </a>
+        
+        
         <a href="#actions"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="2" onClick="deferSetActiveTocLink('#actions');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#actions');">
             Actions
         </a>
         
-
-        
         <a href="#update-authorization"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="2" onClick="deferSetActiveTocLink('#update-authorization');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#update-authorization');">
             Update authorization
         </a>
         
-
-        
         <a href="#example-download-a-pdf"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="2" onClick="deferSetActiveTocLink('#example-download-a-pdf');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#example-download-a-pdf');">
             Example: Download a PDF
         </a>
         
-
-        
         <a href="#example-download-a-ro-crate"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="2" onClick="deferSetActiveTocLink('#example-download-a-ro-crate');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#example-download-a-ro-crate');">
             Example: Download a RO-CRATE
         </a>
         
-
-        
         <a href="#example-update-one-component"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="2" onClick="deferSetActiveTocLink('#example-update-one-component');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#example-update-one-component');">
             Example: Update One Component
         </a>
+        
         
 
         

@@ -159,7 +159,9 @@
             <div class="ml-auto flex items-center gap-2 md:flex-1 md:justify-end">
                 <div class="hidden w-full flex-1 md:flex md:w-auto md:flex-none">
                     <div class="hidden w-full flex-1 md:flex md:w-auto md:flex-none">
-    <button onclick="onSearchBarClick(event)" data-slot="dialog-trigger" data-variant="outline" data-size="default" class="inline-flex shrink-0 items-center gap-2 text-sm whitespace-nowrap transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&amp;_svg]:pointer-events-none [&amp;_svg]:shrink-0 [&amp;_svg:not([class*='size-'])]:size-4 border bg-background hover:text-accent-foreground dark:border-input dark:hover:bg-input/50 px-4 py-2 has-[&gt;svg]:px-3 relative h-8 w-full justify-start rounded-lg pl-3 font-normal text-foreground shadow-none hover:bg-muted/50 sm:pr-12 md:w-48 lg:w-56 xl:w-64 dark:bg-card" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="radix-_r_1_" data-state="closed">
+    <button onclick="onSearchBarClick(event)" data-slot="dialog-trigger" data-variant="outline" data-size="default"
+        class="inline-flex shrink-0 items-center gap-2 text-sm whitespace-nowrap transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&amp;_svg]:pointer-events-none [&amp;_svg]:shrink-0 [&amp;_svg:not([class*='size-'])]:size-4 border bg-background hover:text-accent-foreground dark:border-input dark:hover:bg-input/50 px-4 py-2 has-[&gt;svg]:px-3 relative h-8 w-full justify-start rounded-lg pl-3 font-normal text-foreground shadow-none hover:bg-muted/50 sm:pr-12 md:w-48 lg:w-56 xl:w-64 dark:bg-card"
+        type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="radix-_r_1_" data-state="closed">
         <span class="hidden lg:inline-flex">Search documentation...</span>
         <span class="inline-flex lg:hidden">Search...</span>
     </button>
@@ -602,8 +604,9 @@
         </h1>
 
         <div class="flex items-center gap-2 pt-1.5">
+          
           <button
-    onclick="fetch(`https://mardi4nfdi.github.io/mardi_doip_server/server_http_gateway.md`).then((r) => r.blob()).then((blob) => navigator.clipboard.write([new ClipboardItem({ 'text/plain': blob })]))"
+    onclick="fetch(`..`).then((r) => r.text()).then((text) => navigator.clipboard.write([new ClipboardItem({ 'text/plain': text })]))"
     data-slot="button" class="secondary cursor-pointer">
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
         stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="tabler-icon tabler-icon-copy ">
@@ -614,6 +617,7 @@
     </svg>
     <span class="max-md:hidden">Copy Page</span>
 </button>
+          
           
           <a data-slot="button" id="previous-button"
             class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&amp;_svg]:pointer-events-none [&amp;_svg:not([class*='size-'])]:size-4 shrink-0 [&amp;_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive bg-secondary text-secondary-foreground hover:bg-secondary/80 extend-touch-target size-8 shadow-none md:size-7"
@@ -652,10 +656,30 @@
     </div>
   </div>
   <div class="typography w-full flex-1 *:data-[slot=alert]:first:mt-0">
-    <p>This component provides a thin HTTP layer that forwards browser-friendly download requests to the internal DOIP server. It is served by FastAPI in <code>doip_server/http_gateway.py</code> and is intended for environments where a simple REST-style endpoint is preferred over the native DOIP protocol.</p>
+    <h1 id="server-http-gateway">Server HTTP Gateway<a class="headerlink" href="#server-http-gateway" title="Permanent link">&para;</a></h1>
+<p>This component provides a thin HTTP layer that forwards browser-friendly download requests to the internal DOIP server. It is served by FastAPI in <code>doip_server/http_gateway.py</code> and is intended for environments where a simple REST-style endpoint is preferred over the native DOIP protocol.</p>
+<h2 id="scope">Scope<a class="headerlink" href="#scope" title="Permanent link">&para;</a></h2>
+<p>The gateway is <strong>deliberately a subset of the protocol, not a second full interface.</strong>
+The complete operation set is reached through the DOIP CLI (<code>mardi-doip-cli</code>) or the
+raw DOIP port. The gateway carries only what a plain HTTP client needs — component
+download, search, create, cache purge — plus <code>hello</code>, so a caller arriving over HTTPS
+can still discover everything else.</p>
+<p>An operation having no route here does <strong>not</strong> mean it is unimplemented. Ask
+<code>GET /doip/hello</code> for the authoritative list.</p>
 <h2 id="endpoints">Endpoints<a class="headerlink" href="#endpoints" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>GET /doip/retrieve/{object_id}/{component_id}</code></li>
+<li><code>GET /doip/hello</code></li>
+<li>Returns the DOIP server's identity, its operations and the type registry.</li>
+<li><code>availableOperations</code> is the <code>{name: code}</code> map; <code>operations</code> additionally carries
+    each operation's DOIP identifier (<code>0.DOIP/Op.*</code> for DOIP 2.0 operations,
+    <code>0.MaRDI/Op.*</code> for MaRDI extensions), and a one-line summary.</li>
+<li>Round-trips to the DOIP server, so it doubles as a deep health check.</li>
+<li>
+<p>Returns <code>502</code> for backend failures.</p>
+</li>
+<li>
+<p><code>GET /doip/retrieve/{object_id}/{component_id}</code></p>
+</li>
 <li>Streams the first matching component block for the given object/component pair.</li>
 <li>Sets <code>Content-Type</code> from the component's <code>media_type</code> (defaults to <code>application/octet-stream</code>).</li>
 <li>Adds <code>Content-Disposition: attachment; filename="&lt;component_id_basename&gt;"</code> so browsers download instead of render.</li>
@@ -672,14 +696,17 @@
 <li>Returns <code>502</code> on backend failures.</li>
 </ul>
 <h3 id="examples">Examples<a class="headerlink" href="#examples" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># Download a component (cached)</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>curl<span class="w"> </span>-OJ<span class="w"> </span>http://localhost/doip/retrieve/Q6033164/fulltext
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># Discover what this deployment offers</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>curl<span class="w"> </span>-s<span class="w"> </span>http://localhost/doip/hello
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1"># Download a component, bypassing the cache</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>curl<span class="w"> </span>-OJ<span class="w"> </span><span class="s2">&quot;http://localhost/doip/retrieve/Q6033164/fulltext?force_reload&quot;</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1"># Download a component (cached)</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>curl<span class="w"> </span>-OJ<span class="w"> </span>http://localhost/doip/retrieve/Q6033164/fulltext
 <a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="c1"># Purge the cache for an object without downloading</span>
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost/doip/purge/Q6033164
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="c1"># Download a component, bypassing the cache</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>curl<span class="w"> </span>-OJ<span class="w"> </span><span class="s2">"http://localhost/doip/retrieve/Q6033164/fulltext?force_reload"</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="c1"># Purge the cache for an object without downloading</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost/doip/purge/Q6033164
 </code></pre></div>
 <h2 id="backend-connection">Backend connection<a class="headerlink" href="#backend-connection" title="Permanent link">&para;</a></h2>
 <p>The gateway talks to the DOIP binary server via <code>StrictDOIPClient</code>. Host/port are resolved in this order:</p>
@@ -882,6 +909,14 @@
         
         
         
+        
+        <a href="#scope"
+            class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
+            data-active="false" data-depth="2" onClick="deferSetActiveTocLink('#scope');">
+            Scope
+        </a>
+        
+
         
         <a href="#endpoints"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
