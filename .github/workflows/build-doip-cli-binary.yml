@@ -121,23 +121,32 @@ jobs:
           pytest -vv
         shell: bash
 
-      # Build inside a Debian container rather than on the runner: binaries
-      # built on the Ubuntu runner link against its newer GLIBC and will not
-      # start on older distributions.
+      # Build inside an old-GLIBC container rather than on the runner: PyInstaller
+      # bundles the container's libpython, and a binary built against the Ubuntu
+      # runner's GLIBC will not start on older distributions.
       #
-      # This was Bullseye (GLIBC 2.31) until Debian 11 reached end of life, at
-      # which point its security suite's Release file expired and apt-get update
-      # began failing with exit code 100. Bookworm is supported until 2028.
-      # The floor this sets is GLIBC 2.36: Debian 12+, Ubuntu 22.04+, RHEL 9+.
-      - name: Build binary (Debian Bookworm container)
+      # AlmaLinux 8 gives GLIBC 2.28 and is supported until 2029, so the binary
+      # runs on Debian 10+, Ubuntu 18.04+ and RHEL 8+.
+      #
+      # Two bases were tried and rejected. Debian Bullseye (GLIBC 2.31) was the
+      # original choice, but Debian 11 reached end of life, its security suite's
+      # Release file expired, and apt-get update started failing with exit
+      # code 100. Bookworm builds cleanly but needs GLIBC 2.35 at runtime, which
+      # is newer than several distributions still in use. PyPA's manylinux images
+      # have the right GLIBC but ship a statically linked Python, which
+      # PyInstaller refuses ("Python was built without a shared library").
+      #
+      # Note python3.12 -m PyInstaller: AlmaLinux's interpreter is versioned and
+      # is not the default python3, so a bare `pyinstaller` would not resolve.
+      - name: Build binary (AlmaLinux 8 container)
         run: |
           docker run --rm -v "$PWD:/workspace" -w /workspace \
-            python:3.12-slim-bookworm bash -c "
-              apt-get update -qq && apt-get install -y --no-install-recommends binutils && \
-              pip install --upgrade pip wheel setuptools pyinstaller --quiet && \
+            almalinux:8 bash -c "
+              dnf install -y python3.12 python3.12-pip python3.12-devel binutils && \
+              python3.12 -m pip install --upgrade pip wheel setuptools pyinstaller --quiet && \
               grep -v mkdocs requirements.txt > /tmp/req_cli.txt && \
-              pip install -r /tmp/req_cli.txt --quiet && \
-              pyinstaller \
+              python3.12 -m pip install -r /tmp/req_cli.txt --quiet && \
+              python3.12 -m PyInstaller \
                 --onefile client_cli/main.py \
                 --name mardi-doip-cli \
                 --console \
