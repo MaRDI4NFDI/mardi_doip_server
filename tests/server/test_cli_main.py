@@ -83,3 +83,61 @@ def test_update_properties_at_file(monkeypatch, tmp_path):
 
     assert rc == 0
     assert fake.last_props == props
+
+
+def test_object_id_default_is_not_applied_to_list_ops(monkeypatch, capsys):
+    """`--action list_ops` with no --object-id must ask the service, not Q123."""
+    import client_cli.main as m
+
+    seen = {}
+
+    class FakeClient:
+        def __init__(self, *a, **k): pass
+        def list_ops(self, object_id=""):
+            seen["object_id"] = object_id
+            return {"operation": "list_operations", "availableOperations": {}}
+
+    monkeypatch.setattr(m, "StrictDOIPClient", FakeClient)
+    monkeypatch.setattr(sys, "argv", ["mardi-doip-cli", "--no-banner", "--action", "list_ops"])
+    assert m.main() == 0
+    assert seen["object_id"] == ""
+
+
+def test_object_id_is_forwarded_to_list_ops(monkeypatch):
+    import client_cli.main as m
+
+    seen = {}
+
+    class FakeClient:
+        def __init__(self, *a, **k): pass
+        def list_ops(self, object_id=""):
+            seen["object_id"] = object_id
+            return {"operation": "list_operations", "availableOperations": {}}
+
+    monkeypatch.setattr(m, "StrictDOIPClient", FakeClient)
+    monkeypatch.setattr(sys, "argv",
+        ["mardi-doip-cli", "--no-banner", "--action", "list_ops", "--object-id", "types/Workflow"])
+    assert m.main() == 0
+    assert seen["object_id"] == "types/Workflow"
+
+
+def test_other_actions_keep_the_historical_object_id_default(monkeypatch):
+    """Only list_ops changes; retrieve still defaults to Q123."""
+    import client_cli.main as m
+
+    seen = {}
+
+    class FakeResp:
+        metadata_blocks = [{}]
+        component_blocks = []
+
+    class FakeClient:
+        def __init__(self, *a, **k): pass
+        def retrieve(self, object_id, component_id=None):
+            seen["object_id"] = object_id
+            return FakeResp()
+
+    monkeypatch.setattr(m, "StrictDOIPClient", FakeClient)
+    monkeypatch.setattr(sys, "argv", ["mardi-doip-cli", "--no-banner", "--action", "retrieve"])
+    assert m.main() == 0
+    assert seen["object_id"] == m.DEFAULT_OBJECT_ID == "Q123"

@@ -13,7 +13,7 @@ Options:
 - `--port`: DOIP server port (default `3567`)
 - `--no-tls`: Disable TLS wrapping (useful for local plaintext servers)
 - `--secure`: Enable TLS certificate/hostname verification
-- `--object-id`: Object identifier to retrieve (default `Q123`)
+- `--object-id`: Object identifier (default `Q123`; omit for `list_ops` to ask the service)
 - `--action`: One of `demo`, `hello`, `list_ops`, `retrieve`, `create`, `update`, `search`, `describe`, `invoke`, `purge` (default `demo`).
   Every action except `demo` is a server operation taken from `doip_shared/operations.py`, so this list cannot drift from what the server advertises. Run `--action list_ops` to ask a specific deployment.
 - `--component`: Component ID to retrieve (retrieve/demo actions)

@@ -43,6 +43,8 @@ _DESCRIPTION = (
 
 # "demo" is CLI-only; every other action is a server operation and comes from
 # the shared registry, so the CLI cannot drift from what the server advertises.
+DEFAULT_OBJECT_ID = "Q123"
+
 _ACTIONS = ("demo", *ops.cli_action_names())
 
 _ACTION_HELP: dict[str, dict] = {
@@ -91,8 +93,9 @@ _ACTION_HELP: dict[str, dict] = {
         "description": "Return the FDO record for an object.",
         "details": (
             "Fetches the FAIR Digital Object record the FDO API serves for this PID/QID - "
-            "kernel, profile and provenance - as a single JSON document. Where 'retrieve' "
-            "answers with DOIP metadata blocks, 'describe' answers with the FDO record itself."
+            "kernel, profile and provenance - as a single JSON document. This is the same "
+            "record 'retrieve' returns without --component; 'describe' is metadata-only, "
+            "while 'retrieve' also serves component bytes."
         ),
         "options": [("--object-id ID", "PID/QID to describe (required)")],
         "examples": [
@@ -418,7 +421,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--no-tls", action="store_true", help="Disable TLS wrapping")
     parser.add_argument("--secure", action="store_true", help="Enable TLS verification")
     parser.add_argument("--no-banner", action="store_true", help="Suppress banner and all log output; print only raw JSON")
-    parser.add_argument("--object-id", default="Q123", help="Object identifier")
+    # No argparse default: list_ops needs to distinguish "no target" (ask the
+    # service) from an explicit one. Every other action falls back to
+    # DEFAULT_OBJECT_ID after parsing.
+    parser.add_argument("--object-id", default=None, help=f"Object identifier (default: {DEFAULT_OBJECT_ID}; omit for list_ops to ask the service)")
     parser.add_argument("--component", default=None, help="Component ID for selective retrieve")
     parser.add_argument("--action", choices=list(_ACTIONS), help="Action to execute")
     parser.add_argument("--output", default=None, help="Path to save first component (retrieve only)")
@@ -472,6 +478,11 @@ def main(argv: list[str] | None = None) -> int:
         verify_tls=args.secure,
     )
 
+    # list_ops treats a missing --object-id as "ask the service"; everything
+    # else keeps the historical default.
+    if args.object_id is None and args.action != "list_ops":
+        args.object_id = DEFAULT_OBJECT_ID
+
     logging.getLogger().debug("Handling action: %s", args.action)
 
     try:
@@ -481,7 +492,7 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         if args.action == "list_ops":
-            r = client.list_ops()
+            r = client.list_ops(args.object_id or "")
             print(json.dumps(r, indent=2))
             return 0
 

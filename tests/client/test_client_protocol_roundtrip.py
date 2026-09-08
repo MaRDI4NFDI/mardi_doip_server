@@ -73,3 +73,40 @@ def test_decode_header_roundtrip_update_opcode():
 
     hdr = decode_header(header_bytes)
     assert hdr.op_code == OP_UPDATE
+
+
+def test_list_ops_defaults_to_the_service():
+    """No target means the service; the request must carry an empty object_id."""
+    from doip_client.client import StrictDOIPClient
+
+    sent = {}
+
+    class C(StrictDOIPClient):
+        def send_message(self, request):
+            sent["object_id"] = request.object_id
+            class R:
+                metadata_blocks = [{"operation": "list_operations"}]
+            return R()
+
+    C(host="h", port=1, use_tls=False, verify_tls=False).list_ops()
+    assert sent["object_id"] == ""
+
+
+def test_list_ops_forwards_an_explicit_target():
+    """A type or object PID must reach the wire, or target-aware listing is dead."""
+    from doip_client.client import StrictDOIPClient
+
+    sent = {}
+
+    class C(StrictDOIPClient):
+        def send_message(self, request):
+            sent["object_id"] = request.object_id
+            class R:
+                metadata_blocks = [{"operation": "list_operations"}]
+            return R()
+
+    c = C(host="h", port=1, use_tls=False, verify_tls=False)
+    c.list_ops("types/Workflow")
+    assert sent["object_id"] == "types/Workflow"
+    c.list_ops("Q6830877")
+    assert sent["object_id"] == "Q6830877"

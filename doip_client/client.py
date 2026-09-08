@@ -73,15 +73,21 @@ class StrictDOIPClient:
         response = self.send_message(request)
         return response.metadata_blocks[0] if response.metadata_blocks else {}
 
-    def list_ops(self) -> dict:
-        """Request the list of supported operations from the server.
+    def list_ops(self, object_id: str = "") -> dict:
+        """Request the operations available on a target.
+
+        Args:
+            object_id: Target to ask about. Empty (the default) asks the
+                service itself. A type FDO (``types/Workflow``) or an object
+                PID returns the operations applicable to that type,
+                intersected with what the server implements.
 
         Returns:
-            Metadata dictionary describing available operations.
+            Metadata dictionary describing the applicable operations.
         """
         request = DoipRequest(
             header=Header(DOIP_VERSION, MSG_TYPE_REQUEST, OP_LIST_OPS, 0, 0, 0),
-            object_id="",
+            object_id=object_id,
             metadata_blocks=[{"operation": "list_operations"}],
         )
         response = self.send_message(request)
