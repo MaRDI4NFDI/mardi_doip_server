@@ -29,7 +29,7 @@ When saving to a directory, the original filename provided by the server is pres
 ### Actions
 - `demo`: Runs `hello` then `retrieve`.
 - `hello`: Runs only the hello operation; reports the server's operations and type registry.
-- `list_ops`: Lists the operations the server supports, with their DOIP identifiers.
+- `list_ops`: Lists the operations available on a target, with their DOIP identifiers. Without `--object-id` it answers for the service; with a type (`types/Workflow`) or an object PID it returns that type's applicable operations, intersected with what the server implements.
 - `retrieve`: Runs retrieve for the given object (and optional component).
 - `describe`: Returns the FDO record (kernel, profile, provenance) for `--object-id`.
 - `create`: Creates a new object in the knowledge graph.

@@ -819,22 +819,82 @@ async def handle_search(msg: DOIPMessage, registry: object_registry.ObjectRegist
     )
 
 
+async def _applicable_for_target(
+    object_id: str, registry: object_registry.ObjectRegistry
+) -> tuple[str, str | None, list[str]] | None:
+    """Resolve a list-ops target to the operations applicable to it.
+
+    Args:
+        object_id: Raw target from the request. Empty, or the literal
+            ``service``, means the service itself. Otherwise a type FDO
+            (``types/Workflow``) or an object PID/QID.
+        registry: Object registry used to fetch type and object FDOs.
+
+    Returns:
+        A ``(target_kind, type_id, applicable)`` triple, or None when the target
+        is the service. ``applicable`` holds the DOIP identifiers the type
+        declares, before intersecting with what this server implements.
+    """
+    if not object_id or object_id.lower() == "service":
+        return None
+
+    fdo_api = getattr(registry, "fdo_api", "")
+    type_id = _extract_type_id(object_id, fdo_api)
+    if type_id is None:
+        # An object PID: follow kernel.digitalObjectType to its type FDO.
+        fdo_json = await registry.fetch_fdo_object(object_id.upper())
+        type_uri = (fdo_json.get("kernel") or {}).get("digitalObjectType", "")
+        type_id = _extract_type_id(type_uri, fdo_api)
+        if type_id is None:
+            raise protocol.ProtocolError(
+                f"Object {object_id} has no resolvable digitalObjectType"
+            )
+        kind = "object"
+    else:
+        kind = "type"
+
+    type_fdo = await registry.fetch_type_fdo(type_id)
+    return kind, type_id, list(type_fdo.get("applicableOperations", []))
+
+
 async def handle_list_ops(msg: DOIPMessage, registry: object_registry.ObjectRegistry) -> DOIPMessage:
-    """Return the list of supported operations.
+    """Return the operations that can be invoked on the target.
+
+    DOIP v2.0 defines ListOperations as the operations invocable on the target
+    DO. With no target the service answers for itself. With a type FDO or an
+    object PID the answer is the type's ``applicableOperations`` intersected
+    with the operations this server implements, so a type may declare more than
+    a given deployment supports without the deployment over-advertising.
 
     Args:
         msg: Incoming DOIP list-ops request.
-        registry: Object registry resolver (unused, included for symmetry).
+        registry: Object registry used to resolve type and object FDOs.
 
     Returns:
-        DOIPMessage: Response describing available operations.
+        DOIPMessage: Response describing the applicable operations.
     """
     log.info("Handling list_ops request for object_id=%s", msg.object_id)
-    metadata_block = {
-        "operation": "list_operations",
-        "availableOperations": ops.available_operations(),
-        "operations": ops.operation_descriptors(),
-    }
+
+    resolved = await _applicable_for_target(msg.object_id, registry)
+    if resolved is None:
+        descriptors = ops.operation_descriptors()
+        metadata_block = {
+            "operation": "list_operations",
+            "target": "service",
+            "availableOperations": ops.available_operations(),
+            "operations": descriptors,
+        }
+    else:
+        kind, type_id, declared = resolved
+        descriptors = ops.descriptors_for(declared)
+        metadata_block = {
+            "operation": "list_operations",
+            "target": kind,
+            "digitalObjectType": type_id,
+            "availableOperations": {d["name"]: d["code"] for d in descriptors},
+            "operations": descriptors,
+        }
+
     return DOIPMessage(
         version=protocol.DOIP_VERSION,
         msg_type=protocol.MSG_TYPE_RESPONSE,

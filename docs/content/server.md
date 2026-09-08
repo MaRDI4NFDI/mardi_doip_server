@@ -13,6 +13,19 @@ Asyncio-based TCP server implementing strict DOIP v2.0 framing. Supported operat
     `doip_shared/operations.py`. Add an operation there and add its handler; an
     import-time assertion in `doip_server/main.py` fails if the registry and the
     dispatch table disagree. Do not hand-maintain a second list.
+
+!!! note "ListOperations is target-aware"
+    With no target (or `service`), ListOperations answers for the service and
+    returns every implemented operation. With a type FDO (`types/Workflow`) or
+    an object PID, it returns that type's `applicableOperations` **intersected**
+    with what this server implements, so a type may declare more than a given
+    deployment supports without the deployment over-advertising. Object PIDs are
+    resolved through `kernel.digitalObjectType`; object FDOs carry no operations
+    list of their own.
+
+    Hello, ListOperations, Create and Search are service-level: they address the
+    service, not a digital object, and never appear in a type's
+    `applicableOperations`.
 - Purge (`0x07`)
 
 Two listeners start together:

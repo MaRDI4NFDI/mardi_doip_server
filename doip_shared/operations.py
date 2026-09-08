@@ -46,6 +46,10 @@ class Operation:
         standard: True when the operation is part of DOIP 2.0.
         aliases: Alternative names accepted on the wire.
         cli: Whether the CLI exposes this operation as an ``--action``.
+        service_level: True when the operation addresses the service itself
+            rather than a digital object. Service-level operations are reported
+            when ListOperations is called with no target, and never appear in a
+            type's ``applicableOperations``.
     """
 
     name: str
@@ -55,6 +59,7 @@ class Operation:
     standard: bool = True
     aliases: tuple[str, ...] = ()
     cli: bool = True
+    service_level: bool = False
 
     @property
     def names(self) -> tuple[str, ...]:
@@ -68,6 +73,7 @@ OPERATIONS: tuple[Operation, ...] = (
         code=OP_HELLO,
         doip_id=f"{DOIP_OP_NAMESPACE}Hello",
         summary="Return server identity, available operations and the type registry.",
+        service_level=True,
     ),
     Operation(
         name="list_ops",
@@ -75,6 +81,7 @@ OPERATIONS: tuple[Operation, ...] = (
         doip_id=f"{DOIP_OP_NAMESPACE}ListOperations",
         summary="List the operations this server supports.",
         aliases=("list_operations",),
+        service_level=True,
     ),
     Operation(
         name="retrieve",
@@ -87,6 +94,7 @@ OPERATIONS: tuple[Operation, ...] = (
         code=OP_CREATE,
         doip_id=f"{DOIP_OP_NAMESPACE}Create",
         summary="Create a new object in the knowledge graph.",
+        service_level=True,
     ),
     Operation(
         name="update",
@@ -99,6 +107,7 @@ OPERATIONS: tuple[Operation, ...] = (
         code=OP_SEARCH,
         doip_id=f"{DOIP_OP_NAMESPACE}Search",
         summary="Search the knowledge graph and return matching object ids.",
+        service_level=True,
     ),
     Operation(
         name="describe",
@@ -178,6 +187,32 @@ def operation_descriptors() -> list[dict]:
         }
         for op in OPERATIONS
     ]
+
+
+def service_operations() -> tuple[Operation, ...]:
+    """Return the operations that address the service rather than an object."""
+    return tuple(op for op in OPERATIONS if op.service_level)
+
+
+def object_operations() -> tuple[Operation, ...]:
+    """Return the operations that address a digital object."""
+    return tuple(op for op in OPERATIONS if not op.service_level)
+
+
+def descriptors_for(doip_ids) -> list[dict]:
+    """Return descriptors for the given DOIP identifiers, in registry order.
+
+    Identifiers this server does not implement are skipped, so a type may
+    declare more than a given deployment supports without over-advertising.
+
+    Args:
+        doip_ids: Iterable of fully qualified DOIP operation identifiers.
+
+    Returns:
+        list[dict]: Descriptors for the intersection, in registry order.
+    """
+    wanted = set(doip_ids)
+    return [d for d in operation_descriptors() if d["id"] in wanted]
 
 
 def cli_action_names() -> tuple[str, ...]:

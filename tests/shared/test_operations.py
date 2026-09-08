@@ -73,3 +73,27 @@ def test_cli_exposes_every_server_operation():
     for name in ops.cli_action_names():
         assert name in _ACTIONS, f"{name} advertised but not a CLI action"
         assert name in _ACTION_HELP, f"{name} is a CLI action but has no help entry"
+
+
+def test_service_and_object_operations_partition_the_registry():
+    svc = set(ops.service_operations())
+    obj = set(ops.object_operations())
+    assert svc | obj == set(ops.OPERATIONS)
+    assert not (svc & obj)
+
+
+def test_service_level_set_is_the_expected_four():
+    assert {op.name for op in ops.service_operations()} == {
+        "hello", "list_ops", "create", "search"
+    }
+
+
+def test_descriptors_for_is_an_intersection_not_a_passthrough():
+    got = ops.descriptors_for(["0.DOIP/Op.Retrieve", "0.MaRDI/Op.NotImplemented"])
+    assert [d["name"] for d in got] == ["retrieve"]
+
+
+def test_descriptors_for_preserves_registry_order():
+    ids = [op.doip_id for op in ops.OPERATIONS]
+    got = [d["id"] for d in ops.descriptors_for(reversed(ids))]
+    assert got == ids
