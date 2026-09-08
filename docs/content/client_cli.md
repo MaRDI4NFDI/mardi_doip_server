@@ -14,7 +14,8 @@ Options:
 - `--no-tls`: Disable TLS wrapping (useful for local plaintext servers)
 - `--secure`: Enable TLS certificate/hostname verification
 - `--object-id`: Object identifier to retrieve (default `Q123`)
-- `--action`: One of `demo`, `hello`, `retrieve`, `update`, `invoke`, `purge` (default `demo`)
+- `--action`: One of `demo`, `hello`, `list_ops`, `retrieve`, `create`, `update`, `search`, `describe`, `invoke`, `purge` (default `demo`).
+  Every action except `demo` is a server operation taken from `doip_shared/operations.py`, so this list cannot drift from what the server advertises. Run `--action list_ops` to ask a specific deployment.
 - `--component`: Component ID to retrieve (retrieve/demo actions)
 - `--input`: File path to upload for `update`
 - `--media-type`: Explicit media type for `update`; defaults to `application/octet-stream`
@@ -27,8 +28,12 @@ When saving to a directory, the original filename provided by the server is pres
 
 ### Actions
 - `demo`: Runs `hello` then `retrieve`.
-- `hello`: Runs only the hello operation.
+- `hello`: Runs only the hello operation; reports the server's operations and type registry.
+- `list_ops`: Lists the operations the server supports, with their DOIP identifiers.
 - `retrieve`: Runs retrieve for the given object (and optional component).
+- `describe`: Returns the FDO record (kernel, profile, provenance) for `--object-id`.
+- `create`: Creates a new object in the knowledge graph.
+- `search`: Searches the knowledge graph and returns matching object ids.
 - `update`: Uploads one component to an existing object and creates a lakeFS commit.
 - `invoke`: Runs a workflow for the given object with optional params.
 - `purge`: Evicts the cached manifest for `--object-id` from the server's in-memory cache.

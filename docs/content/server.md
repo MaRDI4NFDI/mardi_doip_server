@@ -6,6 +6,13 @@ Asyncio-based TCP server implementing strict DOIP v2.0 framing. Supported operat
 - Retrieve (`0x02`)
 - Invoke (`0x05`)
 - List operations helper (`list_ops`)
+
+!!! note "One source of truth for operations"
+    The operations the server dispatches, the ones `hello` and `list_operations`
+    advertise, and the CLI's `--action` choices all derive from
+    `doip_shared/operations.py`. Add an operation there and add its handler; an
+    import-time assertion in `doip_server/main.py` fails if the registry and the
+    dispatch table disagree. Do not hand-maintain a second list.
 - Purge (`0x07`)
 
 Two listeners start together:

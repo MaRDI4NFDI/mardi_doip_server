@@ -4,6 +4,13 @@ The gateway exposes a simple REST-style endpoint that accepts an object ID and
 component ID via the path, fetches the corresponding component from the
 co-located DOIP server, and streams the content back with appropriate HTTP
 headers so browsers treat it as a file download.
+
+Scope: this gateway is deliberately a subset of the protocol, not a second full
+interface. The complete operation set is reached through the DOIP CLI or the
+raw DOIP port; the gateway carries the operations a plain HTTP client needs -
+component download, search, create, cache purge - plus ``hello``, so that a
+caller arriving over HTTPS can still discover the rest. Do not assume an
+operation is unimplemented because it has no route here; ask ``/doip/hello``.
 """
 
 from __future__ import annotations
@@ -152,6 +159,30 @@ async def on_startup():
         "HTTP Gateway started",
         extra={"host": DEFAULT_DOIP_HOST, "port": DEFAULT_DOIP_PORT}
     )
+
+@app.get("/doip/hello")
+async def hello():
+    """Return the DOIP server's identity, operations and type registry.
+
+    This is the gateway's only discovery endpoint. It exists so an HTTP caller
+    can find out what the deployment offers - and reach the CLI and the raw
+    DOIP port, which are the full interface - without speaking DOIP first. It
+    doubles as a deep health check, since it round-trips to the DOIP server.
+
+    Returns:
+        dict: Metadata block from the DOIP server's hello response.
+
+    Raises:
+        HTTPException: When the DOIP backend is unreachable or returns an error.
+    """
+    log.info("HTTP hello requested")
+    client = _client()
+    try:
+        return await asyncio.to_thread(client.hello)
+    except Exception as exc:
+        log.exception("Hello failed")
+        raise HTTPException(status_code=502, detail=f"Hello error: {exc}")
+
 
 @app.get("/doip/search")
 async def search_objects(

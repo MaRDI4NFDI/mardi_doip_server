@@ -2,7 +2,26 @@
 
 This component provides a thin HTTP layer that forwards browser-friendly download requests to the internal DOIP server. It is served by FastAPI in `doip_server/http_gateway.py` and is intended for environments where a simple REST-style endpoint is preferred over the native DOIP protocol.
 
+## Scope
+
+The gateway is **deliberately a subset of the protocol, not a second full interface.**
+The complete operation set is reached through the DOIP CLI (`mardi-doip-cli`) or the
+raw DOIP port. The gateway carries only what a plain HTTP client needs — component
+download, search, create, cache purge — plus `hello`, so a caller arriving over HTTPS
+can still discover everything else.
+
+An operation having no route here does **not** mean it is unimplemented. Ask
+`GET /doip/hello` for the authoritative list.
+
 ## Endpoints
+
+- `GET /doip/hello`
+  - Returns the DOIP server's identity, its operations and the type registry.
+  - `availableOperations` is the `{name: code}` map; `operations` additionally carries
+    each operation's DOIP identifier (`0.DOIP/Op.*` for DOIP 2.0 operations,
+    `0.MaRDI/Op.*` for MaRDI extensions), and a one-line summary.
+  - Round-trips to the DOIP server, so it doubles as a deep health check.
+  - Returns `502` for backend failures.
 
 - `GET /doip/retrieve/{object_id}/{component_id}`
   - Streams the first matching component block for the given object/component pair.
@@ -20,6 +39,9 @@ This component provides a thin HTTP layer that forwards browser-friendly downloa
 ### Examples
 
 ```bash
+# Discover what this deployment offers
+curl -s http://localhost/doip/hello
+
 # Download a component (cached)
 curl -OJ http://localhost/doip/retrieve/Q6033164/fulltext
 

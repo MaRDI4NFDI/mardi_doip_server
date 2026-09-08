@@ -11,6 +11,8 @@ import pathlib
 import sys
 import textwrap
 
+from doip_shared import operations as ops
+
 from doip_shared.constants import MARDI_PROFILE_TYPES
 
 from argparse import (
@@ -39,7 +41,9 @@ _DESCRIPTION = (
     "For more information see: https://mardi4nfdi.github.io/mardi_doip_server/"
 )
 
-_ACTIONS = ("demo", "hello", "list_ops", "retrieve", "update", "invoke", "purge", "create", "search")
+# "demo" is CLI-only; every other action is a server operation and comes from
+# the shared registry, so the CLI cannot drift from what the server advertises.
+_ACTIONS = ("demo", *ops.cli_action_names())
 
 _ACTION_HELP: dict[str, dict] = {
     "hello": {
@@ -81,6 +85,18 @@ _ACTION_HELP: dict[str, dict] = {
         "examples": [
             ("Run demo with default object", "mardi-doip-cli --action demo"),
             ("Run demo with a specific object", "mardi-doip-cli --action demo --object-id Q6190920"),
+        ],
+    },
+    "describe": {
+        "description": "Return the FDO record for an object.",
+        "details": (
+            "Fetches the FAIR Digital Object record the FDO API serves for this PID/QID - "
+            "kernel, profile and provenance - as a single JSON document. Where 'retrieve' "
+            "answers with DOIP metadata blocks, 'describe' answers with the FDO record itself."
+        ),
+        "options": [("--object-id ID", "PID/QID to describe (required)")],
+        "examples": [
+            ("Describe a paper", "mardi-doip-cli --action describe --object-id Q6830876"),
         ],
     },
     "retrieve": {
@@ -467,6 +483,14 @@ def main(argv: list[str] | None = None) -> int:
         if args.action == "list_ops":
             r = client.list_ops()
             print(json.dumps(r, indent=2))
+            return 0
+
+        if args.action == "describe":
+            if not args.object_id:
+                logging.getLogger().error("--object-id is required for 'describe'.")
+                return 1
+            r = client.describe(args.object_id)
+            print(json.dumps(r.metadata_blocks, indent=2))
             return 0
 
         if args.action == "retrieve":

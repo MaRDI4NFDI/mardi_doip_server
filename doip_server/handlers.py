@@ -18,6 +18,7 @@ from . import object_registry, protocol, storage_lakefs, workflows
 from .logging_config import log
 from .protocol import ComponentBlock, DOIPMessage
 from doip_shared.constants import KNOWN_TYPE_IDS, MARDI_PROFILE_TYPES, MARDI_MULTI_TYPE_FACETS
+from doip_shared import operations as ops
 
 _VERSION_FILE = Path(__file__).resolve().parents[1] / "VERSION"
 SERVER_VERSION = _VERSION_FILE.read_text(encoding="utf-8").strip() if _VERSION_FILE.exists() else "unknown"
@@ -41,15 +42,8 @@ async def handle_hello(msg: DOIPMessage, registry: object_registry.ObjectRegistr
         "server": "mardi_doip_server",
         "version": protocol.DOIP_VERSION,
         "server_version": SERVER_VERSION,
-        "availableOperations": {
-            "hello": protocol.OP_HELLO,
-            "retrieve": protocol.OP_RETRIEVE,
-            "update": protocol.OP_UPDATE,
-            "describe": protocol.OP_DESCRIBE, # not standard
-            "invoke": protocol.OP_INVOKE, # not standard
-            "create": protocol.OP_CREATE,
-            "search": protocol.OP_SEARCH,
-        },
+        "availableOperations": ops.available_operations(),
+        "operations": ops.operation_descriptors(),
         "typeRegistry": {
             "baseUri": type_base,
             "types": {t: f"{type_base}{t}" for t in KNOWN_TYPE_IDS},
@@ -838,14 +832,8 @@ async def handle_list_ops(msg: DOIPMessage, registry: object_registry.ObjectRegi
     log.info("Handling list_ops request for object_id=%s", msg.object_id)
     metadata_block = {
         "operation": "list_operations",
-        "availableOperations": {
-            "hello": protocol.OP_HELLO,
-            "retrieve": protocol.OP_RETRIEVE,
-            "update": protocol.OP_UPDATE,
-            "invoke": protocol.OP_INVOKE,
-            "create": protocol.OP_CREATE,
-            "search": protocol.OP_SEARCH,
-        },
+        "availableOperations": ops.available_operations(),
+        "operations": ops.operation_descriptors(),
     }
     return DOIPMessage(
         version=protocol.DOIP_VERSION,

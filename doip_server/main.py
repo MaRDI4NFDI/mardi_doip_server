@@ -16,6 +16,7 @@ import yaml
 
 from doip_server.storage_lakefs import ensure_lakefs_available
 from . import handlers, object_registry, protocol, storage_lakefs
+from doip_shared import operations as ops
 from .logging_config import configure_logging, log
 
 configure_logging()
@@ -192,6 +193,32 @@ def _metadata_operation_name(msg: protocol.DOIPMessage) -> str | None:
     return None
 
 
+#: Operation name -> handler attribute on :mod:`doip_server.handlers`. Names come
+#: from doip_shared.operations.OPERATIONS, which is also what hello and
+#: list_operations advertise; the assertion below fails loudly at import time if
+#: the two ever drift apart again. Handlers are named rather than referenced so
+#: they stay late-bound and remain patchable in tests.
+_HANDLERS = {
+    "hello": "handle_hello",
+    "list_ops": "handle_list_ops",
+    "retrieve": "handle_retrieve",
+    "create": "handle_create",
+    "update": "handle_update",
+    "search": "handle_search",
+    "describe": "handle_describe",
+    "invoke": "handle_invoke",
+    "purge": "handle_purge",
+}
+
+_advertised = {op.name for op in ops.OPERATIONS}
+assert _advertised == set(_HANDLERS), (
+    "advertised operations and dispatch table disagree: "
+    f"{_advertised ^ set(_HANDLERS)}"
+)
+_missing = [a for a in _HANDLERS.values() if not hasattr(handlers, a)]
+assert not _missing, f"dispatch table names missing handlers: {_missing}"
+
+
 async def dispatch(msg: protocol.DOIPMessage, registry: object_registry.ObjectRegistry) -> protocol.DOIPMessage:
     """Route a DOIP request to the appropriate handler.
 
@@ -210,22 +237,10 @@ async def dispatch(msg: protocol.DOIPMessage, registry: object_registry.ObjectRe
 
         log.info("Dispatching request for %s", op_name)
 
-        if msg.operation == protocol.OP_HELLO or op_name == "hello":
-            return await handlers.handle_hello(msg, registry)
-        if msg.operation == protocol.OP_RETRIEVE or op_name == "retrieve":
-            return await handlers.handle_retrieve(msg, registry)
-        if msg.operation == protocol.OP_UPDATE or op_name == "update":
-            return await handlers.handle_update(msg, registry)
-        if msg.operation == protocol.OP_INVOKE or op_name == "invoke":
-            return await handlers.handle_invoke(msg, registry)
-        if msg.operation == protocol.OP_LIST_OPS or op_name in ("list_ops", "list_operations"):
-            return await handlers.handle_list_ops(msg, registry)
-        if msg.operation == protocol.OP_PURGE or op_name == "purge":
-            return await handlers.handle_purge(msg, registry)
-        if msg.operation == protocol.OP_CREATE or op_name == "create":
-            return await handlers.handle_create(msg, registry)
-        if msg.operation == protocol.OP_SEARCH or op_name == "search":
-            return await handlers.handle_search(msg, registry)
+        operation = ops.resolve(msg.operation, op_name)
+        if operation is not None:
+            handler = getattr(handlers, _HANDLERS[operation.name])
+            return await handler(msg, registry)
     except protocol.ProtocolError:
         raise
     except Exception as exc:

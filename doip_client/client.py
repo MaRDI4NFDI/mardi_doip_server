@@ -8,7 +8,7 @@ import struct
 import ssl
 from pathlib import Path
 
-from doip_shared.constants import OP_CREATE, OP_HELLO, OP_INVOKE, OP_LIST_OPS, OP_PURGE, OP_RETRIEVE, OP_SEARCH, OP_UPDATE
+from doip_shared.constants import OP_CREATE, OP_DESCRIBE, OP_HELLO, OP_INVOKE, OP_LIST_OPS, OP_PURGE, OP_RETRIEVE, OP_SEARCH, OP_UPDATE
 
 from . import protocol, tls, utils
 from .logging_config import log
@@ -86,6 +86,22 @@ class StrictDOIPClient:
         )
         response = self.send_message(request)
         return response.metadata_blocks[0] if response.metadata_blocks else {}
+
+    def describe(self, object_id: str) -> DoipResponse:
+        """Request the FDO record for an object.
+
+        Args:
+            object_id: PID/QID to describe.
+
+        Returns:
+            DoipResponse: Response whose metadata block holds the FDO record.
+        """
+        request = DoipRequest(
+            header=Header(DOIP_VERSION, MSG_TYPE_REQUEST, OP_DESCRIBE, 0, 0, 0),
+            object_id=object_id,
+            metadata_blocks=[{"operation": "describe"}],
+        )
+        return self.send_message(request)
 
     def retrieve(self, object_id: str, component_id: str = None) -> DoipResponse:
         """Retrieve the primary payload for a given object ID.
