@@ -6,16 +6,20 @@ on:
     tags: [ "v*" ]
   workflow_dispatch:
 
-jobs:
-  build:
-    name: Build CLI (${{ matrix.os }}, Python ${{ matrix.python-version }})
-    runs-on: ${{ matrix.os }}
+# One job per platform rather than a matrix. The three builds share no steps
+# beyond checkout and install, and as a matrix a failure in one platform's build
+# step aborted the whole job — so a broken Linux container also cost us the
+# macOS binary and the artifact upload. Separate jobs fail independently.
+env:
+  PYTHON_VERSION: "3.12"
 
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest, ubuntu-22.04, macos-latest]
-        python-version: ["3.12"]
+jobs:
+  # =========================================================
+  # WINDOWS
+  # =========================================================
+  build-windows:
+    name: Build CLI (windows-latest)
+    runs-on: windows-latest
 
     steps:
       - name: Checkout repository
@@ -24,41 +28,20 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Create venv (Unix)
-        if: runner.os != 'Windows'
-        run: python -m venv venv
-        shell: bash
-
-      - name: Create venv (Windows)
-        if: runner.os == 'Windows'
+      - name: Create venv
         run: python -m venv venv
         shell: pwsh
 
-      # =========================
-      # FILTER OUT MKDOCS FOR CLI
-      # =========================
-      - name: Filter CLI deps (Windows)
-        if: runner.os == 'Windows'
+      - name: Filter CLI deps
         run: |
           (Get-Content requirements.txt) |
             Where-Object { $_ -notmatch "mkdocs" } |
             Set-Content requirements.txt
         shell: pwsh
 
-      - name: Filter CLI deps (Unix)
-        if: runner.os != 'Windows'
-        run: |
-          sed -i.bak '/mkdocs/d' requirements.txt
-          rm requirements.txt.bak
-        shell: bash
-
-      # =========================
-      # INSTALL
-      # =========================
-      - name: Install deps (Windows)
-        if: runner.os == 'Windows'
+      - name: Install deps
         run: |
           venv\Scripts\Activate.ps1
           pip install --upgrade pip wheel setuptools
@@ -66,37 +49,13 @@ jobs:
           pip install -r requirements.txt
         shell: pwsh
 
-      - name: Install deps (Unix)
-        if: runner.os != 'Windows'
-        run: |
-          source venv/bin/activate
-          pip install --upgrade pip wheel setuptools
-          pip install pyinstaller
-          pip install -r requirements.txt
-        shell: bash
-
-      # =========================
-      # TESTS
-      # =========================
-      - name: Test (Windows)
-        if: runner.os == 'Windows'
+      - name: Test
         run: |
           venv\Scripts\Activate.ps1
           pytest -vv
         shell: pwsh
 
-      - name: Test (Unix)
-        if: runner.os != 'Windows'
-        run: |
-          source venv/bin/activate
-          pytest -vv
-        shell: bash
-
-      # =========================
-      # BUILD
-      # =========================
-      - name: Build binary (Windows)
-        if: runner.os == 'Windows'
+      - name: Build binary
         run: |
           venv\Scripts\Activate.ps1
           pyinstaller `
@@ -112,13 +71,68 @@ jobs:
           certutil -hashfile dist\mardi-doip-cli.exe SHA256 > dist\checksum.txt
         shell: pwsh
 
-      # Build inside Debian Bullseye (GLIBC 2.31) for broad Linux compatibility.
-      # Binaries built on Ubuntu 22.04 (GLIBC 2.35) won't run on older distros.
-      - name: Build binary (Linux — Debian Bullseye container)
-        if: runner.os == 'Linux'
+      - name: Upload CLI binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mardi-doip-cli-windows-latest
+          path: |
+            dist/mardi-doip-cli*
+            dist/checksum.txt
+          if-no-files-found: error
+          overwrite: true
+
+  # =========================================================
+  # LINUX
+  # =========================================================
+  build-linux:
+    name: Build CLI (ubuntu-22.04)
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Create venv
+        run: python -m venv venv
+        shell: bash
+
+      - name: Filter CLI deps
+        run: |
+          sed -i.bak '/mkdocs/d' requirements.txt
+          rm requirements.txt.bak
+        shell: bash
+
+      - name: Install deps
+        run: |
+          source venv/bin/activate
+          pip install --upgrade pip wheel setuptools
+          pip install pyinstaller
+          pip install -r requirements.txt
+        shell: bash
+
+      - name: Test
+        run: |
+          source venv/bin/activate
+          pytest -vv
+        shell: bash
+
+      # Build inside a Debian container rather than on the runner: binaries
+      # built on the Ubuntu runner link against its newer GLIBC and will not
+      # start on older distributions.
+      #
+      # This was Bullseye (GLIBC 2.31) until Debian 11 reached end of life, at
+      # which point its security suite's Release file expired and apt-get update
+      # began failing with exit code 100. Bookworm is supported until 2028.
+      # The floor this sets is GLIBC 2.36: Debian 12+, Ubuntu 22.04+, RHEL 9+.
+      - name: Build binary (Debian Bookworm container)
         run: |
           docker run --rm -v "$PWD:/workspace" -w /workspace \
-            python:3.12-slim-bullseye bash -c "
+            python:3.12-slim-bookworm bash -c "
               apt-get update -qq && apt-get install -y --no-install-recommends binutils && \
               pip install --upgrade pip wheel setuptools pyinstaller --quiet && \
               grep -v mkdocs requirements.txt > /tmp/req_cli.txt && \
@@ -137,8 +151,57 @@ jobs:
             "
         shell: bash
 
-      - name: Build binary (macOS)
-        if: runner.os == 'macOS'
+      - name: Upload CLI binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mardi-doip-cli-ubuntu-22.04
+          path: |
+            dist/mardi-doip-cli*
+            dist/checksum.txt
+          if-no-files-found: error
+          overwrite: true
+
+  # =========================================================
+  # MACOS
+  # =========================================================
+  build-macos:
+    name: Build CLI (macos-latest)
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Create venv
+        run: python -m venv venv
+        shell: bash
+
+      - name: Filter CLI deps
+        run: |
+          sed -i.bak '/mkdocs/d' requirements.txt
+          rm requirements.txt.bak
+        shell: bash
+
+      - name: Install deps
+        run: |
+          source venv/bin/activate
+          pip install --upgrade pip wheel setuptools
+          pip install pyinstaller
+          pip install -r requirements.txt
+        shell: bash
+
+      - name: Test
+        run: |
+          source venv/bin/activate
+          pytest -vv
+        shell: bash
+
+      - name: Build binary
         run: |
           source venv/bin/activate
           pyinstaller \
@@ -154,13 +217,10 @@ jobs:
           sha256sum dist/mardi-doip-cli > dist/checksum.txt
         shell: bash
 
-      # =========================
-      # ARTIFACTS
-      # =========================
-      - name: Upload CLI binary artifacts
+      - name: Upload CLI binary artifact
         uses: actions/upload-artifact@v4
         with:
-          name: mardi-doip-cli-${{ matrix.os }}
+          name: mardi-doip-cli-macos-latest
           path: |
             dist/mardi-doip-cli*
             dist/checksum.txt
@@ -172,7 +232,7 @@ jobs:
   # -------------------------------------------------------
   release:
     name: Create GitHub Release
-    needs: build
+    needs: [build-windows, build-linux, build-macos]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     permissions:
