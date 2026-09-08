@@ -683,7 +683,7 @@
 <ul>
 <li><code>demo</code>: Runs <code>hello</code> then <code>retrieve</code>.</li>
 <li><code>hello</code>: Runs only the hello operation; reports the server's operations and type registry.</li>
-<li><code>list_ops</code>: Lists the operations the server supports, with their DOIP identifiers.</li>
+<li><code>list_ops</code>: Lists the operations available on a target, with their DOIP identifiers. Without <code>--object-id</code> it answers for the service; with a type (<code>types/Workflow</code>) or an object PID it returns that type's applicable operations, intersected with what the server implements.</li>
 <li><code>retrieve</code>: Runs retrieve for the given object (and optional component).</li>
 <li><code>describe</code>: Returns the FDO record (kernel, profile, provenance) for <code>--object-id</code>.</li>
 <li><code>create</code>: Creates a new object in the knowledge graph.</li>

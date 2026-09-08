@@ -671,6 +671,19 @@ advertise, and the CLI's <code>--action</code> choices all derive from
 import-time assertion in <code>doip_server/main.py</code> fails if the registry and the
 dispatch table disagree. Do not hand-maintain a second list.</p>
 </div>
+<div class="admonition note">
+<p class="admonition-title">ListOperations is target-aware</p>
+<p>With no target (or <code>service</code>), ListOperations answers for the service and
+returns every implemented operation. With a type FDO (<code>types/Workflow</code>) or
+an object PID, it returns that type's <code>applicableOperations</code> <strong>intersected</strong>
+with what this server implements, so a type may declare more than a given
+deployment supports without the deployment over-advertising. Object PIDs are
+resolved through <code>kernel.digitalObjectType</code>; object FDOs carry no operations
+list of their own.</p>
+<p>Hello, ListOperations, Create and Search are service-level: they address the
+service, not a digital object, and never appear in a type's
+<code>applicableOperations</code>.</p>
+</div>
 <ul>
 <li>Purge (<code>0x07</code>)</li>
 </ul>
